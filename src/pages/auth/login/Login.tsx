@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import type { AxiosError } from 'axios';
 import './Login.sass';
 import { FaArrowRight } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import Input from '@components/input/Input';
 import Button from '@components/button/Button';
 import { authService } from '@services/api/auth/auth.service';
+import useLocalStorage from '@hooks/useLocalStorage';
+import useSessionStorage from '@hooks/useSessionStorage';
+import { Utils } from '@services/utils/utils.service';
+import type { AppDispatch } from '@redux/store';
+import type { UserProfile } from '@redux/reducers/user/userSlice';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -14,26 +21,34 @@ const Login = () => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [alertType, setAlertType] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [setStoredUsername] = useLocalStorage<string>('username', 'set') as [(value: string) => void];
+  const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
+  const [pageReload] = useSessionStorage<boolean>('pageReload', 'set') as [(value: boolean) => void];
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
   const loginUser = async (event: React.FormEvent<HTMLFormElement>) => {
     setLoading(true);
     event.preventDefault();
     try {
+      console.log('Login attempt:', { username, passwordLength: password.length });
       const result = await authService.signIn({ username, password });
-      // 1 - set logged in to true in local storage
-      // 2 - set username in local storage
-      // 3 - dispatch user to redux
-      setKeepLoggedIn(keepLoggedIn);
+      console.log('Login success:', result.data);
       setUser(result.data.user);
+      setLoggedIn(keepLoggedIn);
+      setStoredUsername(username);
       setHasError(false);
       setAlertType('alert-success');
-    } catch (error: any) {
+      Utils.dispatchUser(result, pageReload, dispatch, setUser);
+      setLoading(false);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      console.error('Login error:', axiosError?.response?.data || error);
       setLoading(false);
       setHasError(true);
       setAlertType('alert-error');
-      setErrorMessage(error?.response?.data?.message);
+      setErrorMessage(axiosError?.response?.data?.message || 'An error occurred during login');
     }
   };
 

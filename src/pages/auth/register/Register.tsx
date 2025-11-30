@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import type { AxiosError } from 'axios';
 import Input from '@components/input/Input';
 import Button from '@components/button/Button';
 import { authService } from '@services/api/auth/auth.service';
 import { Utils } from '@services/utils/utils.service';
+import useLocalStorage from '@hooks/useLocalStorage';
+import useSessionStorage from '@hooks/useSessionStorage';
+import type { AppDispatch } from '@redux/store';
+import type { UserProfile } from '@redux/reducers/user/userSlice';
 import './Register.sass';
 
 const Register = () => {
@@ -14,7 +20,11 @@ const Register = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [alertType, setAlertType] = useState('');
   const [hasError, setHasError] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [setStoredUsername] = useLocalStorage<string>('username', 'set') as [(value: string) => void];
+  const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
+  const [pageReload] = useSessionStorage<boolean>('pageReload', 'set') as [(value: boolean) => void];
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
   const registerUser = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -24,18 +34,16 @@ const Register = () => {
       const avatarColor = Utils.avatarColor();
       const avatarImage = Utils.generateAvatar(username.charAt(0).toUpperCase(), avatarColor);
       const result = await authService.signUp({ username, email, password, avatarColor, avatarImage });
-      console.log(result);
-      // 1 - set logged in to true in local storage
-      // 2 - set username in local storage
-      // 3 - dispatch user to redux
-      setUser(result.data.user);
-      setHasError(false);
+      setLoggedIn(true);
+      setStoredUsername(username);
       setAlertType('alert-success');
-    } catch (error: any) {
+      Utils.dispatchUser(result, pageReload, dispatch, setUser);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       setLoading(false);
       setHasError(true);
       setAlertType('alert-error');
-      setErrorMessage(error?.response?.data?.message);
+      setErrorMessage(axiosError?.response?.data?.message || 'An error occurred during registration');
     }
   };
 
