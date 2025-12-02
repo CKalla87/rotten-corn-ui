@@ -1,2 +1,2 @@
-export { default as Streams } from './Streams';
-
+export { default } from './Streams';
+export { default as StreamsSkeleton } from './StreamsSkeleton';
