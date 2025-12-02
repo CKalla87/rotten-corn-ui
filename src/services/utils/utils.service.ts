@@ -3,6 +3,7 @@ import type { AxiosResponse } from 'axios';
 import { avatarColors } from './static.data';
 import type { AppDispatch } from '@redux/store';
 import { addUser, clearUser } from '@redux/reducers/user/userSlice';
+import { addNotification, clearNotification } from '@redux/reducers/notifications/notificationSlice';
 import type { UserProfile } from '@redux/reducers/user/userSlice';
 
 export class Utils {
@@ -58,10 +59,55 @@ export class Utils {
     setLoggedIn: (value: boolean) => void;
   }): void {
     dispatch(clearUser());
-    // dispatch clear notification action
+    dispatch(clearNotification());
     deleteStorageUsername();
     deleteSessionPageReload();
     setLoggedIn(false);
+  }
+
+  static dispatchNotification(message: string, type: string, dispatch: AppDispatch): void {
+    dispatch(addNotification({ message, type }));
+  }
+
+  static dispatchClearNotification(dispatch: AppDispatch): void {
+    dispatch(clearNotification());
+  }
+
+  static appEnvironment(): string {
+    const env = import.meta.env.VITE_APP_ENVIRONMENT || import.meta.env.MODE;
+    if (env === 'development') {
+      return 'DEV';
+    } else if (env === 'staging') {
+      return 'STG';
+    }
+    return '';
+  }
+
+  static mapSettingsDropdownItems(setSettings: (items: Array<{ topText: string; subText: string }>) => void): Array<{ topText: string; subText: string }> {
+    const items: Array<{ topText: string; subText: string }> = [];
+    const item = {
+      topText: 'My Profile',
+      subText: 'View personal profile.'
+    };
+    items.push(item);
+    setSettings(items);
+    return items;
+  }
+
+  static appImageUrl(imgVersion?: string, imgId?: string): string {
+    if (!imgId || !imgVersion) {
+      return '';
+    }
+    return `https://res.cloudinary.com/${import.meta.env.VITE_CLOUD_NAME}/image/upload/v${imgVersion}/${imgId}`;
+  }
+
+  static generateString(length: number): string {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
   }
 }
 
