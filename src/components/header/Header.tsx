@@ -1,0 +1,232 @@
+import { useState, useEffect, useRef } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { FaRegBell, FaRegEnvelope, FaCaretDown, FaCaretUp } from 'react-icons/fa';
+import logo from '@assets/images/logo.svg';
+import Avatar from '@components/avatar/Avatar';
+import Dropdown from '@components/dropdown/Dropdown';
+import MessageSidebar from '@components/message-sidebar/MessageSidebar';
+import HeaderSkeleton from '@components/header/HeaderSkeleton';
+import { Utils } from '@services/utils/utils.service';
+import { userService } from '@services/api/user/user.service';
+import { notificationService } from '@services/api/notifications/notification.service';
+import { NotificationUtils } from '@services/utils/notification-utils.service';
+import useDetectOutsideClick from '@hooks/useDetectOutsideClick';
+import useLocalStorage from '@hooks/useLocalStorage';
+import useSessionStorage from '@hooks/useSessionStorage';
+import useEffectOnce from '@hooks/useEffectOnce';
+import type { RootState, AppDispatch } from '@redux/store';
+import type { NotificationItem } from '@redux/reducers/notifications/notificationSlice';
+import './Header.scss';
+
+interface SettingsItem {
+  topText: string;
+  subText: string;
+  [key: string]: unknown;
+}
+
+const Header = () => {
+  const { profile } = useSelector((state: RootState) => state.user);
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const [environment, setEnvironment] = useState('');
+  const [settings, setSettings] = useState<SettingsItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [messageNotifications] = useState<Array<Record<string, unknown>>>([]);
+  const [messageCount] = useState(0);
+  const messageRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLUListElement>(null);
+  const settingsRef = useRef<HTMLUListElement>(null);
+  const [isMessageActive, setIsMessageActive] = useDetectOutsideClick(messageRef as React.RefObject<HTMLElement>, false);
+  const [isNotificationActive, setIsNotificationActive] = useDetectOutsideClick(notificationRef as React.RefObject<HTMLElement>, false);
+  const [isSettingsActive, setIsSettingsActive] = useDetectOutsideClick(settingsRef as React.RefObject<HTMLElement>, false);
+  const [deleteStorageUsername] = useLocalStorage<string>('username', 'delete') as [() => void];
+  const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
+  const [deleteSessionPageReload] = useSessionStorage<boolean>('pageReload', 'delete') as [() => void];
+  const backgroundColor = `${environment === 'DEV' ? '#50b5ff' : environment === 'STG' ? '#e9710f' : ''}`;
+
+  const getUserNotifications = async () => {
+    try {
+      const response = await notificationService.getUserNotifications();
+      const mappedNotifications = NotificationUtils.mapNotificationDropdownItems(response.data.notifications, setNotificationCount);
+      setNotifications(mappedNotifications);
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
+    }
+  };
+
+  const onMarkAsRead = (item: NotificationItem | { topText?: string; subText?: string; _id?: string; [key: string]: unknown }) => {
+    const notification = item as NotificationItem;
+    NotificationUtils.markMessageAsRead(notification?._id || '', notification).catch((error: unknown) => {
+      const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
+    });
+  };
+
+  const onDeleteNotification = async (messageId: string) => {
+    try {
+      const response = await notificationService.deleteNotification(messageId);
+      const successMessage = response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'message' in response.data && typeof response.data.message === 'string' ? response.data.message : 'Notification deleted successfully';
+      Utils.dispatchNotification(successMessage, 'success', dispatch);
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
+    }
+  };
+
+  const openChatPage = () => {
+    navigate(`/app/social/chat/messages`);
+  };
+
+  const onLogout = async () => {
+    try {
+      setLoggedIn(false);
+      Utils.clearStore({
+        dispatch,
+        deleteStorageUsername,
+        deleteSessionPageReload,
+        setLoggedIn
+      });
+      await userService.logoutUser();
+      navigate('/');
+    } catch (error: unknown) {
+      console.log(error);
+      const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
+    }
+  };
+
+  useEffectOnce(() => {
+    Utils.mapSettingsDropdownItems(setSettings);
+    getUserNotifications();
+    const env = Utils.appEnvironment();
+    setEnvironment(env);
+  });
+
+  useEffect(() => {
+    if (profile) {
+      NotificationUtils.socketIONotification(profile, notifications, setNotifications, 'header', setNotificationCount);
+    }
+  }, [profile, notifications]);
+
+  if (!profile) {
+    return <HeaderSkeleton />;
+  }
+
+  return (
+    <>
+      {isMessageActive && (
+        <div ref={messageRef}>
+          <MessageSidebar profile={profile} messageCount={messageCount} messageNotifications={messageNotifications} openChatPage={openChatPage} />
+        </div>
+      )}
+      <div className="header-nav-wrapper" data-testid="header-wrapper">
+        <div className="header-navbar">
+          <div className="header-image" data-testid="header-image" onClick={() => navigate('/app/social/streams')}>
+            <img src={logo} className="img-fluid" alt="" />
+          </div>
+          <div className="app-name">
+            Chatty
+            {environment && (
+              <span className="environment" style={{ backgroundColor: `${backgroundColor}` }}>
+                {environment}
+              </span>
+            )}
+          </div>
+          <div className="header-menu-toggle">
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+          </div>
+          <ul className="header-nav">
+            <li
+              className="header-nav-item active-item"
+              onClick={() => {
+                setIsMessageActive(false);
+                setIsNotificationActive(true);
+                setIsSettingsActive(false);
+              }}
+            >
+              <span className="header-list-name">
+                <FaRegBell className="header-list-icon" />
+                {notificationCount > 0 && (
+                  <span className="bg-danger-dots dots" data-testid="notification-dots">
+                    {notificationCount}
+                  </span>
+                )}
+              </span>
+              {isNotificationActive && (
+                <ul className="dropdown-ul" ref={notificationRef}>
+                  <li className="dropdown-li">
+                    <Dropdown
+                      height={300}
+                      style={{ right: '250px', top: '20px' }}
+                      data={notifications}
+                      notificationCount={notificationCount}
+                      title="Notifications"
+                      onMarkAsRead={onMarkAsRead}
+                      onDeleteNotification={onDeleteNotification}
+                    />
+                  </li>
+                </ul>
+              )}
+              &nbsp;
+            </li>
+            <li className="header-nav-item active-item" onClick={() => setIsMessageActive(true)}>
+              <span className="header-list-name">
+                <FaRegEnvelope className="header-list-icon" />
+                <span className="bg-danger-dots dots" data-testid="messages-dots"></span>
+              </span>
+            </li>
+            &nbsp;
+            <li
+              className="header-nav-item"
+              onClick={() => {
+                setIsSettingsActive(true);
+                setIsMessageActive(false);
+                setIsNotificationActive(false);
+              }}
+            >
+              <span className="header-list-name profile-image">
+                <Avatar
+                  name={profile?.username}
+                  bgColor={profile?.avatarColor}
+                  textColor="#ffffff"
+                  size={40}
+                  avatarSrc={profile?.avatarImage}
+                />
+              </span>
+              <span className="header-list-name profile-name">
+                {profile?.username || 'Danny'}
+                {!isSettingsActive ? (
+                  <FaCaretDown className="header-list-icon caret" />
+                ) : (
+                  <FaCaretUp className="header-list-icon caret" />
+                )}
+              </span>
+              {isSettingsActive && (
+                <ul className="dropdown-ul" ref={settingsRef}>
+                  <li className="dropdown-li">
+                    <Dropdown
+                      height={300}
+                      style={{ right: '250px', top: '20px' }}
+                      data={settings}
+                      title="Settings"
+                      onLogout={onLogout}
+                      onNavigate={() => navigate(`/app/social/profile/${profile?.username}`)}
+                    />
+                  </li>
+                </ul>
+              )}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default Header;
+
