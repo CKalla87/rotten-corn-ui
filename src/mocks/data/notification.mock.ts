@@ -1,7 +1,11 @@
 export const notificationData = {
   _id: '12345',
   userTo: '60263f14648fed5246e322d8',
-  userFrom: { username: 'Manny' },
+  userFrom: {
+    username: 'Manny',
+    avatarColor: '#4caf50',
+    profilePicture: ''
+  },
   message: 'Test message',
   notificationType: 'comment',
   entityId: '23456',

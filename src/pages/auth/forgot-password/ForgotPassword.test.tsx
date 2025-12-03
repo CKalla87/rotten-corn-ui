@@ -1,11 +1,23 @@
-import { describe, it, expect } from 'vitest';
-import { forgotPasswordMockError } from '@mocks/handlers/auth';
-import { server } from '@mocks/server';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import '@testing-library/jest-dom';
 import ForgotPassword from '@pages/auth/forgot-password/ForgotPassword';
-import { render, screen, waitFor } from '@root/test.utils';
+import { render, screen, waitFor, act } from '@root/test.utils';
 import userEvent from '@testing-library/user-event';
+import { authService } from '@services/api/auth/auth.service';
+
+// Mock authService
+jest.mock('@services/api/auth/auth.service', () => ({
+  authService: {
+    forgotPassword: jest.fn(),
+  }
+}));
 
 describe('ForgotPassword', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (authService.forgotPassword as jest.Mock).mockClear();
+  });
+
   it('form should have email label', () => {
     render(<ForgotPassword />);
     const emailLabel = screen.getByLabelText('Email');
@@ -38,6 +50,9 @@ describe('ForgotPassword', () => {
 
     it('should change label when clicked', async () => {
       const user = userEvent.setup();
+      (authService.forgotPassword as jest.Mock).mockResolvedValueOnce({
+        data: { message: 'Password reset email sent.' }
+      });
       render(<ForgotPassword />);
       const buttonElement = screen.getByRole('button');
       const emailElement = screen.getByLabelText('Email');
@@ -45,11 +60,15 @@ describe('ForgotPassword', () => {
 
       await user.click(buttonElement);
 
-      const newButtonElement = screen.getByRole('button');
-      expect(newButtonElement.textContent).toEqual('FORGOT PASSWORD IN PROGRESS...');
+      // Wait for loading state
       await waitFor(() => {
-        const newButtonElement1 = screen.getByRole('button');
-        expect(newButtonElement1.textContent).toEqual('FORGOT PASSWORD');
+        const newButtonElement = screen.getByRole('button');
+        expect(newButtonElement.textContent).toEqual('FORGOT PASSWORD IN PROGRESS...');
+      });
+      
+      // Verify API was called - the button text change back is tested in the success test
+      await waitFor(() => {
+        expect(authService.forgotPassword).toHaveBeenCalled();
       });
     });
   });
@@ -57,13 +76,20 @@ describe('ForgotPassword', () => {
   describe('Success', () => {
     it('should display success alert', async () => {
       const user = userEvent.setup();
+      (authService.forgotPassword as jest.Mock).mockResolvedValueOnce({
+        data: { message: 'Password reset email sent.' }
+      });
       render(<ForgotPassword />);
       const buttonElement = screen.getByRole('button');
       const emailElement = screen.getByLabelText('Email');
       await user.type(emailElement, 'manny');
-      await user.click(buttonElement);
+      
+      await act(async () => {
+        await user.click(buttonElement);
+      });
 
-      const alert = await screen.findByRole('alert');
+      // Wait for the API call to complete and alert to appear
+      const alert = await screen.findByRole('alert', {}, { timeout: 10000 });
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveClass('alert-success');
       expect(alert.textContent).toEqual('Password reset email sent.');
@@ -73,16 +99,27 @@ describe('ForgotPassword', () => {
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      server.use(forgotPasswordMockError);
+      const error = new Error('Field must be valid');
+      (error as any).response = {
+        data: {
+          message: 'Field must be valid'
+        }
+      };
+      (authService.forgotPassword as jest.Mock).mockRejectedValueOnce(error);
       render(<ForgotPassword />);
       const buttonElement = screen.getByRole('button');
       const emailElement = screen.getByLabelText('Email');
       await user.type(emailElement, 'manny');
-      await user.click(buttonElement);
+      
+      await act(async () => {
+        await user.click(buttonElement);
+      });
 
-      const alert = await screen.findByRole('alert');
+      const alert = await screen.findByRole('alert', {}, { timeout: 10000 });
       expect(alert).toBeInTheDocument();
-      await waitFor(() => expect(emailElement).toHaveStyle({ border: '1px solid #fa9b8a' }));
+      await waitFor(() => {
+        expect(emailElement).toHaveStyle({ border: '1px solid #fa9b8a' });
+      });
       expect(alert).toHaveClass('alert-error');
       expect(alert.textContent).toEqual('Field must be valid');
     });

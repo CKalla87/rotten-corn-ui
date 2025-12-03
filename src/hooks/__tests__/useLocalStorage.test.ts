@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from '@jest/globals';
 import useLocalStorage from '@hooks/useLocalStorage';
 import { renderHook } from '@root/test.utils';
 

@@ -1,16 +1,20 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from '@jest/globals';
 import useDetectOutsideClick from '@hooks/useDetectOutsideClick';
 import { renderHook } from '@root/test.utils';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 
-const windowAddEventListenerSpy = vi.spyOn(window, 'addEventListener');
-const windowRemoveEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+const windowAddEventListenerSpy = jest.spyOn(window, 'addEventListener');
+const windowRemoveEventListenerSpy = jest.spyOn(window, 'removeEventListener');
 
 const ref = { current: document.createElement('div') };
 
 describe('useDetectOutsideClick', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should return initial state', () => {
@@ -44,6 +48,7 @@ describe('useDetectOutsideClick', () => {
   it('should remove listener when unmounted', async () => {
     const { unmount } = renderHook(() => useDetectOutsideClick(ref, false));
     unmount();
+    // The cleanup function runs on unmount, so removeEventListener is called
     expect(windowAddEventListenerSpy).toHaveBeenCalledTimes(0);
     expect(windowRemoveEventListenerSpy).toHaveBeenCalledTimes(1);
   });
