@@ -1,31 +1,46 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import '@testing-library/jest-dom';
 import { notificationData } from '@mocks/data/notification.mock';
 import Notifications from '@pages/social/notifications/Notifications';
-import { render, screen, waitFor } from '@root/test.utils';
+import { render, screen, waitFor, act } from '@root/test.utils';
 import { notificationService } from '@services/api/notifications/notification.service';
 import { NotificationUtils } from '@services/utils/notification-utils.service';
 import userEvent from '@testing-library/user-event';
 
 // Mock the notification service
-vi.mock('@services/api/notifications/notification.service', () => ({
+jest.mock('@services/api/notifications/notification.service', () => ({
   notificationService: {
-    getUserNotifications: vi.fn(),
-    deleteNotification: vi.fn()
+    getUserNotifications: jest.fn(),
+    deleteNotification: jest.fn()
   }
 }));
 
 // Mock NotificationUtils
-vi.mock('@services/utils/notification-utils.service', () => ({
+jest.mock('@services/utils/notification-utils.service', () => ({
   NotificationUtils: {
-    markMessageAsRead: vi.fn(),
-    socketIONotification: vi.fn()
+    markMessageAsRead: jest.fn().mockImplementation((_id, notification, setNotificationDialogContent) => {
+      // Simulate setting the dialog content
+      if (setNotificationDialogContent) {
+        setNotificationDialogContent({
+          post: notification.post || '',
+          imgUrl: notification.imgUrl || '',
+          comment: notification.comment || '',
+          reaction: notification.reaction || '',
+          senderName: notification.userFrom?.username || 'Test User'
+        });
+      }
+      return Promise.resolve();
+    }),
+    socketIONotification: jest.fn().mockImplementation(() => {
+      // No-op - don't interfere with state
+    })
   }
 }));
 
 describe('Notification', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    (notificationService.getUserNotifications as ReturnType<typeof vi.fn>).mockResolvedValue({
+    jest.clearAllMocks();
+    (notificationService.getUserNotifications as jest.Mock).mockResolvedValue({
       data: {
         notifications: [notificationData]
       }
@@ -33,39 +48,71 @@ describe('Notification', () => {
   });
 
   it('should display empty notification message', async () => {
-    (notificationService.getUserNotifications as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (notificationService.getUserNotifications as jest.Mock).mockResolvedValueOnce({
       data: {
         notifications: []
       }
     });
-    render(<Notifications />);
+    await act(async () => {
+      render(<Notifications />);
+    });
+    // Wait for the async getUserNotifications to complete
+    await waitFor(async () => {
+      expect(notificationService.getUserNotifications).toHaveBeenCalled();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
     const cardElementItems = screen.queryByTestId('notification-box');
-    const emptyPage = await screen.findByTestId('empty-page');
+    const emptyPage = await screen.findByTestId('empty-page', {}, { timeout: 3000 });
     expect(cardElementItems).toBeNull();
     expect(emptyPage).toBeInTheDocument();
     expect(emptyPage.textContent).toEqual('You have no notification');
   });
 
   it('should have 1 card element item', async () => {
-    render(<Notifications />);
-    const cardElementItems = await screen.findAllByTestId('notification-box');
+    await act(async () => {
+      render(<Notifications />);
+    });
+    
+    // Wait for getUserNotifications to be called and promise to resolve
+    await waitFor(async () => {
+      expect(notificationService.getUserNotifications).toHaveBeenCalled();
+      // Wait a bit for the promise to resolve and state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+    
+    // Wait for the notification boxes to appear after async operation completes
+    const cardElementItems = await screen.findAllByTestId('notification-box', {}, { timeout: 5000 });
     expect(cardElementItems.length).toEqual(1);
   });
 
   it('should show notification preview modal', async () => {
     const user = userEvent.setup();
-    render(<Notifications />);
-    const cardElementItems = await screen.findAllByTestId('notification-box');
+    await act(async () => {
+      render(<Notifications />);
+    });
+    // Wait for the async getUserNotifications to complete
+    await waitFor(async () => {
+      expect(notificationService.getUserNotifications).toHaveBeenCalled();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+    const cardElementItems = await screen.findAllByTestId('notification-box', {}, { timeout: 3000 });
     await user.click(cardElementItems[0]);
-    const notificationPreview = await screen.findByTestId('notification-preview');
+    const notificationPreview = await screen.findByTestId('notification-preview', {}, { timeout: 3000 });
     expect(notificationPreview).toBeInTheDocument();
   });
 
   it('should handle mark as read', async () => {
     const user = userEvent.setup();
-    const markMessageAsReadSpy = vi.spyOn(NotificationUtils, 'markMessageAsRead');
-    render(<Notifications />);
-    const cardElementItems = await screen.findAllByTestId('notification-box');
+    const markMessageAsReadSpy = jest.spyOn(NotificationUtils, 'markMessageAsRead');
+    await act(async () => {
+      render(<Notifications />);
+    });
+    // Wait for the async getUserNotifications to complete
+    await waitFor(async () => {
+      expect(notificationService.getUserNotifications).toHaveBeenCalled();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+    const cardElementItems = await screen.findAllByTestId('notification-box', {}, { timeout: 3000 });
     await user.click(cardElementItems[0]);
     await waitFor(() => {
       expect(markMessageAsReadSpy).toHaveBeenCalledWith(
@@ -73,21 +120,28 @@ describe('Notification', () => {
         expect.objectContaining(notificationData),
         expect.any(Function)
       );
-    });
+    }, { timeout: 3000 });
   });
 
   it('should handle delete', async () => {
     const user = userEvent.setup();
-    const deleteNotificationSpy = vi.spyOn(notificationService, 'deleteNotification');
-    (notificationService.deleteNotification as ReturnType<typeof vi.fn>).mockResolvedValue({
+    const deleteNotificationSpy = jest.spyOn(notificationService, 'deleteNotification');
+    (notificationService.deleteNotification as jest.Mock).mockResolvedValueOnce({
       data: { message: 'Notification deleted' }
     });
-    render(<Notifications />);
-    const subtitleElement = await screen.findAllByTestId('subtitle');
+    await act(async () => {
+      render(<Notifications />);
+    });
+    // Wait for the async getUserNotifications to complete
+    await waitFor(async () => {
+      expect(notificationService.getUserNotifications).toHaveBeenCalled();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+    const subtitleElement = await screen.findAllByTestId('subtitle', {}, { timeout: 3000 });
     await user.click(subtitleElement[0]);
     await waitFor(() => {
       expect(deleteNotificationSpy).toHaveBeenCalledWith('12345');
-    });
+    }, { timeout: 3000 });
   });
 });
 

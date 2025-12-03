@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
+import '@testing-library/jest-dom';
 import AuthTabs from '@pages/auth/auth-tabs/AuthTabs';
 import { fireEvent, render, screen, within } from '@root/test.utils';
 

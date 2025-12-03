@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
+import '@testing-library/jest-dom';
 import Button from '@components/button/Button';
 import { render, screen } from '@root/test.utils';
 import userEvent from '@testing-library/user-event';
-import { vi } from 'vitest';
 
 describe('Button', () => {
   it('should be disabled', () => {
@@ -25,7 +25,7 @@ describe('Button', () => {
 
   it('should handle click', async () => {
     const user = userEvent.setup();
-    const onClick = vi.fn();
+    const onClick = jest.fn();
     render(<Button label="Send" disabled={false} handleClick={onClick} className="button" />);
     const buttonElement = screen.getByRole('button');
     await user.click(buttonElement);

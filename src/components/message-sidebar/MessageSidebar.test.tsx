@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
+import '@testing-library/jest-dom';
 import MessageSidebar from '@components/message-sidebar/MessageSidebar';
 import { render, screen } from '@root/test.utils';
 import userEvent from '@testing-library/user-event';
@@ -28,7 +29,7 @@ describe('MessageSidebar', () => {
       profile: { username: 'Danny' },
       messageCount: 1,
       messageNotifications: [messageData, messageData],
-      openChatPage: vi.fn()
+      openChatPage: jest.fn()
     };
     render(<MessageSidebar {...props} />);
     const smallElement = screen.getByText('1');
@@ -42,7 +43,7 @@ describe('MessageSidebar', () => {
       profile: { username: 'Danny' },
       messageCount: 1,
       messageNotifications: [messageData, messageData],
-      openChatPage: vi.fn()
+      openChatPage: jest.fn()
     };
     const { baseElement } = render(<MessageSidebar {...props} />);
     const contentAvatar = baseElement.querySelector('.content-avatar');
@@ -59,7 +60,7 @@ describe('MessageSidebar', () => {
 
   it('should handle on click', async () => {
     const user = userEvent.setup();
-    const openChatPage = vi.fn();
+    const openChatPage = jest.fn();
     const props = {
       profile: { username: 'Danny' },
       messageCount: 1,

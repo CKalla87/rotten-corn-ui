@@ -34,10 +34,12 @@ const Register = () => {
       const avatarColor = Utils.avatarColor();
       const avatarImage = Utils.generateAvatar(username.charAt(0).toUpperCase(), avatarColor);
       const result = await authService.signUp({ username, email, password, avatarColor, avatarImage });
+      setUser(result.data.user);
       setLoggedIn(true);
       setStoredUsername(username);
       setAlertType('alert-success');
       Utils.dispatchUser(result, pageReload, dispatch, setUser);
+      setLoading(false);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       setLoading(false);

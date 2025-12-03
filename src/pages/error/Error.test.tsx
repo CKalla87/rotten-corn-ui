@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
+import '@testing-library/jest-dom';
 import Error from '@pages/error/Error';
 import { render, screen } from '@root/test.utils';
 

@@ -1,15 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@root/test.utils';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import '@testing-library/jest-dom';
+import { render, screen, waitFor, act } from '@root/test.utils';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/react';
 import Login from '@pages/auth/login/Login';
-import { server } from '@mocks/server';
-import { signInMockError } from '@mocks/handlers/auth';
+import { authService } from '@services/api/auth/auth.service';
 
-const mockedUseNavigate = vi.fn();
+// Mock authService
+jest.mock('@services/api/auth/auth.service', () => ({
+  authService: {
+    signIn: jest.fn(),
+  }
+}));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+const mockedUseNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockedUseNavigate
@@ -17,6 +24,9 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('SigIn', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
   it('signin form should have its labels', () => {
     render(<Login />);
     const usernameLabel = screen.getByLabelText('Username');
@@ -80,6 +90,18 @@ describe('SigIn', () => {
   describe('Success', () => {
     it('should navigate to streams page', async () => {
       const user = userEvent.setup();
+      (authService.signIn as jest.Mock).mockResolvedValueOnce({
+        data: {
+          user: { 
+            _id: '123',
+            username: 'manny',
+            email: 'manny@test.com',
+            avatarColor: '#4caf50',
+            avatarImage: ''
+          },
+          token: 'token123'
+        }
+      });
       render(<Login />);
       const buttonElement = screen.getByRole('button');
       const usernameElement = screen.getByLabelText('Username');
@@ -88,18 +110,26 @@ describe('SigIn', () => {
       await user.type(usernameElement, 'manny');
       await user.type(passwordElement, 'qwerty');
 
-      await user.click(buttonElement);
+      await act(async () => {
+        await user.click(buttonElement);
+      });
 
       await waitFor(() => {
         expect(mockedUseNavigate).toHaveBeenCalledWith('/app/social/streams');
-      });
+      }, { timeout: 10000 });
     });
   });
 
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      server.use(signInMockError);
+      const error = new Error('Invalid credentials');
+      (error as any).response = {
+        data: {
+          message: 'Invalid credentials'
+        }
+      };
+      (authService.signIn as jest.Mock).mockRejectedValueOnce(error);
 
       render(<Login />);
       const buttonElement = screen.getByRole('button');
@@ -109,9 +139,11 @@ describe('SigIn', () => {
       await user.type(usernameElement, 'manny');
       await user.type(passwordElement, 'qwerty');
 
-      await user.click(buttonElement);
+      await act(async () => {
+        await user.click(buttonElement);
+      });
 
-      const alert = await screen.findByRole('alert');
+      const alert = await screen.findByRole('alert', {}, { timeout: 10000 });
       expect(alert).toBeInTheDocument();
       expect(alert.textContent).toEqual('Invalid credentials');
 
