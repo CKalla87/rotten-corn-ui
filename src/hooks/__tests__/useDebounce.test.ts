@@ -1,12 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import useDebounce from '@hooks/useDebounce';
 import { renderHook } from '@root/test.utils';
 
-vi.useFakeTimers();
-vi.spyOn(global, 'setTimeout');
-vi.spyOn(global, 'clearTimeout');
-
 describe('useDebounce', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.spyOn(globalThis, 'setTimeout');
+    jest.spyOn(globalThis, 'clearTimeout');
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
   it('should be defined', () => {
     expect(useDebounce).toBeDefined();
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import reducer, { addUser, clearUser, updateUserProfile } from './userSlice';
 import type { UserProfile } from './userSlice';
 

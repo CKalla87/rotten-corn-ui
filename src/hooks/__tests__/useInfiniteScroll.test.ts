@@ -1,15 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import useInfiniteScroll from '@hooks/useInfiniteScroll';
 import { renderHook } from '@root/test.utils';
 
-const bodyRef = { current: document.createElement('div') };
-const bottomLineRef = { current: document.createElement('div') };
-const mockCallback = vi.fn();
-
-const bodyAddEventListenerSpy = vi.spyOn(bodyRef.current, 'addEventListener');
-const bodyRemoveEventListenerSpy = vi.spyOn(bodyRef.current, 'removeEventListener');
-
 describe('useInfiniteScroll', () => {
+  let bodyRef: { current: HTMLDivElement };
+  let bottomLineRef: { current: HTMLDivElement };
+  let mockCallback: jest.Mock;
+  let bodyAddEventListenerSpy: jest.SpyInstance;
+  let bodyRemoveEventListenerSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    bodyRef = { current: document.createElement('div') };
+    bottomLineRef = { current: document.createElement('div') };
+    mockCallback = jest.fn();
+    bodyAddEventListenerSpy = jest.spyOn(bodyRef.current, 'addEventListener');
+    bodyRemoveEventListenerSpy = jest.spyOn(bodyRef.current, 'removeEventListener');
+  });
+
   it('should call addEventListener', () => {
     renderHook(() => useInfiniteScroll(bodyRef, bottomLineRef, mockCallback));
     expect(bodyAddEventListenerSpy).toHaveBeenCalledTimes(1);

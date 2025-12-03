@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import React, { forwardRef } from 'react';
 import useChatScrollToBottom from '@hooks/useChatScrollToBottom';
 import { render, renderHook, screen } from '@root/test.utils';
@@ -66,6 +66,9 @@ describe('useChatScrollToBottom', () => {
     it('should have scrollTop value greater than zero', async () => {
       const demoContainer = screen.queryByTestId('demo-container');
       if (demoContainer) {
+        // Set the ref to point to the actual DOM element
+        hook.result.current.current = demoContainer as HTMLDivElement;
+        // Set scroll properties on the element the ref points to
         Object.defineProperty(demoContainer, 'scrollHeight', { configurable: true, value: 150 });
         Object.defineProperty(demoContainer, 'clientHeight', { configurable: true, value: 100 });
         const end = 500;
@@ -73,6 +76,9 @@ describe('useChatScrollToBottom', () => {
         const dataList2 = Array.from({ length: end - start }, (_v, i) => start + 1 + i);
         dataList = [...dataList, ...dataList2];
         hook.rerender();
+        // Wait for useEffect to run and set scrollTop
+        await new Promise(resolve => setTimeout(resolve, 0));
+        // The hook sets scrollTop = scrollHeight - clientHeight = 150 - 100 = 50
         expect(demoContainer.scrollTop).toBeGreaterThan(0);
       }
     });

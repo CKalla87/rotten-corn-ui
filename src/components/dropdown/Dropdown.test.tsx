@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
+import '@testing-library/jest-dom';
 import Dropdown from '@components/dropdown/Dropdown';
 import { render, screen } from '@root/test.utils';
 import userEvent from '@testing-library/user-event';
@@ -6,8 +7,8 @@ import userEvent from '@testing-library/user-event';
 describe('Dropdown', () => {
   it('should display notification content', async () => {
     const user = userEvent.setup();
-    const onMarkAsRead = vi.fn();
-    const onDeleteNotification = vi.fn();
+    const onMarkAsRead = jest.fn();
+    const onDeleteNotification = jest.fn();
     const item = {
       _id: '123',
       topText: 'This is a test',
@@ -52,8 +53,8 @@ describe('Dropdown', () => {
 
   it('should display settings content', async () => {
     const user = userEvent.setup();
-    const onLogout = vi.fn();
-    const onNavigate = vi.fn();
+    const onLogout = jest.fn();
+    const onNavigate = jest.fn();
     const item = {
       _id: '123',
       topText: 'My Profile',
