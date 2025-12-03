@@ -1,10 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import '@testing-library/jest-dom';
 import Suggestions from '@components/suggestions/Suggestions';
 import { addToSuggestions } from '@redux/reducers/suggestions/suggestionsSlice';
 import { store } from '@redux/store';
 import { render, screen, waitFor } from '@root/test.utils';
 import { Utils } from '@services/utils/utils.service';
 import userEvent from '@testing-library/user-event';
+
+// Reset store before each test
+beforeEach(() => {
+  store.dispatch({ type: 'RESET' });
+});
 
 const user = {
   _id: '12345',

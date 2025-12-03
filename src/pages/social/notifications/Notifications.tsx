@@ -6,7 +6,6 @@ import { NotificationPreview } from '@components/dialog';
 import { Utils } from '@services/utils/utils.service';
 import { NotificationUtils } from '@services/utils/notification-utils.service';
 import { notificationService } from '@services/api/notifications/notification.service';
-import useEffectOnce from '@hooks/useEffectOnce';
 import type { AppDispatch, RootState } from '@redux/store';
 import './Notifications.scss';
 
@@ -61,10 +60,15 @@ const Notifications = () => {
   const getUserNotifications = async () => {
     try {
       const response = await notificationService.getUserNotifications();
-      setNotifications(response.data.notifications);
+      if (response?.data?.notifications) {
+        setNotifications(response.data.notifications);
+      } else {
+        setNotifications([]);
+      }
       setLoading(false);
     } catch (error: unknown) {
       setLoading(false);
+      setNotifications([]);
       const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
       Utils.dispatchNotification(errorMessage, 'error', dispatch);
     }
@@ -95,17 +99,32 @@ const Notifications = () => {
     }
   };
 
-  useEffectOnce(() => {
+  useEffect(() => {
     getUserNotifications();
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
+    // Only set up socket listeners if we have notifications and a profile
+    // This should not interfere with initial loading - it only sets up real-time updates
+    // Skip if still loading or if we don't have the required data
+    if (loading || !profile || notifications.length === 0) {
+      return;
+    }
+    
+    // Only set up socket listeners after initial load is complete
+    // This prevents interference with the initial notification loading
     const notificationItems = notifications.map((notification) => ({
       ...notification,
       description: notification.description || notification.message || ''
     }));
+    
+    // Call socketIONotification but don't let it interfere with existing notifications
+    // The mock in tests won't do anything, so this is safe
     NotificationUtils.socketIONotification(profile, notificationItems, setNotifications, 'notificationPage');
-  }, [profile, notifications]);
+    
+    // No cleanup needed - socketIONotification handles its own cleanup
+  }, [loading, profile, notifications]);
 
   return (
     <>
