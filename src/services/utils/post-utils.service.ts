@@ -1,8 +1,7 @@
-import { cloneDeep, find, findIndex, remove } from 'lodash';
+import { cloneDeep, find, findIndex } from 'lodash';
 import { closeModal } from '@redux/reducers/modal/modalSlice';
 import { clearPost, updatePostItem } from '@redux/reducers/post/postSlice';
 import { postService } from '@services/api/post/post.service';
-import { ImageUtils } from '@services/utils/image-utils.service';
 import { Utils } from '@services/utils/utils.service';
 import { socketService } from '@services/socket/socket.service';
 import type { AppDispatch } from '@redux/store';
@@ -138,7 +137,8 @@ export class PostUtils {
         return response;
       }
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
         error.response?.data?.message || 'An error occurred',
         'error',
@@ -174,7 +174,8 @@ export class PostUtils {
         return response;
       }
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
         error.response?.data?.message || 'An error occurred',
         'error',
@@ -265,7 +266,12 @@ export class PostUtils {
       setPosts((prevPosts: unknown[]) => [post, ...prevPosts]);
     });
 
-    socketService?.socket?.on('update post', (post: any) => {
+    interface PostUpdate {
+      _id?: string;
+      [key: string]: unknown;
+    }
+
+    socketService?.socket?.on('update post', (post: PostUpdate) => {
       setPosts((prevPosts: unknown[]) => {
         const postsCopy = cloneDeep(prevPosts);
         return PostUtils.updateSinglePostInArray(postsCopy, post);
@@ -274,16 +280,21 @@ export class PostUtils {
 
     socketService?.socket?.on('delete post', (postId: string) => {
       setPosts((prevPosts: unknown[]) => {
-        const postsCopy = cloneDeep(prevPosts) as any[];
-        const filtered = postsCopy.filter((postData: any) => postData._id !== postId);
+        const postsCopy = cloneDeep(prevPosts) as Array<{ _id?: string; [key: string]: unknown }>;
+        const filtered = postsCopy.filter((postData) => postData._id !== postId);
         return filtered;
       });
     });
 
-    socketService?.socket?.on('update like', (reactionData: any) => {
+    interface ReactionData {
+      postId?: string;
+      postReactions?: unknown;
+    }
+
+    socketService?.socket?.on('update like', (reactionData: ReactionData) => {
       setPosts((prevPosts: unknown[]) => {
-        const postsCopy = cloneDeep(prevPosts) as any[];
-        const postData = find(postsCopy, (post: any) => post._id === reactionData?.postId);
+        const postsCopy = cloneDeep(prevPosts) as Array<{ _id?: string; reactions?: unknown; [key: string]: unknown }>;
+        const postData = find(postsCopy, (post) => post._id === reactionData?.postId);
         if (postData) {
           postData.reactions = reactionData.postReactions;
           return PostUtils.updateSinglePostInArray(postsCopy, postData);
@@ -292,10 +303,10 @@ export class PostUtils {
       });
     });
 
-    socketService?.socket?.on('update comment', (reactionData: any) => {
+    socketService?.socket?.on('update comment', (reactionData: ReactionData) => {
       setPosts((prevPosts: unknown[]) => {
-        const postsCopy = cloneDeep(prevPosts) as any[];
-        const postData = find(postsCopy, (post: any) => post._id === reactionData?.postId);
+        const postsCopy = cloneDeep(prevPosts) as Array<{ _id?: string; reactions?: unknown; [key: string]: unknown }>;
+        const postData = find(postsCopy, (post) => post._id === reactionData?.postId);
         if (postData) {
           postData.reactions = reactionData.postReactions;
           return PostUtils.updateSinglePostInArray(postsCopy, postData);
@@ -307,23 +318,23 @@ export class PostUtils {
 
   static updateSinglePostInArray(
     posts: unknown[],
-    post: any
+    post: unknown
   ): unknown[] {
     const postsCopy = cloneDeep(posts);
-    const index = findIndex(postsCopy as any[], ['_id', post?._id]);
+    const index = findIndex(postsCopy as Array<{ _id?: string; [key: string]: unknown }>, ['_id', (post as { _id?: string })?._id]);
     if (index > -1) {
-      (postsCopy as any[]).splice(index, 1, post);
+      (postsCopy as Array<{ _id?: string; [key: string]: unknown }>).splice(index, 1, post);
     }
     return postsCopy;
   }
 
   static updateSinglePost(
     posts: unknown[],
-    post: any,
+    post: unknown,
     setPosts: (posts: unknown[]) => void
   ): void {
-    let postsCopy = cloneDeep(posts);
-    const index = findIndex(postsCopy as any[], ['_id', post?._id]);
+    const postsCopy = cloneDeep(posts);
+    const index = findIndex(postsCopy as unknown[], ['_id', post?._id]);
     if (index > -1) {
       (postsCopy as any[]).splice(index, 1, post);
       setPosts(postsCopy);
@@ -356,7 +367,8 @@ export class PostUtils {
         PostUtils.closePostModal(dispatch);
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
         error.response?.data?.message || 'An error occurred',
         'error',
@@ -399,7 +411,8 @@ export class PostUtils {
         }, 3000);
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
         error.response?.data?.message || 'An error occurred',
         'error',
@@ -441,7 +454,8 @@ export class PostUtils {
         PostUtils.closePostModal(dispatch);
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
         error.response?.data?.message || 'An error occurred',
         'error',

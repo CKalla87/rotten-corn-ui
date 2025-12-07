@@ -11,7 +11,6 @@ import Spinner from '@components/spinner/Spinner';
 import { bgColors, feelingsList } from '@services/utils/static.data';
 import { PostUtils } from '@services/utils/post-utils.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
-import { postService } from '@services/api/post/post.service';
 import { Utils } from '@services/utils/utils.service';
 import { toggleGifModal, closeModal, addPostFeeling } from '@redux/reducers/modal/modalSlice';
 import type { RootState, AppDispatch } from '@redux/store';
@@ -45,7 +44,6 @@ const EditPost = () => {
   const [apiResponse, setApiResponse] = useState('');
   const [selectedPostImage, setSelectedPostImage] = useState<File | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
-  const [hasVideo, setHasVideo] = useState(false);
   const counterRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLDivElement>(null);
@@ -60,7 +58,6 @@ const EditPost = () => {
 
   const clearImage = () => {
     setSelectedVideo(null);
-    setHasVideo(false);
     PostUtils.clearImage(postData, post?.post || '', inputRef, dispatch, setSelectedPostImage, setPostImage, setPostData);
   };
 
@@ -77,73 +74,83 @@ const EditPost = () => {
   const postInputData = useCallback(() => {
     setTimeout(() => {
       if (imageInputRef?.current) {
-        postData.post = post?.post || '';
-        imageInputRef.current.textContent = post?.post || '';
-        setPostData(postData);
+        setPostData((prevData) => {
+          const updatedData = { ...prevData, post: post?.post || '' };
+          imageInputRef.current.textContent = post?.post || '';
+          return updatedData;
+        });
       }
     }, 0);
-  }, []);
+  }, [post?.post]);
 
   const editableFields = useCallback(() => {
     if (post?.feelings) {
       getFeeling(post.feelings);
     }
     if (post?.bgColor) {
-      postData.bgColor = post.bgColor;
-      setPostData({ ...postData });
+      setPostData((prevData) => ({ ...prevData, bgColor: post.bgColor }));
       setTextAreaBackground(post.bgColor);
       setTimeout(() => {
         if (inputRef?.current) {
-          postData.post = post?.post || '';
-          inputRef.current.textContent = post?.post || '';
-          setPostData({ ...postData });
+          setPostData((prevData) => {
+            const updatedData = { ...prevData, post: post?.post || '' };
+            inputRef.current.textContent = post?.post || '';
+            return updatedData;
+          });
         }
       }, 0);
     }
     if (post?.gifUrl && !post?.imgId && !post.videoId) {
-      postData.gifUrl = post.gifUrl;
-      postData.videoId = '';
-      postData.videoVersion = '';
-      postData.imgId = '';
-      postData.imgVersion = '';
-      postData.video = '';
-      postData.image = '';
+      setPostData((prevData) => ({
+        ...prevData,
+        gifUrl: post.gifUrl,
+        videoId: '',
+        videoVersion: '',
+        imgId: '',
+        imgVersion: '',
+        video: '',
+        image: ''
+      }));
       setPostImage(post.gifUrl);
-      setHasVideo(false);
       postInputData();
     }
     if (post?.imgId && !post?.gifUrl) {
-      postData.imgId = post.imgId;
-      postData.imgVersion = post.imgVersion || '';
-      postData.videoId = '';
-      postData.videoVersion = '';
+      setPostData((prevData) => ({
+        ...prevData,
+        imgId: post.imgId,
+        imgVersion: post.imgVersion || '',
+        videoId: '',
+        videoVersion: ''
+      }));
       const imageUrl = Utils.getImage(post.imgId, post.imgVersion);
       setPostImage(imageUrl);
-      setHasVideo(false);
       postInputData();
     }
     if (post?.videoId && !post?.imgId && !post?.gifUrl) {
-      postData.videoId = post.videoId;
-      postData.videoVersion = post.videoVersion || '';
+      setPostData((prevData) => ({
+        ...prevData,
+        videoId: post.videoId,
+        videoVersion: post.videoVersion || ''
+      }));
       const videoUrl = Utils.getVideo(post.videoId, post.videoVersion);
       setPostImage(videoUrl);
-      setHasVideo(true);
       postInputData();
     }
-  }, [post, postData, getFeeling, postInputData]);
+  }, [post, getFeeling, postInputData]);
 
   const updatePost = async () => {
     setLoading(!loading);
     setDisable(!disable);
     try {
+      let updatedPostData = { ...postData };
       if (Object.keys(feeling || {}).length) {
-        postData.feelings = (feeling as { name?: string })?.name || '';
+        updatedPostData.feelings = (feeling as { name?: string })?.name || '';
       }
-      if (postData.gifUrl || (postData.imgId && postData.imgVersion)) {
-        postData.bgColor = '#ffffff';
+      if (updatedPostData.gifUrl || (updatedPostData.imgId && updatedPostData.imgVersion)) {
+        updatedPostData.bgColor = '#ffffff';
       }
-      postData.privacy = post?.privacy || 'Public';
-      postData.profilePicture = profile?.profilePicture || '';
+      updatedPostData.privacy = post?.privacy || 'Public';
+      updatedPostData.profilePicture = profile?.profilePicture || '';
       if (selectedPostImage || selectedVideo) {
         let result = '';
         if (selectedPostImage) {
@@ -154,21 +161,21 @@ const EditPost = () => {
         }
         const type = selectedPostImage ? 'image' : 'video';
         if (type === 'image') {
-          postData.image = result;
-          postData.video = '';
+          updatedPostData.image = result;
+          updatedPostData.video = '';
         } else {
-          postData.image = '';
-          postData.video = result;
+          updatedPostData.image = '';
+          updatedPostData.video = result;
         }
-        postData.gifUrl = '';
-        postData.imgId = '';
-        postData.imgVersion = '';
-        postData.videoId = '';
-        postData.videoVersion = '';
+        updatedPostData.gifUrl = '';
+        updatedPostData.imgId = '';
+        updatedPostData.imgVersion = '';
+        updatedPostData.videoId = '';
+        updatedPostData.videoVersion = '';
         await PostUtils.sendUpdatePostWithFileRequest(
           type,
           post?._id || '',
-          postData,
+          updatedPostData,
           setApiResponse,
           setLoading,
           dispatch
@@ -176,16 +183,17 @@ const EditPost = () => {
       } else {
         await PostUtils.sendUpdatePostRequest(
           post?._id || '',
-          postData,
+          updatedPostData,
           setApiResponse,
           setLoading,
           setDisable,
           dispatch
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -244,7 +252,7 @@ const EditPost = () => {
 
   useEffect(() => {
     if (post?.gifUrl) {
-      postData.image = '';
+      setPostData((prevData) => ({ ...prevData, image: '' }));
       setSelectedPostImage(null);
       setPostImage(post.gifUrl);
       PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
@@ -365,9 +373,8 @@ const EditPost = () => {
                     className={`${color === '#ffffff' ? 'whiteColorBorder' : ''}`}
                     style={{ backgroundColor: `${color}` }}
                     onClick={() => {
-                      postData.bgColor = color;
+                      setPostData((prevData) => ({ ...prevData, bgColor: color }));
                       setTextAreaBackground(color);
-                      setPostData({ ...postData });
                       setDisable(false);
                     }}
                   ></li>

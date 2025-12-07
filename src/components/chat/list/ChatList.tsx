@@ -91,7 +91,7 @@ const ChatList = () => {
         body: ''
       };
       ChatUtils.joinRoomEvent(newUser, profile || {});
-      ChatUtils.privateChatMessages = [];
+      ChatUtils.clearPrivateChatMessages();
       const findUser = find(chatMessageList, (chat) => chat.receiverId === searchParams.get('id') || chat.senderId === searchParams.get('id'));
       if (!findUser) {
         const newChatList = [newUser, ...chatMessageList];
@@ -151,7 +151,7 @@ const ChatList = () => {
     ChatUtils.joinRoomEvent(user as unknown as ChatUser, profile || {});
     // Clear private chat messages using a method if available, or handle differently
     // Note: This modifies external state, but it's necessary for the chat functionality
-    ChatUtils.privateChatMessages = [];
+    ChatUtils.clearPrivateChatMessages();
     return params;
   };
 

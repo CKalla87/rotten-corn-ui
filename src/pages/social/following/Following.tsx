@@ -29,7 +29,6 @@ const Following = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { profile } = useSelector((state: RootState) => state.user);
   const [following, setFollowing] = useState<UserData[]>([]);
-  const [followers, setFollowers] = useState<UserData[]>([]);
   const [onlineUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();

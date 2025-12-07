@@ -49,36 +49,19 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
     try {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
-
-  const getUserByUsername = useCallback(() => {
-    if (userProfileData) {
-      setPosts((userProfileData.posts as unknown[]) || []);
-      setUser((userProfileData.user as Record<string, unknown>) || null);
-      setEditableInputs({
-        quote: (userProfileData.user as { quote?: string })?.quote || '',
-        work: (userProfileData.user as { work?: string })?.work || '',
-        school: (userProfileData.user as { school?: string })?.school || '',
-        location: (userProfileData.user as { location?: string })?.location || ''
-      });
-      setEditableSocialInputs((userProfileData.user as { social?: Record<string, unknown> })?.social || {
-        instagram: '',
-        twitter: '',
-        facebook: '',
-        youtube: ''
-      });
-    }
-  }, [userProfileData]);
 
   const getReactionsByUsername = async () => {
     try {
       const reactionsResponse = await postService.getReactionsByUsername(storedUsername as string);
       dispatch(addReactions(reactionsResponse.data.reactions));
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -98,8 +81,23 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
   }, [username, profile]);
 
   useEffect(() => {
-    getUserByUsername();
-  }, [getUserByUsername]);
+    if (userProfileData) {
+      setPosts((userProfileData.posts as unknown[]) || []);
+      setUser((userProfileData.user as Record<string, unknown>) || null);
+      setEditableInputs({
+        quote: (userProfileData.user as { quote?: string })?.quote || '',
+        work: (userProfileData.user as { work?: string })?.work || '',
+        school: (userProfileData.user as { school?: string })?.school || '',
+        location: (userProfileData.user as { location?: string })?.location || ''
+      });
+      setEditableSocialInputs((userProfileData.user as { social?: Record<string, unknown> })?.social || {
+        instagram: '',
+        twitter: '',
+        facebook: '',
+        youtube: ''
+      });
+    }
+  }, [userProfileData]);
 
   useEffect(() => {
     PostUtils.socketIOPost(posts, setPosts);

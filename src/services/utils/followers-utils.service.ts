@@ -97,7 +97,7 @@ export class FollowersUtils {
     dispatch: AppDispatch
   ): void {
     socketService?.socket?.on('add follower', (data: FollowerData) => {
-      let updatedUsers = cloneDeep(users);
+      const updatedUsers = cloneDeep(users);
       const userIndex = findIndex(updatedUsers, (user) => user._id === data?._id);
       if (userIndex > -1) {
         updatedUsers.splice(userIndex, 1);
@@ -188,7 +188,7 @@ export class FollowersUtils {
     followerData: FollowerData,
     setUsers: (users: UserData[]) => void
   ): void {
-    let updatedUsers = cloneDeep(users);
+    const updatedUsers = cloneDeep(users);
     userData.followersCount = followerData.followersCount;
     userData.followingCount = followerData.followingCount;
     userData.postsCount = followerData.postsCount;

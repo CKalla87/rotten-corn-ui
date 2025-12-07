@@ -24,7 +24,7 @@ const ChangePassword = () => {
   const sessionResult = useSessionStorage<unknown>('pageReload', 'delete');
   const deleteSessionPageReload = Array.isArray(sessionResult) ? sessionResult[0] : (() => {}) as () => void;
   const loggedInResult = useLocalStorage<boolean>('keepLoggedIn', 'set');
-  const setLoggedIn = Array.isArray(loggedInResult) ? loggedInResult[0] : ((_value: boolean) => {}) as (value: boolean) => void;
+  const setLoggedIn = Array.isArray(loggedInResult) ? loggedInResult[0] : (() => {}) as (value: boolean) => void;
 
   const togglePasswordDisplay = () => {
     setTogglePassword(!togglePassword);

@@ -4,7 +4,7 @@ import { FaSpinner } from 'react-icons/fa';
 import { postService } from '@services/api/post/post.service';
 import { reactionsMap } from '@services/utils/static.data';
 import { Utils } from '@services/utils/utils.service';
-import { toggleReactionsModal, toggleCommentsModal, openModal } from '@redux/reducers/modal/modalSlice';
+import { toggleReactionsModal, toggleCommentsModal } from '@redux/reducers/modal/modalSlice';
 import { updatePostItem } from '@redux/reducers/post/postSlice';
 import type { RootState, AppDispatch } from '@redux/store';
 import './ReactionsAndCommentsDisplay.scss';
@@ -45,7 +45,6 @@ interface ReactionsAndCommentsDisplayProps {
 }
 
 const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps) => {
-  const { reactionModalIsOpen } = useSelector((state: RootState) => state.modal);
   const [postReactions, setPostReactions] = useState<PostReaction[]>([]);
   const [reactions, setReactions] = useState<ReactionItem[]>([]);
   const [postCommentNames, setPostCommentNames] = useState<string[]>([]);
@@ -55,19 +54,21 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
     try {
       const response = await postService.getPostReactions(post?._id || '');
       setPostReactions(response.data.reactions);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
-  }, [post?._id, dispatch]);
+  }, [post, dispatch]);
 
   const getPostCommentsNames = useCallback(async () => {
     try {
       const response = await postService.getPostCommentsNames(post?._id || '');
       setPostCommentNames([...new Set(response.data.comments.names)]);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
-  }, [post?._id, dispatch]);
+  }, [post, dispatch]);
 
   const sumAllReactions = (reactions: ReactionItem[]): string | number => {
     if (reactions?.length) {
@@ -88,12 +89,12 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   };
 
   useEffect(() => {
-    setReactions(Utils.formattedReactions(post?.reactions as PostReactionsCount || {}));
+    const formattedReactions = Utils.formattedReactions(post?.reactions as PostReactionsCount || {});
+    setReactions(formattedReactions);
     getPostReactions();
   }, [post, getPostReactions]);
 
   const reactionsCount = sumAllReactions(reactions);
-  const commentsCount = post?.commentsCount ? Number(post.commentsCount) : 0;
 
   return (
     <div className="reactions-display">

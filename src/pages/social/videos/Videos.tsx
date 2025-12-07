@@ -31,8 +31,6 @@ const Videos = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [rightImageIndex, setRightImageIndex] = useState<number>(0);
-  const [leftImageIndex, setLeftImageIndex] = useState<number>(0);
   const [lastItemRight, setLastItemRight] = useState(false);
   const [lastItemLeft, setLastItemLeft] = useState(false);
 

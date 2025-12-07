@@ -29,7 +29,8 @@ const ResetPassword = () => {
       setShowAlert(true);
       setAlertType('alert-success');
       setResponseMessage(response?.data?.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       setAlertType('alert-error');
       setLoading(false);
       setShowAlert(true);

@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { uniqBy } from 'lodash';
-import { FaCircle } from 'react-icons/fa';
 import Avatar from '@components/avatar/Avatar';
 import CardElementButtons from '@components/card-element/CardElementButtons';
 import CardElementStats from '@components/card-element/CardElementStats';

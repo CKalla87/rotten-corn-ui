@@ -8,13 +8,10 @@ import PageLoader from '@components/page-loader/PageLoader';
 
 const AuthTabs = () => {
   const [type, setType] = useState('Sign In');
-  const [environment, setEnvironment] = useState('');
   const keepLoggedIn = useLocalStorage<boolean>('keepLoggedIn', 'get') as boolean;
   const navigate = useNavigate();
 
   useEffect(() => {
-    const env = Utils.appEnvironment();
-    setEnvironment(env);
     if (keepLoggedIn) {
       navigate('/app/social/streams');
     }
