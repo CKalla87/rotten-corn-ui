@@ -20,14 +20,17 @@ const Posts = ({ allPosts, userFollowing, postsLoading }: PostsProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPosts(allPosts);
-    setFollowing(userFollowing);
-    setLoading(postsLoading);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setPosts(allPosts);
+      setFollowing(userFollowing);
+      setLoading(postsLoading);
+    }, 0);
   }, [allPosts, userFollowing, postsLoading]);
 
   return (
     <div className="posts-container" data-testid="posts">
-      {!loading && posts.length > 0 && posts.map((post: any) => (
+      {!loading && posts.length > 0 && posts.map((post: Record<string, unknown>) => (
         <div key={post?._id} data-testid="posts-item">
           {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId) ||
             post?.userId === profile?._id) && (

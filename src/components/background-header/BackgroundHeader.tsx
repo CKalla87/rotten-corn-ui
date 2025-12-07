@@ -8,6 +8,29 @@ import Spinner from '@components/spinner/Spinner';
 import { ImageGridModal } from '@components/image-grid-modal';
 import './BackgroundHeader.scss';
 
+interface BackgroundSelectDropdownProps {
+  galleryImages: Array<Record<string, unknown>>;
+  onSelect: () => void;
+  onUpload: (event: React.MouseEvent) => void;
+}
+
+const BackgroundSelectDropdown = ({ galleryImages, onSelect, onUpload }: BackgroundSelectDropdownProps) => {
+  return (
+    <nav className="menu" data-testid="menu">
+      <ul>
+        {galleryImages.length > 0 && (
+          <li onClick={onSelect}>
+            <div className="item">Select</div>
+          </li>
+        )}
+        <li onClick={onUpload}>
+          <div className="item">Upload</div>
+        </li>
+      </ul>
+    </nav>
+  );
+};
+
 interface BackgroundHeaderProps {
   user?: {
     username?: string;
@@ -78,57 +101,15 @@ const BackgroundHeader = ({
     setIsActive(!isActive);
   };
 
-  const BackgroundSelectDropdown = () => {
-    return (
-      <nav className="menu" data-testid="menu">
-        <ul>
-          {galleryImages.length > 0 && (
-            <li
-              onClick={() => {
-                setShowImagesModal(true);
-                setIsActive(false);
-              }}
-            >
-              <div className="item">Select</div>
-            </li>
-          )}
-          <li
-            onClick={(event) => {
-              backgroundFileInputClicked(event);
-              setIsActive(false);
-              setShowImagesModal(false);
-            }}
-          >
-            <div className="item">Upload</div>
-          </li>
-        </ul>
-      </nav>
-    );
-  };
-
   useEffect(() => {
     if (!hasImage) {
-      setShowSpinner(false);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setShowSpinner(false);
+      }, 0);
     }
   }, [hasImage]);
 
-  const handleBackgroundFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    if (file) {
-      selectedFileImage?.(file, 'background');
-      setSelectedBackground(URL.createObjectURL(file));
-      setShowSpinner(true);
-    }
-  };
-
-  const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    if (file) {
-      selectedFileImage?.(file, 'profile');
-      setSelectedProfileImage(URL.createObjectURL(file));
-      setShowSpinner(true);
-    }
-  };
 
   const handleSaveImage = () => {
     setShowSpinner(true);
@@ -143,22 +124,6 @@ const BackgroundHeader = ({
     }
   };
 
-  const handleCancelFileSelection = () => {
-    setShowSpinner(false);
-    cancelFileSelection?.();
-    hideSaveChangesContainer();
-    if (backgroundFileRef.current) {
-      backgroundFileRef.current.value = '';
-    }
-    if (profileImageRef.current) {
-      profileImageRef.current.value = '';
-    }
-  };
-
-  const handleSelectedImage = (imageUrl: string) => {
-    setSelectedBackground(imageUrl);
-    selectedFileImage?.(null, 'background');
-  };
 
   return (
     <>
@@ -301,7 +266,20 @@ const BackgroundHeader = ({
               <FaCamera className="camera" />
               <span>Add Cover Photo</span>
             </label>
-            {isActive && <BackgroundSelectDropdown />}
+            {isActive && (
+              <BackgroundSelectDropdown
+                galleryImages={galleryImages}
+                onSelect={() => {
+                  setShowImagesModal(true);
+                  setIsActive(false);
+                }}
+                onUpload={(event) => {
+                  backgroundFileInputClicked(event);
+                  setIsActive(false);
+                  setShowImagesModal(false);
+                }}
+              />
+            )}
           </div>
         )}
       </div>

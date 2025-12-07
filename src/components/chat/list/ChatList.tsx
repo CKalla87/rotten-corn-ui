@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSearchParams, useLocation, useNavigate, createSearchParams } from 'react-router-dom';
 import { FaSearch, FaTimes } from 'react-icons/fa';
-import { find, cloneDeep, findIndex } from 'lodash';
+import { find } from 'lodash';
 import Avatar from '@components/avatar/Avatar';
 import Input from '@components/input/Input';
 import SearchList from '@components/chat/list/search-list/SearchList';
@@ -55,7 +55,7 @@ const ChatList = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [componentType, setComponentType] = useState('chatList');
-  let [chatMessageList, setChatMessageList] = useState<ChatUser[]>([]);
+  const [chatMessageList, setChatMessageList] = useState<ChatUser[]>([]);
   const debouncedValue = useDebounce(search, 1000);
 
   const searchUsers = useCallback(
@@ -68,9 +68,10 @@ const ChatList = () => {
           setSearchResult(response.data.search);
           setIsSearching(false);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setIsSearching(false);
-        Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
     },
     [dispatch]
@@ -144,42 +145,14 @@ const ChatList = () => {
     setComponentType('');
   };
 
-  const clearSearch = () => {
-    setSearch('');
-    setIsSearching(false);
-    setSearchResult([]);
-    setComponentType('');
-  };
-
   const updateQueryParams = (user: UserData) => {
     setSelectedUser(user);
     const params = ChatUtils.chatUrlParams(user as unknown as ChatUser, profile || {});
     ChatUtils.joinRoomEvent(user as unknown as ChatUser, profile || {});
+    // Clear private chat messages using a method if available, or handle differently
+    // Note: This modifies external state, but it's necessary for the chat functionality
     ChatUtils.privateChatMessages = [];
     return params;
-  };
-
-  const removeSelectedUserFromList = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    chatMessageList = cloneDeep(chatMessageList);
-    const userIndex = findIndex(chatMessageList, ['receiverId', searchParams.get('id')]);
-    if (userIndex > -1) {
-      chatMessageList.splice(userIndex, 1);
-      setSelectedUser(null);
-      setChatMessageList(chatMessageList);
-      ChatUtils.updatedSelectedChatUser({
-        chatMessageList,
-        profile,
-        username: searchParams.get('username') || '',
-        setSelectedChatUser: (payload: { isLoading: boolean; user: UserData | null }) => {
-          dispatch(setSelectedChatUser(payload));
-        },
-        params: chatMessageList.length ? updateQueryParams(chatMessageList[0] as unknown as UserData) : {},
-        pathname: location.pathname,
-        navigate,
-        dispatch
-      });
-    }
   };
 
   // this is for when a user already exist in the chat list
@@ -201,8 +174,9 @@ const ChatList = () => {
       if (user?.receiverUsername === profile?.username && !(user as ChatUser).isRead) {
         await chatService.markMessagesAsRead(profile?._id as string, receiverId as string);
       }
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -311,7 +285,7 @@ const ChatList = () => {
                     </div>
                   )}
                   {data?.body && !data?.deleteForMe && !data.deleteForEveryone && (
-                    <ChatListBody data={data} profile={profile} />
+                    <ChatListBody data={data} profile={profile || undefined} />
                   )}
                   {data?.deleteForMe && data?.deleteForEveryone && (
                     <div className="conversation-message">
@@ -324,7 +298,7 @@ const ChatList = () => {
                     </div>
                   )}
                   {data?.deleteForMe && !data.deleteForEveryone && data.receiverUsername !== profile?.username && (
-                    <ChatListBody data={data} profile={profile} />
+                    <ChatListBody data={data} profile={profile || undefined} />
                   )}
                 </div>
               ))}

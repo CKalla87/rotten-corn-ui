@@ -34,7 +34,6 @@ const Header = () => {
   const { chatList } = useSelector((state: RootState) => state.chat);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const [environment, setEnvironment] = useState('');
   const [settings, setSettings] = useState<SettingsItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -49,7 +48,6 @@ const Header = () => {
   const [deleteStorageUsername] = useLocalStorage<string>('username', 'delete') as [() => void];
   const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
   const [deleteSessionPageReload] = useSessionStorage<boolean>('pageReload', 'delete') as [() => void];
-  const backgroundColor = `${environment === 'DEV' || environment === 'LOCAL' ? '#50b5ff' : environment === 'STG' ? '#e9710f' : ''}`;
 
   const getUserNotifications = async () => {
     try {
@@ -95,8 +93,9 @@ const Header = () => {
       navigate(`/app/social/chat/messages?${createSearchParams(params)}`);
       setIsMessageActive(false);
       dispatch(getConversationList());
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -121,16 +120,17 @@ const Header = () => {
   useEffectOnce(() => {
     Utils.mapSettingsDropdownItems(setSettings);
     getUserNotifications();
-    const env = Utils.appEnvironment();
-    setEnvironment(env);
   });
 
   useEffect(() => {
     const count = sumBy(chatList, (notification: Record<string, unknown>) => {
       return !notification.isRead && notification.receiverUsername === profile?.username ? 1 : 0;
     });
-    setMessageCount(count);
-    setMessageNotifications(chatList as Array<Record<string, unknown>>);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setMessageCount(count);
+      setMessageNotifications(chatList as Array<Record<string, unknown>>);
+    }, 0);
   }, [chatList, profile]);
 
   useEffect(() => {

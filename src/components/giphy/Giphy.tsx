@@ -12,7 +12,7 @@ import './Giphy.scss';
 
 const Giphy = () => {
   const { gifModalIsOpen } = useSelector((state: RootState) => state.modal);
-  const [gifs, setGifs] = useState<any[]>([]);
+  const [gifs, setGifs] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
