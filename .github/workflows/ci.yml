@@ -212,6 +212,11 @@ jobs:
             exit 1
           fi
 
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests with environment variables..."
+          npm run test -- --coverage --watchAll=false
+
       - name: Build project
         run: |
           echo "Starting build process..."
@@ -417,6 +422,11 @@ jobs:
             echo "Error: Failed to sync environment files from S3"
             exit 1
           fi
+
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests with environment variables..."
+          npm run test -- --coverage --watchAll=false
 
       - name: Build project
         run: |

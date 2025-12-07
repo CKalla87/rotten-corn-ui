@@ -6,7 +6,7 @@ resource "aws_cloudfront_distribution" "chatapp_cloudfront_distribution" {
   retain_on_delete    = false
   price_class         = "PriceClass_All"
   enabled             = true
-  is_ipv6_enabled      = false
+  is_ipv6_enabled     = false
   default_root_object = "index.html"
   aliases             = [local.app_domain]
 

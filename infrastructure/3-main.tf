@@ -16,7 +16,7 @@ locals {
     ManagedBy   = "Terraform"
     Owner       = "Uzochukwu Eddie Odozi"
   }
-  
+
   # Select domain based on workspace
   app_domain = terraform.workspace == "develop" ? var.dev_client_app_domain : (
     terraform.workspace == "staging" ? var.staging_client_app_domain : var.prod_client_app_domain
