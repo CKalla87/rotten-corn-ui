@@ -27,7 +27,8 @@ const CommentsModal = () => {
 
   const getPostComments = async () => {
     try {
-      const response = await postService.getPostComments(post?._id || '');
+      const postData = post as { _id?: string } | null;
+      const response = await postService.getPostComments(postData?._id || '');
       setPostComments(response.data?.comments || []);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };

@@ -146,12 +146,13 @@ const Streams = () => {
       interface CommentData {
         postId?: string;
         commentsCount?: number;
+        postReactions?: unknown;
       }
 
       const handleUpdateComment = (reactionData: CommentData) => {
         const currentPosts = allPostsRef.current?.posts || [];
         const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === reactionData?.postId);
-        if (post) {
+        if (post && reactionData.postReactions) {
           const updatedPost = { ...post, reactions: reactionData.postReactions };
           dispatch(updatePostInList(updatedPost));
         }

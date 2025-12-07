@@ -35,7 +35,7 @@ const Sidebar = () => {
       url = `${url}/${profile?.username}?${createSearchParams(params)}`;
     }
     if (name === 'Streams') {
-      dispatch(getPosts());
+      dispatch(getPosts(1));
     }
     if (name === 'Chat') {
       setChatPageName('Chat');

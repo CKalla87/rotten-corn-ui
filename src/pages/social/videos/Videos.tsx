@@ -33,6 +33,8 @@ const Videos = () => {
   const [loading, setLoading] = useState(true);
   const [lastItemRight, setLastItemRight] = useState(false);
   const [lastItemLeft, setLastItemLeft] = useState(false);
+  const [, setRightImageIndex] = useState<number>(0);
+  const [, setLeftImageIndex] = useState<number>(0);
 
   const getPostsWithVideos = async () => {
     try {
@@ -41,7 +43,8 @@ const Videos = () => {
       setLoading(false);
     } catch (error: unknown) {
       setLoading(false);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -50,7 +53,8 @@ const Videos = () => {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -110,7 +114,7 @@ const Videos = () => {
       <div className="videos-container">
         {showImageModal && (
           <ImageModal
-            image={`${imageUrl}`}
+            image={imageUrl || ''}
             showArrow={true}
             onClickRight={onClickRight}
             onClickLeft={onClickLeft}

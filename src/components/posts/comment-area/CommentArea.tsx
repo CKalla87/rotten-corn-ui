@@ -66,7 +66,16 @@ const CommentArea = ({ post }: CommentAreaProps) => {
   const toggleCommentInput = () => {
     if (!selectedPostId) {
       setSelectedPostId(post?._id || '');
-      dispatch(updatePostItem(post));
+      const reactionsArray = Array.isArray(post.reactions) 
+        ? post.reactions 
+        : post.reactions 
+          ? Object.entries(post.reactions as PostReactionsCount).map(([type, count]) => ({ type, value: count || 0 }))
+          : [];
+      dispatch(updatePostItem({
+        ...post,
+        commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined,
+        reactions: reactionsArray as Array<Record<string, unknown>>
+      }));
     } else {
       removeSelectedPostId();
     }

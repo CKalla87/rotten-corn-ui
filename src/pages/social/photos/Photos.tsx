@@ -33,6 +33,8 @@ const Photos = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [lastItemRight, setLastItemRight] = useState(false);
   const [lastItemLeft, setLastItemLeft] = useState(false);
+  const [, setRightImageIndex] = useState<number>(0);
+  const [, setLeftImageIndex] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   const getPostsWithImages = async () => {
@@ -42,7 +44,8 @@ const Photos = () => {
       setLoading(false);
     } catch (error: unknown) {
       setLoading(false);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -51,12 +54,13 @@ const Photos = () => {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
   const postImageUrl = (post: PostData) => {
-    const imgUrl = Utils.getImage(post?.imgId, post?.imgVersion);
+    const imgUrl = Utils.getImage(post?.imgId || '', post?.imgVersion || '');
     return post?.gifUrl ? post?.gifUrl : imgUrl;
   };
 
@@ -69,9 +73,9 @@ const Photos = () => {
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => {
       const hasImage = post?.imgId || post?.gifUrl;
-      const isBlocked = Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId);
+      const isBlocked = Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId as string);
       const notBlocked = !isBlocked || post?.userId === profile?._id;
-      return hasImage && notBlocked && PostUtils.checkPrivacy(post, profile, following);
+      return hasImage && notBlocked && profile && PostUtils.checkPrivacy(post, profile, following);
     });
   }, [posts, profile, following]);
 
@@ -119,7 +123,7 @@ const Photos = () => {
       <div className="photos-container">
         {showImageModal && (
           <ImageModal
-            image={`${imageUrl}`}
+            image={imageUrl || ''}
             showArrow={true}
             onClickRight={onClickRight}
             onClickLeft={onClickLeft}
@@ -144,7 +148,7 @@ const Photos = () => {
                   data-testid="gallery-images"
                 >
                   <GalleryImage
-                    post={post}
+                    post={post as Record<string, unknown>}
                     showCaption={true}
                     showDelete={false}
                     imgSrc={postImageUrl(post)}

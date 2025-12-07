@@ -30,13 +30,13 @@ const Posts = ({ allPosts, userFollowing, postsLoading }: PostsProps) => {
 
   return (
     <div className="posts-container" data-testid="posts">
-      {!loading && posts.length > 0 && posts.map((post: Record<string, unknown>) => (
-        <div key={post?._id} data-testid="posts-item">
-          {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId) ||
+      {!loading && posts.length > 0 && (posts as Record<string, unknown>[]).map((post: Record<string, unknown>, index: number) => (
+        <div key={(post?._id as string) || index} data-testid="posts-item">
+          {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId as string) ||
             post?.userId === profile?._id) && (
             <>
-              {PostUtils.checkPrivacy(post, profile, following) && (
-                <Post post={post} showIcons={false} loading={loading} />
+              {profile && PostUtils.checkPrivacy(post, profile, following) && (
+                <Post post={post} showIcons={false} />
               )}
             </>
           )}

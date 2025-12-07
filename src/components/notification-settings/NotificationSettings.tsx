@@ -18,8 +18,8 @@ const NotificationSettings = () => {
   const mapNotificationTypesToggle = useCallback(
     (notifications: typeof notificationItems) => {
       for (const notification of notifications) {
-        const toggled = notificationSettings?.[notification.type as keyof typeof notificationSettings] as boolean;
-        notification.toggle = toggled !== undefined ? toggled : notification.toggle;
+        const toggled = notificationSettings?.[notification.type as keyof typeof notificationSettings];
+        notification.toggle = toggled !== undefined ? (toggled as boolean) : notification.toggle;
       }
       setNotificationTypes(notifications);
     },
@@ -75,9 +75,10 @@ const NotificationSettings = () => {
                   toggle={data.toggle}
                   onClick={() => {
                     updateNotificationTypesToggle(index);
-                    const clonedSettings = cloneDeep(notificationSettings);
+                    const clonedSettings = cloneDeep(notificationSettings) as Record<string, unknown>;
                     if (clonedSettings) {
-                      clonedSettings[data.type as keyof typeof clonedSettings] = !clonedSettings[data.type as keyof typeof clonedSettings];
+                      const currentValue = clonedSettings[data.type];
+                      clonedSettings[data.type] = !currentValue;
                       setNotificationSettings(clonedSettings);
                     }
                   }}

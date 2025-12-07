@@ -29,7 +29,6 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
   const [file, setFile] = useState('');
   const [base64File, setBase64File] = useState('');
   const [gifUrl, setGifUrl] = useState('');
-  const [hasFocus, setHasFocus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const inputAreaRef = useRef<HTMLDivElement>(null);
@@ -228,8 +227,6 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
             value={message}
             labelText=""
             placeholder="Message"
-            onFocus={() => setHasFocus(true)}
-            onBlur={() => setHasFocus(false)}
             handleChange={(event) => setMessage(event.target.value)}
           />
         </form>

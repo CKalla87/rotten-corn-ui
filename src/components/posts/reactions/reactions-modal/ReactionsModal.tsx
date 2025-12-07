@@ -72,7 +72,10 @@ const ReactionsModal = () => {
 
   useEffectOnce(() => {
     getPostReactions();
-    setFormattedReactions(Utils.formattedReactions(reactions as Record<string, number> || {}));
+    const reactionsObj = Array.isArray(reactions) 
+      ? {} 
+      : (reactions as Record<string, number> || {});
+    setFormattedReactions(Utils.formattedReactions(reactionsObj));
   });
 
   if (!reactionModalIsOpen) {

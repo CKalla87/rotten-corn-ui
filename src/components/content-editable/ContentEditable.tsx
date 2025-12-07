@@ -81,13 +81,13 @@ const ContentEditable = ({
     onChange?.({ target: { value } });
   };
 
-  const Tag = tagName as keyof React.JSX.IntrinsicElements;
+  const Tag = tagName as 'div' | 'span' | 'p';
 
   return (
     <Tag
-      ref={ref as React.RefObject<HTMLElement>}
+      ref={ref as React.RefObject<HTMLDivElement>}
       contentEditable={!disabled}
-      onInput={handleInput}
+      onInput={handleInput as React.FormEventHandler<HTMLElement>}
       className={className}
       style={style}
       data-testid={dataTestId}
