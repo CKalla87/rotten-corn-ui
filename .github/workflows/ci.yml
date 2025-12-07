@@ -158,6 +158,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
+      - name: Debug AWS secrets (check if accessible)
+        run: |
+          echo "Checking if AWS secrets are accessible..."
+          ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          SECRET_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          if [ -n "$ACCESS_KEY" ]; then
+            echo "✓ AWS_ACCESS_KEY_ID is set (length: ${#ACCESS_KEY} chars)"
+          else
+            echo "✗ AWS_ACCESS_KEY_ID is empty or not accessible"
+            echo "Note: If using environment secrets, add 'environment:' to the job"
+            echo "Note: Forks cannot access repository secrets"
+          fi
+          if [ -n "$SECRET_KEY" ]; then
+            echo "✓ AWS_SECRET_ACCESS_KEY is set (length: ${#SECRET_KEY} chars)"
+          else
+            echo "✗ AWS_SECRET_ACCESS_KEY is empty or not accessible"
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
