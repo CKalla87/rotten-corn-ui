@@ -24,6 +24,7 @@ jobs:
     name: Terraform Apply
     runs-on: ubuntu-latest
     if: github.event.inputs.confirm == 'deploy'
+    environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

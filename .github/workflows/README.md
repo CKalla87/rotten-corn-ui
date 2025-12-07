@@ -4,8 +4,13 @@ This repository uses GitHub Actions for continuous integration and deployment.
 
 ## Required Secrets
 
-The following secrets need to be configured in your GitHub repository settings (Settings → Secrets and variables → Actions):
+The following secrets need to be configured in your GitHub repository settings. You can add them as either:
+- **Repository secrets** (Settings → Secrets and variables → Actions → Secrets)
+- **Environment secrets** (Settings → Secrets and variables → Actions → Environments → [environment name] → Secrets)
 
+For environment secrets, you need to create environments named `develop`, `staging`, and `main` and add the secrets to each.
+
+Required secrets:
 1. **AWS_ACCESS_KEY_ID**: AWS access key for S3 and CloudFront operations
 2. **AWS_SECRET_ACCESS_KEY**: AWS secret key for S3 and CloudFront operations
 3. **SLACK_WEBHOOK_URL** (optional): Slack webhook URL for deployment notifications
