@@ -145,7 +145,7 @@ export class NotificationUtils {
     messageNotifications: Array<Record<string, unknown>>,
     setMessageNotifications: (notifications: Array<Record<string, unknown>>) => void,
     setMessageCount: (count: number) => void,
-    dispatch: unknown,
+    _dispatch: unknown,
     location: { pathname: string }
   ): void {
     if (!socketService.socket) return;

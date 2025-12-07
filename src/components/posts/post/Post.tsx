@@ -70,12 +70,18 @@ const Post = ({ post, showIcons = false }: PostProps) => {
 
   const openPostModal = () => {
     dispatch(openModal({ type: 'edit', data: post }));
-    dispatch(updatePostItem(post));
+    dispatch(updatePostItem({
+      ...post,
+      commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined
+    }));
   };
 
   const openDeleteDialog = () => {
     dispatch(toggleDeleteDialog({ data: post, toggle: !deleteDialogIsOpen }));
-    dispatch(updatePostItem(post));
+    dispatch(updatePostItem({
+      ...post,
+      commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined
+    }));
   };
 
   const getBackgroundImageColor = useCallback(async (post: PostData) => {
@@ -92,16 +98,16 @@ const Post = ({ post, showIcons = false }: PostProps) => {
 
   const deletePost = async () => {
     try {
-      const postToDelete = postFromRedux?._id || post?._id;
+      const postToDelete = (postFromRedux as { _id?: string })?._id || (post as { _id?: string })?._id;
       if (postToDelete) {
         // Remove post from Redux state immediately (optimistic update)
         dispatch(removePost(postToDelete));
         
-        const response = await postService.deletePost(postToDelete as string);
+        const response = await postService.deletePost(postToDelete);
         if (response) {
           Utils.dispatchNotification(response.data?.message || 'Post deleted successfully', 'success', dispatch);
         }
-        dispatch(toggleDeleteDialog({ toggle: false }));
+        dispatch(toggleDeleteDialog({ data: null, toggle: false }));
         dispatch(clearPost());
       }
     } catch (error: unknown) {
@@ -135,7 +141,7 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           secondButtonText="Cancel"
           firstBtnHandler={() => deletePost()}
           secondBtnHandler={() => {
-            dispatch(toggleDeleteDialog({ toggle: !deleteDialogIsOpen }));
+            dispatch(toggleDeleteDialog({ data: null, toggle: !deleteDialogIsOpen }));
             dispatch(clearPost());
           }}
         />
@@ -248,7 +254,7 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           <PostCommentSection post={post} />
         </>
       ) : null}
-      {selectedPostId === post._id && <CommentInputBox post={post} />}
+      {selectedPostId === (post._id as string) && <CommentInputBox post={post as Record<string, unknown>} />}
       </div>
     </>
   );

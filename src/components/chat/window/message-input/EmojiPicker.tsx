@@ -12,8 +12,7 @@ const EmojiPicker = ({ onEmojiClick, pickerStyle }: EmojiPickerProps) => {
     <div className="emoji-picker" data-testid="emoji-container">
       <EmojiPickerComponent
         onEmojiClick={onEmojiClick}
-        groupNames={{ smileys_people: 'PEOPLE' }}
-        pickerStyle={pickerStyle}
+        {...(pickerStyle ? { style: pickerStyle } : {})}
       />
     </div>
   );

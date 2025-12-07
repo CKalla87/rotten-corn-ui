@@ -54,11 +54,11 @@ const People = () => {
         });
       }
       setTotalUsersCount(response.data.totalUsers);
-      setFollowers(response.data.followers || []);
       setLoading(false);
     } catch (error: unknown) {
       setLoading(false);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }, [currentPage, dispatch]);
 
@@ -83,16 +83,9 @@ const People = () => {
         }
         return prev;
       });
-      // Update followers list if needed
-      setFollowers((prev) => {
-        const exists = prev.find((u) => u._id === user._id);
-        if (!exists) {
-          return [...prev, user];
-        }
-        return prev;
-      });
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -110,7 +103,8 @@ const People = () => {
       setLoading(false);
     } catch (error: unknown) {
       setLoading(false);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }, [dispatch]);
 
@@ -124,13 +118,13 @@ const People = () => {
       await FollowersUtils.unFollowUser(user, profile || {}, dispatch);
       // Update local state immediately - remove from following list
       setFollowing((prev) => prev.filter((u) => u._id !== user._id));
-      setFollowers((prev) => prev.filter((u) => u._id !== user._id));
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
-  useInfiniteScroll(bodyRef, bottomLineRef, fetchData);
+  useInfiniteScroll(bodyRef as React.RefObject<HTMLElement>, bottomLineRef as React.RefObject<HTMLElement>, fetchData);
 
   useEffectOnce(() => {
     getAllUsers();

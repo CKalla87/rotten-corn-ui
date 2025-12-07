@@ -63,7 +63,7 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   const getPostCommentsNames = useCallback(async () => {
     try {
       const response = await postService.getPostCommentsNames(post?._id || '');
-      setPostCommentNames([...new Set(response.data.comments.names)]);
+      setPostCommentNames([...new Set((response.data.comments.names as string[]) || [])]);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
@@ -79,17 +79,43 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   };
 
   const openReactionsComponent = () => {
-    dispatch(updatePostItem(post));
+    const reactionsArray = Array.isArray(post.reactions) 
+      ? post.reactions 
+      : post.reactions 
+        ? Object.entries(post.reactions as PostReactionsCount).map(([type, count]) => ({ type, value: count || 0 }))
+        : [];
+    dispatch(updatePostItem({
+      ...post,
+      commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined,
+      reactions: reactionsArray as Array<Record<string, unknown>>
+    }));
     dispatch(toggleReactionsModal(true));
   };
 
   const openCommentsComponent = () => {
-    dispatch(updatePostItem(post));
+    const reactionsArray = Array.isArray(post.reactions) 
+      ? post.reactions 
+      : post.reactions 
+        ? Object.entries(post.reactions as PostReactionsCount).map(([type, count]) => ({ type, value: count || 0 }))
+        : [];
+    dispatch(updatePostItem({
+      ...post,
+      commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined,
+      reactions: reactionsArray as Array<Record<string, unknown>>
+    }));
     dispatch(toggleCommentsModal(true));
   };
 
   useEffect(() => {
-    const formattedReactions = Utils.formattedReactions(post?.reactions as PostReactionsCount || {});
+    const reactionsCount = post?.reactions as PostReactionsCount || {};
+    const normalizedReactions: Record<string, number> = {};
+    Object.keys(reactionsCount).forEach((key) => {
+      const value = reactionsCount[key];
+      if (typeof value === 'number') {
+        normalizedReactions[key] = value;
+      }
+    });
+    const formattedReactions = Utils.formattedReactions(normalizedReactions);
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
       setReactions(formattedReactions);

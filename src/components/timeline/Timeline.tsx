@@ -92,12 +92,22 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
           school: (userProfileData.user as { school?: string })?.school || '',
           location: (userProfileData.user as { location?: string })?.location || ''
         });
-        setEditableSocialInputs((userProfileData.user as { social?: Record<string, unknown> })?.social || {
-          instagram: '',
-          twitter: '',
-          facebook: '',
-          youtube: ''
-        });
+        const socialData = (userProfileData.user as { social?: Record<string, unknown> })?.social;
+        if (socialData && typeof socialData === 'object') {
+          setEditableSocialInputs({
+            instagram: (socialData.instagram as string) || '',
+            twitter: (socialData.twitter as string) || '',
+            facebook: (socialData.facebook as string) || '',
+            youtube: (socialData.youtube as string) || ''
+          });
+        } else {
+          setEditableSocialInputs({
+            instagram: '',
+            twitter: '',
+            facebook: '',
+            youtube: ''
+          });
+        }
       }, 0);
     }
   }, [userProfileData]);
@@ -119,21 +129,42 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
           </div>
           <div className="side-content">
             <BasicInfo
-              setEditableInputs={setEditableInputs}
+              setEditableInputs={(inputs: Record<string, unknown>) => {
+                setEditableInputs({
+                  quote: (inputs.quote as string) || '',
+                  work: (inputs.work as string) || '',
+                  school: (inputs.school as string) || '',
+                  location: (inputs.location as string) || ''
+                });
+              }}
               editableInputs={editableInputs}
               username={username}
-              profile={profile}
+              profile={profile || undefined}
               loading={loading}
               editableSocialInputs={editableSocialInputs}
-              setEditableSocialInputs={setEditableSocialInputs}
+              setEditableSocialInputs={(inputs: Record<string, unknown>) => {
+                setEditableSocialInputs({
+                  instagram: (inputs.instagram as string) || '',
+                  twitter: (inputs.twitter as string) || '',
+                  facebook: (inputs.facebook as string) || '',
+                  youtube: (inputs.youtube as string) || ''
+                });
+              }}
             />
           </div>
           <div className="side-content">
             <SocialLinks
-              setEditableSocialInputs={setEditableSocialInputs}
+              setEditableSocialInputs={(inputs: Record<string, unknown>) => {
+                setEditableSocialInputs({
+                  instagram: (inputs.instagram as string) || '',
+                  twitter: (inputs.twitter as string) || '',
+                  facebook: (inputs.facebook as string) || '',
+                  youtube: (inputs.youtube as string) || ''
+                });
+              }}
               editableSocialInputs={editableSocialInputs}
               username={username}
-              profile={profile}
+              profile={profile || undefined}
               loading={loading}
             />
           </div>
@@ -157,9 +188,9 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
                 <PostForm />
               </div>
             )}
-            {posts.map((post: Record<string, unknown>) => (
-              <div key={post?._id} data-testid="posts-item">
-                {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId) ||
+            {(posts as Record<string, unknown>[]).map((post: Record<string, unknown>, index: number) => (
+              <div key={(post?._id as string) || index} data-testid="posts-item">
+                {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId as string) ||
                   post?.userId === profile?._id) && (
                   <>
                     {PostUtils.checkPrivacy(post, profile || {}, following as Array<Record<string, unknown>>) && (

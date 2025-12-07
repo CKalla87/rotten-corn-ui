@@ -123,7 +123,7 @@ const Header = () => {
   });
 
   useEffect(() => {
-    const count = sumBy(chatList, (notification: Record<string, unknown>) => {
+    const count = sumBy(chatList as ArrayLike<Record<string, unknown>>, (notification: Record<string, unknown>) => {
       return !notification.isRead && notification.receiverUsername === profile?.username ? 1 : 0;
     });
     // Use setTimeout to avoid synchronous setState in effect

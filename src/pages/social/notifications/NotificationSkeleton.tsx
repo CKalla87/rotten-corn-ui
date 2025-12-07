@@ -8,7 +8,7 @@ const NotificationSkeleton = () => {
       <div className="notifications-container" data-testid="notification-skeleton">
         <div className="notifications">Notifications</div>
         <div className="notifications-box">
-          {[1, 2, 3, 4, 5].map((notification, index) => (
+          {[1, 2, 3, 4, 5].map((_notification, index) => (
             <div className="notification-box" key={index}>
               <div className="notification-box-sub-card">
                 <div className="notification-box-sub-card-media">

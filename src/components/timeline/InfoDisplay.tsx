@@ -213,12 +213,12 @@ const InfoDisplay = ({
               <FaInstagram className="icon instagram" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type !== 'basic' && editIntroBtn && instagram && (
+              {editIntroBtn && instagram && (
                 <a className="link" href={instagram} target="_blank" rel="noreferrer noopener">
                   {instagram}
                 </a>
               )}
-              {type !== 'basic' && editIntroBtn && !instagram && <div className="no-information">{instagramMsg}</div>}
+              {editIntroBtn && !instagram && <div className="no-information">{instagramMsg}</div>}
               <ContentEditable
                 data-testid="content-1-editable"
                 data-placeholder={instagramPlacehoder}
@@ -237,12 +237,12 @@ const InfoDisplay = ({
               <FaTwitter className="icon twitter" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type !== 'basic' && editIntroBtn && twitter && (
+              {editIntroBtn && twitter && (
                 <a className="link" href={twitter} target="_blank" rel="noreferrer noopener">
                   {twitter}
                 </a>
               )}
-              {type !== 'basic' && editIntroBtn && !twitter && <div className="no-information">{twitterMsg}</div>}
+              {editIntroBtn && !twitter && <div className="no-information">{twitterMsg}</div>}
               <ContentEditable
                 data-testid="content-2-editable"
                 data-placeholder={twitterPlacehoder}
@@ -261,12 +261,12 @@ const InfoDisplay = ({
               <FaFacebook className="icon facebook" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type !== 'basic' && editIntroBtn && facebook && (
+              {editIntroBtn && facebook && (
                 <a className="link" href={facebook} target="_blank" rel="noreferrer noopener">
                   {facebook}
                 </a>
               )}
-              {type !== 'basic' && editIntroBtn && !facebook && <div className="no-information">{facebookMsg}</div>}
+              {editIntroBtn && !facebook && <div className="no-information">{facebookMsg}</div>}
               <ContentEditable
                 data-testid="content-3-editable"
                 data-placeholder={facebookPlacehoder}
@@ -285,12 +285,12 @@ const InfoDisplay = ({
               <FaYoutube className="icon youtube" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type !== 'basic' && editIntroBtn && youtube && (
+              {editIntroBtn && youtube && (
                 <a className="link" href={youtube} target="_blank" rel="noreferrer noopener">
                   {youtube}
                 </a>
               )}
-              {type !== 'basic' && editIntroBtn && !youtube && <div className="no-information">{youtubeMsg}</div>}
+              {editIntroBtn && !youtube && <div className="no-information">{youtubeMsg}</div>}
               <ContentEditable
                 data-testid="content-4-editable"
                 data-placeholder={youtubePlacehoder}

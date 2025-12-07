@@ -74,7 +74,7 @@ const Followers = () => {
 
   useEffectOnce(() => {
     getUserFollowers();
-    setBlockedUsers(profile?.blocked || []);
+    setBlockedUsers((profile?.blocked as string[]) || []);
   });
 
   useEffect(() => {

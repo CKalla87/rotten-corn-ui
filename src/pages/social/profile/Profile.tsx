@@ -164,8 +164,8 @@ const Profile = () => {
     }
   }, [user, rendered, getUserImages]);
 
-  const changeTabContent = (data: string) => {
-    setDisplayContent(data);
+  const changeTabContent = (data?: string) => {
+    setDisplayContent(data || 'timeline');
   };
 
   const selectedFileImage = (data: File | string | null, type?: string) => {
@@ -341,15 +341,15 @@ const Profile = () => {
               saveImage={saveImage}
               cancelFileSelection={cancelFileSelection}
               removeBackgroundImage={removeBackgroundImage}
-              tabItems={tabItems((username || '').toLowerCase() === (profile?.username || '').toLowerCase(), false)}
+              tabItems={tabItems((username || '').toLowerCase() === (profile?.username || '').toLowerCase(), false).map(item => ({ ...item, [item.key]: item.key }))}
               tab={displayContent}
               hideSettings={(username || '').toLowerCase() === (profile?.username || '').toLowerCase()}
               galleryImages={galleryImages}
             />
           </div>
           <div className="profile-content">
-            {displayContent === 'timeline' && <Timeline userProfileData={userProfileData} loading={loading} />}
-            {displayContent === 'followers' && <FollowerCard userData={user as { _id?: string; username?: string; avatarColor?: string; profilePicture?: string; followingCount?: number; blocked?: string[]; [key: string]: unknown } | undefined} />}
+            {displayContent === 'timeline' && <Timeline userProfileData={userProfileData || undefined} loading={loading} />}
+            {displayContent === 'followers' && <FollowerCard userData={user || undefined} />}
             {displayContent === 'gallery' && (
               <>
                 {galleryImages.length > 0 ? (

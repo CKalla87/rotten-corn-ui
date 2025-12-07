@@ -21,8 +21,9 @@ class SocketService {
       } else {
         // In test environment, import.meta might not be available
         // Default to development mode for tests
-        isDev = typeof process !== 'undefined' && 
-                (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test');
+        const globalProcess = (globalThis as unknown as { process?: { env?: { NODE_ENV?: string } } }).process;
+        isDev = typeof globalProcess !== 'undefined' &&
+                (globalProcess.env?.NODE_ENV === 'development' || globalProcess.env?.NODE_ENV === 'test');
       }
       const socketUrl = BASE_ENDPOINT || (isDev ? '' : 'http://localhost:5000');
       

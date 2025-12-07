@@ -9,7 +9,7 @@ const ProfileSkeleton = () => {
     <div className="profile-wrapper">
       <div className="profile-wrapper-container">
         <div className="profile-header">
-          <BackgroundHeaderSkeleton tabItems={tabItems(true, true)} />
+          <BackgroundHeaderSkeleton tabItems={tabItems(true, true).map(item => ({ ...item, [item.key]: item.key }))} />
         </div>
         <div className="profile-content">
           <div className="timeline-wrapper-container-main">

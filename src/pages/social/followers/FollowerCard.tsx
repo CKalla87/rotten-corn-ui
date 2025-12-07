@@ -43,7 +43,8 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
       setFollowers(response.data.followers);
       setLoading(false);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -56,7 +57,8 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
       );
       setUser(response.data.user);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -70,7 +72,8 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
         setUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
       }
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -84,7 +87,8 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
         setUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
       }
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
