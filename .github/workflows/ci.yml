@@ -158,20 +158,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Validate AWS secrets
-        run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "Error: AWS_ACCESS_KEY_ID secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-            echo "Error: AWS_SECRET_ACCESS_KEY secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          echo "AWS secrets validation passed"
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -280,20 +266,6 @@ jobs:
         run: |
           echo "Current branch: ${{ github.ref_name }}"
 
-      - name: Validate AWS secrets
-        run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "Error: AWS_ACCESS_KEY_ID secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-            echo "Error: AWS_SECRET_ACCESS_KEY secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          echo "AWS secrets validation passed"
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -354,20 +326,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Validate AWS secrets
-        run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "Error: AWS_ACCESS_KEY_ID secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-            echo "Error: AWS_SECRET_ACCESS_KEY secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          echo "AWS secrets validation passed"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -504,20 +462,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Validate AWS secrets
-        run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "Error: AWS_ACCESS_KEY_ID secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-            echo "Error: AWS_SECRET_ACCESS_KEY secret is not set"
-            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
-            exit 1
-          fi
-          echo "AWS secrets validation passed"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
