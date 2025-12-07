@@ -29,7 +29,6 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
   const [file, setFile] = useState('');
   const [base64File, setBase64File] = useState('');
   const [gifUrl, setGifUrl] = useState('');
-  const [hasFocus, setHasFocus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const inputAreaRef = useRef<HTMLDivElement>(null);
@@ -46,7 +45,7 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
       reset();
     } else {
       // Send regular message or image
-      let messageToSend = message || 'Sent an Image';
+      const messageToSend = message || 'Sent an Image';
       setChatMessage?.(messageToSend.replace(/ +(?= )/g, ''), '', base64File);
       setMessage('');
       reset();

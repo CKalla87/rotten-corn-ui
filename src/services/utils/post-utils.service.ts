@@ -251,7 +251,7 @@ export class PostUtils {
   }
 
   static socketIOPost(
-    posts: unknown[],
+    _posts: unknown[],
     setPosts: (posts: unknown[] | ((prev: unknown[]) => unknown[])) => void
   ): void {
     // Remove existing listeners to avoid duplicates
@@ -381,8 +381,8 @@ export class PostUtils {
     try {
       postData.image = fileResult;
       postData.gifUrl = '';
-      postData.imgId = '';
-      postData.imgVersion = '';
+      (postData as unknown as Record<string, unknown>).imgId = '';
+      (postData as unknown as Record<string, unknown>).imgVersion = '';
       const response = await postService.updatePostWithImage(postId, postData);
       if (response) {
         PostUtils.dispatchNotification(

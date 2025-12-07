@@ -3,7 +3,7 @@ import EmojiPickerComponent from 'emoji-picker-react';
 import './EmojiPicker.scss';
 
 interface EmojiPickerProps {
-  onEmojiClick?: (event: any, eventObject: any) => void;
+  onEmojiClick?: (event: unknown, eventObject: unknown) => void;
   pickerStyle?: React.CSSProperties;
 }
 

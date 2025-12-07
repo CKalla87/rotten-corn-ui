@@ -32,7 +32,10 @@ const ModalBoxContent = () => {
   }, [privacy]);
 
   useEffect(() => {
-    displayPostPrivacy();
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      displayPostPrivacy();
+    }, 0);
   }, [displayPostPrivacy]);
 
   const feelingData: FeelingItem | undefined = feeling

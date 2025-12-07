@@ -13,7 +13,7 @@ interface GiphyContainerProps {
 }
 
 const GiphyContainer = ({ handleGiphyClick }: GiphyContainerProps) => {
-  const [gifs, setGifs] = useState<any[]>([]);
+  const [gifs, setGifs] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -47,16 +47,20 @@ const GiphyContainer = ({ handleGiphyClick }: GiphyContainerProps) => {
       </div>
       {loading && <Spinner />}
       <ul className="search-results">
-        {gifs.map((gif) => (
-          <li
-            className="gif-result"
-            data-testid="list-item"
-            key={Utils.generateString(10)}
-            onClick={() => handleGiphyClick?.(gif.images.original.url)}
-          >
-            <img src={gif.images.original.url} alt="" />
-          </li>
-        ))}
+        {gifs.map((gif) => {
+          const gifData = gif as { images?: { original?: { url?: string } } };
+          const gifUrl = gifData?.images?.original?.url || '';
+          return (
+            <li
+              className="gif-result"
+              data-testid="list-item"
+              key={Utils.generateString(10)}
+              onClick={() => handleGiphyClick?.(gifUrl)}
+            >
+              <img src={gifUrl} alt="" />
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

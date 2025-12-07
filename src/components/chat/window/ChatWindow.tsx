@@ -19,7 +19,7 @@ const ChatWindow = () => {
   const { isLoading } = useSelector((state: RootState) => state.chat);
   const [receiver, setReceiver] = useState<UserProfile | undefined>();
   const [conversationId, setConversationId] = useState('');
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<Array<Record<string, unknown>>>([]);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
   const [rendered, setRendered] = useState(false);
@@ -32,8 +32,9 @@ const ChatWindow = () => {
         console.log(response.data.messages);
         ChatUtils.privateChatMessages = [...response.data.messages];
         setChatMessages([...ChatUtils.privateChatMessages]);
-      } catch (error: any) {
-        Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      } catch (error: unknown) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
     },
     [dispatch]
@@ -53,8 +54,9 @@ const ChatWindow = () => {
         const response = await userService.getUserProfileByUserId(searchParams.get('id') || '');
         setReceiver(response.data.user);
         ChatUtils.joinRoomEvent(response.data.user, profile || {});
-      } catch (error: any) {
-        Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      } catch (error: unknown) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
     },
     [dispatch, profile, searchParams]
@@ -82,24 +84,27 @@ const ChatWindow = () => {
       });
       console.log(messageData);
       await chatService.saveChatMessage(messageData);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
   const updateMessageReaction = async (body: unknown) => {
     try {
       await chatService.updateMessageReaction(body);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
   const deleteChatMessage = async (senderId: string, receiverId: string, messageId: string, type: string) => {
     try {
       await chatService.markMessageAsDelete(messageId, senderId, receiverId, type);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -121,7 +126,9 @@ const ChatWindow = () => {
       ChatUtils.socketIOMessageReceived(chatMessages, searchParams.get('username') || '', setConversationId, setChatMessages);
     }
     if (!rendered) setRendered(true);
-    ChatUtils.usersOnline(setOnlineUsers);
+    ChatUtils.usersOnline((data: unknown) => {
+      setOnlineUsers(data as string[]);
+    });
     ChatUtils.usersOnChatPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, rendered]);
@@ -163,13 +170,15 @@ const ChatWindow = () => {
             <div className="chat-window-message">
               <MessageDisplay
                 chatMessages={chatMessages}
-                profile={profile}
+                profile={profile || undefined}
                 updateMessageReaction={updateMessageReaction}
                 deleteChatMessage={deleteChatMessage}
               />
             </div>
             <div className="chat-window-input">
-              <MessageInput setChatMessage={sendChatMessage} />
+              <MessageInput setChatMessage={(message: string, url?: string, base64File?: string) => {
+                sendChatMessage(message, url || '', base64File || '');
+              }} />
             </div>
           </div>
         </div>

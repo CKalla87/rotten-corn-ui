@@ -28,7 +28,7 @@ const CommentInputBox = ({ post }: CommentInputBoxProps) => {
   const submitComment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
-      let updatedPost = cloneDeep(post);
+      const updatedPost = cloneDeep(post);
       updatedPost.commentsCount = (updatedPost.commentsCount || 0) + 1;
       const commentBody = {
         userTo: post?.userId,
@@ -40,8 +40,9 @@ const CommentInputBox = ({ post }: CommentInputBoxProps) => {
       socketService?.socket?.emit('comment', commentBody);
       await postService.addComment(commentBody);
       setComment('');
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
