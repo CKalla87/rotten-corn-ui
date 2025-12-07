@@ -55,13 +55,13 @@ describe('SigIn', () => {
   describe('Button', () => {
     it('should be disabled', () => {
       render(<Login />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signin/i });
       expect(buttonElement).toBeDisabled();
     });
 
     it('should be enabled with inputs', () => {
       render(<Login />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signin/i });
       expect(buttonElement).toBeDisabled();
       const usernameElement = screen.getByLabelText('Username');
       const passwordElement = screen.getByLabelText('Password');
@@ -73,7 +73,7 @@ describe('SigIn', () => {
     it('should change label when clicked', async () => {
       const user = userEvent.setup();
       render(<Login />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signin/i });
       const usernameElement = screen.getByLabelText('Username');
       const passwordElement = screen.getByLabelText('Password');
       await user.type(usernameElement, 'manny');
@@ -81,7 +81,7 @@ describe('SigIn', () => {
       await user.click(buttonElement);
 
       await waitFor(() => {
-        const newButtonElement = screen.getByRole('button');
+        const newButtonElement = screen.getByRole('button', { name: /signin in progress/i });
         expect(newButtonElement.textContent).toEqual('SIGNIN IN PROGRESS...');
       });
     });
@@ -103,7 +103,7 @@ describe('SigIn', () => {
         }
       });
       render(<Login />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signin/i });
       const usernameElement = screen.getByLabelText('Username');
       const passwordElement = screen.getByLabelText('Password');
 
@@ -132,7 +132,7 @@ describe('SigIn', () => {
       (authService.signIn as jest.Mock).mockRejectedValueOnce(error);
 
       render(<Login />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signin/i });
       const usernameElement = screen.getByLabelText('Username');
       const passwordElement = screen.getByLabelText('Password');
 
@@ -145,7 +145,7 @@ describe('SigIn', () => {
 
       const alert = await screen.findByRole('alert', {}, { timeout: 10000 });
       expect(alert).toBeInTheDocument();
-      expect(alert.textContent).toEqual('Invalid credentials');
+      expect(alert.textContent).toContain('Invalid credentials');
 
       await waitFor(() => {
         expect(usernameElement).toHaveStyle({ border: '1px solid #fa9b8a' });

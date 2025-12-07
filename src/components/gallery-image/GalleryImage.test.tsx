@@ -27,14 +27,14 @@ describe('GalleryImage', () => {
       showCaption: false,
       showDelete: false,
       imgSrc: 'https://place-hold.it',
-      onClick: null,
-      onRemoveImage: null
+      onClick: undefined,
+      onRemoveImage: undefined
     };
   });
 
   it('should show image with no caption', () => {
     render(<GalleryImage {...props} />);
-    const imgElement = screen.getByRole('img');
+    const imgElement = screen.getByTestId('gallery').querySelector('img');
     expect(imgElement).toBeInTheDocument();
     expect(imgElement).toHaveAttribute('src', 'https://place-hold.it');
   });

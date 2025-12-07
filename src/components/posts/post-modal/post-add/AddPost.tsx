@@ -315,7 +315,6 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                         }}
                         id="editable"
                         data-testid="editable"
-                        name="post"
                         className={`editable flex-item ${textAreaBackground !== '#ffffff' ? 'textInputColor' : ''} ${postData.post.length === 0 && textAreaBackground !== '#ffffff' ? 'defaultInputTextColor' : ''}`}
                         contentEditable={true}
                         dir="ltr"
@@ -408,7 +407,6 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                       }
                     }}
                     data-testid="post-editable"
-                    name="post"
                     className="post-input flex-item"
                     contentEditable={true}
                     dir="ltr"

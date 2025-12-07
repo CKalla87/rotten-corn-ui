@@ -17,7 +17,7 @@ import './PostForm.scss';
 const PostForm = () => {
   const { profile } = useSelector((state: RootState) => state.user);
   const { type, isOpen, openFileDialog, gifModalIsOpen, feelingsIsOpen, openVideoDialog } = useSelector((state: RootState) => state.modal);
-  const { post } = useSelector((state: RootState) => state.post);
+  const post = useSelector((state: RootState) => state.post);
   const dispatch = useDispatch<AppDispatch>();
   const [selectedPostImage, setSelectedPostImage] = useState<File | null>(null);
   const [selectedPostVideo, setSelectedPostVideo] = useState<File | null>(null);

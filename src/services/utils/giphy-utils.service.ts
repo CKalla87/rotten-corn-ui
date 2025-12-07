@@ -11,7 +11,8 @@ export class GiphyUtils {
       setGifs(response.data.data);
       setLoading(false);
     } catch (error: unknown) {
-      console.error('Error fetching trending GIFs:', error.message || error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error fetching trending GIFs:', errorMessage);
       setGifs([]);
       setLoading(false);
     }
@@ -32,7 +33,8 @@ export class GiphyUtils {
       setGifs(response.data.data);
       setLoading(false);
     } catch (error: unknown) {
-      console.error('Error searching GIFs:', error.message || error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error searching GIFs:', errorMessage);
       setGifs([]);
       setLoading(false);
     }
