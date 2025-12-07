@@ -70,6 +70,7 @@ export interface EmptyPostData {
   gifUrl: string;
   profilePicture: string;
   image: string;
+  video: string;
   userId: string;
   username: string;
   email: string;
@@ -239,6 +240,7 @@ export const emptyPostData: EmptyPostData = {
   gifUrl: '',
   profilePicture: '',
   image: '',
+  video: '',
   userId: '',
   username: '',
   email: '',

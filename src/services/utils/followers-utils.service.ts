@@ -5,6 +5,7 @@ import { Utils } from '@services/utils/utils.service';
 import { addUser } from '@redux/reducers/user/userSlice';
 import { addToSuggestions } from '@redux/reducers/suggestions/suggestionsSlice';
 import type { AppDispatch } from '@redux/store';
+import type { UserProfile } from '@redux/reducers/user/userSlice';
 
 interface UserData {
   _id?: string;
@@ -36,7 +37,8 @@ export class FollowersUtils {
       const response = await followerService.followUser(user?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
 
@@ -45,7 +47,8 @@ export class FollowersUtils {
       const response = await followerService.unFollowUser(user?._id || '', profile?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
 
@@ -54,7 +57,8 @@ export class FollowersUtils {
       const response = await followerService.blockUser(user?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
 
@@ -63,7 +67,8 @@ export class FollowersUtils {
       const response = await followerService.unblockUser(user?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
     } catch (error: unknown) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
 
@@ -101,7 +106,7 @@ export class FollowersUtils {
       const userIndex = findIndex(updatedUsers, (user) => user._id === data?._id);
       if (userIndex > -1) {
         updatedUsers.splice(userIndex, 1);
-        dispatch(addToSuggestions({ users: updatedUsers as any[], isLoading: false }));
+        dispatch(addToSuggestions({ users: updatedUsers as UserProfile[], isLoading: false }));
       }
     });
   }
@@ -125,13 +130,13 @@ export class FollowersUtils {
     socketService?.socket?.on('blocked user id', (data: BlockData) => {
       const user = FollowersUtils.addBlockedUser(profile, data);
       setBlockedUsers(user?.blocked || []);
-      dispatch(addUser({ token, profile: user as any }));
+      dispatch(addUser({ token, profile: user as UserProfile }));
     });
 
     socketService?.socket?.on('unblocked user id', (data: BlockData) => {
       const user = FollowersUtils.removeBlockedUser(profile, data);
       setBlockedUsers(user?.blocked || []);
-      dispatch(addUser({ token, profile: user as any }));
+      dispatch(addUser({ token, profile: user as UserProfile }));
     });
   }
 
@@ -144,13 +149,13 @@ export class FollowersUtils {
     socketService?.socket?.on('blocked user id', (data: BlockData) => {
       const user = FollowersUtils.addBlockedUser(profile, data);
       setBlockedUsers(user?.blocked || []);
-      dispatch(addUser({ token, profile: user as any }));
+      dispatch(addUser({ token, profile: user as UserProfile }));
     });
 
     socketService?.socket?.on('unblocked user id', (data: BlockData) => {
       const user = FollowersUtils.removeBlockedUser(profile, data);
       setBlockedUsers(user?.blocked || []);
-      dispatch(addUser({ token, profile: user as any }));
+      dispatch(addUser({ token, profile: user as UserProfile }));
     });
   }
 

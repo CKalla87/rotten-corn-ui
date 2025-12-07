@@ -47,7 +47,18 @@ class AuthService {
    */
   async initiateOAuth(provider: OAuthProvider) {
     // Get the base URL from environment or use current origin
-    const baseUrl = import.meta.env.VITE_BASE_ENDPOINT || window.location.origin;
+    // Handle import.meta which may not be available in test environment
+    let baseUrl = window.location.origin;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const metaEnv = (globalThis as any).import?.meta?.env;
+      if (metaEnv?.VITE_BASE_ENDPOINT) {
+        baseUrl = metaEnv.VITE_BASE_ENDPOINT;
+      }
+    } catch {
+      // In test environment, use window.location.origin
+      baseUrl = window.location.origin;
+    }
     const apiBase = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') 
       ? '' 
       : baseUrl.replace(/\/$/, '');

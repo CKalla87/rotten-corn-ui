@@ -1,7 +1,18 @@
 import axios from 'axios';
 
 const GIPHY_URL = 'https://api.giphy.com/v1/gifs';
-const API_KEY = import.meta.env.VITE_GIPHY_API_KEY;
+// Handle import.meta which may not be available in test environment
+let API_KEY = '';
+try {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const metaEnv = (globalThis as any).import?.meta?.env;
+  if (metaEnv?.VITE_GIPHY_API_KEY) {
+    API_KEY = metaEnv.VITE_GIPHY_API_KEY;
+  }
+} catch {
+  // In test environment, API_KEY will be empty string
+  API_KEY = '';
+}
 
 if (!API_KEY) {
   console.error('VITE_GIPHY_API_KEY is not set in environment variables. Please add it to your .env file.');

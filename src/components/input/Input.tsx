@@ -10,6 +10,7 @@ interface InputProps {
   labelText?: string;
   placeholder?: string;
   style?: React.CSSProperties;
+  accept?: string;
   handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -25,6 +26,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   labelText, 
   placeholder, 
   style,
+  accept,
   handleChange,
   onClick,
   onFocus,
@@ -44,6 +46,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
         type={type}
         value={typeof value === 'boolean' ? undefined : value}
         checked={typeof value === 'boolean' ? value : undefined}
+        accept={accept}
         onChange={handleChange}
         placeholder={placeholder}
         onClick={onClick}

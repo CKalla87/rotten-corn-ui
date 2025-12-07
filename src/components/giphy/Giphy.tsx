@@ -10,28 +10,39 @@ import type { RootState } from '@redux/store';
 import type { AppDispatch } from '@redux/store';
 import './Giphy.scss';
 
+interface GifImage {
+  original: {
+    url: string;
+  };
+}
+
+interface GifData {
+  images: GifImage;
+  [key: string]: unknown;
+}
+
 const Giphy = () => {
   const { gifModalIsOpen } = useSelector((state: RootState) => state.modal);
-  const [gifs, setGifs] = useState<Array<Record<string, unknown>>>([]);
+  const [gifs, setGifs] = useState<GifData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const dispatch = useDispatch<AppDispatch>();
 
   const selectGif = (gif: string) => {
-    dispatch(updatePostItem({ gifUrl: gif, image: '', video: '' }));
+    dispatch(updatePostItem({ gifUrl: gif, image: '' }));
     dispatch(toggleGifModal(!gifModalIsOpen));
   };
 
   useEffect(() => {
-    GiphyUtils.getTrendingGifs(setGifs, setLoading);
+    GiphyUtils.getTrendingGifs((gifs) => setGifs(gifs as GifData[]), setLoading);
   }, []);
 
   useEffect(() => {
     if (debouncedSearchTerm) {
-      GiphyUtils.searchGifs(debouncedSearchTerm, setGifs, setLoading);
+      GiphyUtils.searchGifs(debouncedSearchTerm, (gifs) => setGifs(gifs as GifData[]), setLoading);
     } else {
-      GiphyUtils.getTrendingGifs(setGifs, setLoading);
+      GiphyUtils.getTrendingGifs((gifs) => setGifs(gifs as GifData[]), setLoading);
     }
   }, [debouncedSearchTerm]);
 

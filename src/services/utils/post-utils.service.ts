@@ -1,4 +1,5 @@
 import { cloneDeep, find, findIndex } from 'lodash';
+import type { AxiosResponse } from 'axios';
 import { closeModal } from '@redux/reducers/modal/modalSlice';
 import { clearPost, updatePostItem } from '@redux/reducers/post/postSlice';
 import { postService } from '@services/api/post/post.service';
@@ -50,7 +51,7 @@ export class PostUtils {
   static clearImage(
     postData: PostData,
     post: string,
-    inputRef: React.RefObject<HTMLDivElement>,
+    inputRef: React.RefObject<HTMLDivElement | null>,
     dispatch: AppDispatch,
     setSelectedPostImage: (file: File | null) => void,
     setPostImage: (image: string) => void,
@@ -69,6 +70,9 @@ export class PostUtils {
           postData.post = post;
         }
         setPostData(postData);
+        // Enable form if there's post content, otherwise disable
+        const hasContent = (post || postData.post || '').trim().length > 0;
+        setDisable(!hasContent);
       }
       PostUtils.positionCursor('editable');
     });
@@ -78,15 +82,13 @@ export class PostUtils {
         image: '',
         imgId: '',
         imgVersion: '',
-        video: '',
-        videoId: '',
-        videoVersion: ''
+        video: ''
       })
     );
   }
 
   static postInputData(
-    imageInputRef: React.RefObject<HTMLDivElement>,
+    imageInputRef: React.RefObject<HTMLDivElement | null>,
     postData: PostData,
     post: string,
     setPostData: (data: PostData | ((prev: PostData) => PostData)) => void
@@ -124,7 +126,7 @@ export class PostUtils {
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       postData.image = fileResult;
       if (imageInputRef?.current) {
@@ -154,12 +156,12 @@ export class PostUtils {
   static async sendPostWithFileRequest(
     type: string,
     postData: PostData,
-    imageInputRef: React.RefObject<HTMLDivElement>,
+    imageInputRef: React.RefObject<HTMLDivElement | null>,
     setApiResponse: (response: string) => void,
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       if (imageInputRef?.current) {
         imageInputRef.current.textContent = postData.post;
@@ -195,8 +197,9 @@ export class PostUtils {
   ): boolean {
     const isPrivate = post?.privacy === 'Private' && post?.userId === profile?._id;
     const isPublic = post?.privacy === 'Public';
+    const followingArray = following as Array<{ _id?: string; [key: string]: unknown }>;
     const isFollower =
-      post?.privacy === 'Followers' && Utils.checkIfUserIsFollowed(following, post?.userId, profile?._id);
+      post?.privacy === 'Followers' && Utils.checkIfUserIsFollowed(followingArray, post?.userId, profile?._id);
     return isPrivate || isPublic || isFollower;
   }
 
@@ -321,9 +324,10 @@ export class PostUtils {
     post: unknown
   ): unknown[] {
     const postsCopy = cloneDeep(posts);
-    const index = findIndex(postsCopy as Array<{ _id?: string; [key: string]: unknown }>, ['_id', (post as { _id?: string })?._id]);
+    const postData = post as { _id?: string; [key: string]: unknown };
+    const index = findIndex(postsCopy as Array<{ _id?: string; [key: string]: unknown }>, ['_id', postData?._id]);
     if (index > -1) {
-      (postsCopy as Array<{ _id?: string; [key: string]: unknown }>).splice(index, 1, post);
+      (postsCopy as Array<{ _id?: string; [key: string]: unknown }>).splice(index, 1, postData);
     }
     return postsCopy;
   }
@@ -334,9 +338,10 @@ export class PostUtils {
     setPosts: (posts: unknown[]) => void
   ): void {
     const postsCopy = cloneDeep(posts);
-    const index = findIndex(postsCopy as unknown[], ['_id', post?._id]);
+    const postData = post as { _id?: string; [key: string]: unknown };
+    const index = findIndex(postsCopy as Array<{ _id?: string; [key: string]: unknown }>, ['_id', postData?._id]);
     if (index > -1) {
-      (postsCopy as any[]).splice(index, 1, post);
+      (postsCopy as Array<{ _id?: string; [key: string]: unknown }>).splice(index, 1, postData);
       setPosts(postsCopy);
     }
   }
@@ -348,7 +353,7 @@ export class PostUtils {
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       const response = await postService.updatePost(postId, postData);
       if (response) {
@@ -389,7 +394,7 @@ export class PostUtils {
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       postData.image = fileResult;
       postData.gifUrl = '';
@@ -432,7 +437,7 @@ export class PostUtils {
     setApiResponse: (response: string) => void,
     setLoading: (loading: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       const response =
         type === 'image'
