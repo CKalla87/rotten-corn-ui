@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, createSearchParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { sideBarItems, fontAwesomeIcons } from '@services/utils/static.data';
-import type { RootState } from '@redux/store';
+import { getPosts } from '@redux/api/posts';
+import { ChatUtils } from '@services/utils/chat-utils.service';
+import { chatService } from '@services/api/chat/chat.service';
+import { socketService } from '@services/socket/socket.service';
+import { Utils } from '@services/utils/utils.service';
+import type { RootState, AppDispatch } from '@redux/store';
 import './Sidebar.scss';
 
 const Sidebar = () => {
   const { profile } = useSelector((state: RootState) => state.user);
-  const [sidebar] = useState<typeof sideBarItems>(sideBarItems);
+  const { chatList } = useSelector((state: RootState) => state.chat);
+  const dispatch = useDispatch<AppDispatch>();
+  const [sidebar, setSideBar] = useState<typeof sideBarItems>(sideBarItems);
+  const [chatPageName, setChatPageName] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -26,8 +34,73 @@ const Sidebar = () => {
       }
       url = `${url}/${profile?.username}?${createSearchParams(params)}`;
     }
+    if (name === 'Streams') {
+      dispatch(getPosts());
+    }
+    if (name === 'Chat') {
+      setChatPageName('Chat');
+    } else {
+      leaveChatPage();
+      setChatPageName('');
+    }
+    socketService?.socket?.off('message received');
     navigate(url);
   };
+
+  const createChatUrlParams = useCallback(
+    (url: string) => {
+      if (chatList.length) {
+        const chatUser = chatList[0] as unknown as { receiverUsername?: string; senderUsername?: string; [key: string]: unknown };
+        const params = ChatUtils.chatUrlParams(chatUser as any, profile || {});
+        ChatUtils.joinRoomEvent(chatUser as any, profile || {});
+        return `${url}?${createSearchParams(params)}`;
+      }
+      return url;
+    },
+    [chatList, profile]
+  );
+
+  const markMessagesAsRead = useCallback(
+    async (user: { receiverUsername?: string; senderUsername?: string; receiverId?: string; senderId?: string; isRead?: boolean; [key: string]: unknown }) => {
+      try {
+        const receiverId = user?.receiverUsername !== profile?.username ? user?.receiverId : user?.senderId;
+        if (user?.receiverUsername === profile?.username && !user.isRead) {
+          await chatService.markMessagesAsRead(profile?._id as string, receiverId as string);
+        }
+        const userTwoName = user?.receiverUsername !== profile?.username ? user?.receiverUsername : user?.senderUsername;
+        await chatService.addChatUsers({ userOne: profile?.username, userTwo: userTwoName });
+      } catch (error: any) {
+        Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      }
+    },
+    [dispatch, profile]
+  );
+
+  const leaveChatPage = async () => {
+    try {
+      const chatUser = (chatList[0] as unknown as { receiverUsername?: string; senderUsername?: string; [key: string]: unknown }) || {};
+      const userTwoName =
+        chatUser?.receiverUsername !== profile?.username ? chatUser?.receiverUsername : chatUser?.senderUsername;
+      ChatUtils.privateChatMessages = [];
+      await chatService.removeChatUsers({ userOne: profile?.username, userTwo: userTwoName });
+    } catch (error: any) {
+      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    }
+  };
+
+  useEffect(() => {
+    setSideBar(sideBarItems);
+  }, []);
+
+  useEffect(() => {
+    if (chatPageName === 'Chat') {
+      const url = createChatUrlParams('/app/social/chat/messages');
+      navigate(url);
+      if (chatList.length && !(chatList[0] as { isRead?: boolean }).isRead) {
+        markMessagesAsRead(chatList[0] as any);
+      }
+    }
+  }, [chatList, chatPageName, createChatUrlParams, markMessagesAsRead, navigate]);
 
   return (
     <div className="app-side-menu">

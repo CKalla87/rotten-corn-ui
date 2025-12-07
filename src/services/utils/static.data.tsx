@@ -23,7 +23,8 @@ import {
   FaUser,
   FaUserCheck,
   FaUserPlus,
-  FaUsers
+  FaUsers,
+  FaVideo
 } from 'react-icons/fa';
 
 export interface SideBarItem {
@@ -60,6 +61,7 @@ export interface TabItem {
 }
 
 export interface EmptyPostData {
+  id: string;
   _id: string;
   post: string;
   bgColor: string;
@@ -160,6 +162,7 @@ export const fontAwesomeIcons: Record<string, React.ReactElement> = {
   FaUserPlus: <FaUserPlus className="icon" />,
   FaHeart: <FaHeart className="icon" />,
   FaImages: <FaImages className="icon" />,
+  FaVideo: <FaVideo className="icon" />,
   FaRegBell: <FaRegBell className="icon" />,
   FaBirthdayCake: <FaBirthdayCake className="icon" />,
   FaRegUser: <FaRegUser className="icon" />
@@ -227,6 +230,7 @@ export const avatarColors: string[] = [
 ];
 
 export const emptyPostData: EmptyPostData = {
+  id: '',
   _id: '',
   post: '',
   bgColor: '',

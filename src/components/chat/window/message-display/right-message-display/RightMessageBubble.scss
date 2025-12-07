@@ -1,0 +1,23 @@
+.message-bubble.right-message-bubble {
+  background: var(--primary-1);
+  color: var(--white-1);
+  padding: 10px 15px;
+  border-radius: 20px;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.message-image {
+  margin-top: 5px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  max-width: 300px;
+
+  img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+

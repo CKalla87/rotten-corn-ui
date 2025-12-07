@@ -8,6 +8,32 @@
   border-bottom-right-radius: 15px
   transition: all 0.3s
 
+  .oauth-section
+    margin-bottom: 20px
+
+  .divider
+    display: flex
+    align-items: center
+    text-align: center
+    margin: 20px 0
+    color: var(--black-2, #666)
+    font-size: 14px
+
+    &::before,
+    &::after
+      content: ''
+      flex: 1
+      border-bottom: 1px solid var(--black-3, #ddd)
+
+    &::before
+      margin-right: 10px
+
+    &::after
+      margin-left: 10px
+
+    span
+      padding: 0 10px
+
 .auth-form
   .form-input-container
     margin-bottom: 20px

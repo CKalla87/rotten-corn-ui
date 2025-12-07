@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AuthTabs.sass';
-import backgroundImage from '@assets/images/background.jpg';
 import { Login, Register } from '@pages/auth';
 import { Utils } from '@services/utils/utils.service';
 import useLocalStorage from '@hooks/useLocalStorage';
+import PageLoader from '@components/page-loader/PageLoader';
 
 const AuthTabs = () => {
   const [type, setType] = useState('Sign In');
@@ -21,12 +21,12 @@ const AuthTabs = () => {
   }, [keepLoggedIn, navigate]);
 
   return (
-    <>
+    keepLoggedIn ? (
+      <PageLoader />
+    ) : (
       <div 
-        className="container-wrapper" 
-        style={{ backgroundImage: `url(${backgroundImage})` }}
+        className="container-wrapper"
       >
-        {environment && <div className="environment">{environment}</div>}
         <div className="container-wrapper-auth">
           <div className="tabs">
             <div className="tabs-auth">
@@ -58,7 +58,7 @@ const AuthTabs = () => {
           </div>
         </div>
       </div>
-    </>
+    )
   );
 };
 

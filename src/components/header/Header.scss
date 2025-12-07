@@ -9,12 +9,13 @@
 .header-nav-wrapper {
   width: 100vw;
   top: 0;
-  background-color: var(--white-1);
+  background-color: var(--white-2);
   position: sticky;
   z-index: 20;
   height: 75px;
-  box-shadow: 0 0 20px 0 rgb(44 101 144 / 10%);
+  box-shadow: 0 0 20px 0 rgb(0 0 0 / 50%);
   padding: 0 20px;
+  border-bottom: 1px solid var(--white-3);
 
   .header-navbar {
     display: flex;
@@ -26,7 +27,9 @@
     .header-image {
       display: flex;
       cursor: pointer;
-      align-items: center;
+      align-items: flex-end;
+      //padding-bottom: 5px;
+      margin-left: -50px;
 
       .app-name-skeleton {
         width: 80px;
@@ -39,24 +42,33 @@
 
       img {
         max-width: 100%;
-        height: 45px;
+        height: 70px;
+        width: auto;
       }
+    }
 
-      .app-name {
-        margin-left: 10px;
-        font-size: 28px;
-        color: var(--gray-11);
-        align-self: center;
-
-        .environment {
-          margin-left: 3px;
-          vertical-align: top;
-          line-height: 17px;
-          color: var(--white-1);
-          padding: 3px 5px;
-          border-radius: 6px;
-          font-weight: 900;
-          font-size: 12px;
+    .app-name {
+      margin-left: 20%;
+      font-size: 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 8s ease infinite;
+      align-self: center;
+      font-weight: 700;
+      letter-spacing: 2px;
+      
+      @keyframes gradientShift {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
         }
       }
     }
@@ -127,7 +139,7 @@
         }
 
         .profile-name {
-          color: var(--gray-11);
+          color: var(--black-1);
           font-size: 15px;
           margin-left: 5px;
           text-transform: capitalize;
@@ -181,11 +193,18 @@
 
 ul .dropdown-ul {
   position: absolute;
+  right: 0;
 }
 
 .dropdown-ul {
   .dropdown-li {
     list-style: none;
+  }
+
+  &.dropdown-ul-notifications {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
@@ -232,8 +251,24 @@ ul .dropdown-ul {
   }
 
   .header-nav-wrapper {
-    border-bottom: 1px solid var(--white-6);
+    border-bottom: 1px solid var(--white-3);
     margin: 0;
+    padding: 0 10px;
+
+    .header-navbar {
+      padding: 0 5px;
+
+      .header-image {
+        img {
+          height: 35px;
+        }
+      }
+
+      .app-name {
+        font-size: 20px;
+        margin-left: 5px;
+      }
+    }
   }
 
   .header-navbar .header-nav {
@@ -243,8 +278,8 @@ ul .dropdown-ul {
     top: 100%;
     left: 0;
     width: 90%;
-    background: var(--white-1);
-    box-shadow: 0 0 20px 0 rgb(44 101 144 / 10%);
+    background: var(--white-2);
+    box-shadow: 0 0 20px 0 rgb(0 0 0 / 50%);
     text-align: right;
   }
 
@@ -265,5 +300,15 @@ ul .dropdown-ul {
 
   .profile {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-nav-wrapper {
+    .header-navbar {
+      .app-name {
+        font-size: 18px;
+      }
+    }
   }
 }

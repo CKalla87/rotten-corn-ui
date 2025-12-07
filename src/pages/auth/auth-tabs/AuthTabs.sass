@@ -5,17 +5,17 @@
   justify-content: center
   align-content: center
   padding: 15px
-  background-repeat: no-repeat
-  background-size: cover
-  background-position: center
   position: relative
   z-index: 1
+  background: var(--white-10)
+  background-image: linear-gradient(135deg, var(--white-10) 0%, var(--white-1) 50%, var(--white-10) 100%)
 
   .environment
     position: absolute
     padding: 10px
-    color: var(--white-1)
+    color: var(--black-1)
     font-weight: 900
+    opacity: 0.6
 
   &::before
     content: ""
@@ -26,8 +26,8 @@
     height: 100%
     top: 0
     left: 0
-    background: linear-gradient(to bottom, var(--primary-1), var(--primary-2))
-    opacity: 0.9
+    background: linear-gradient(135deg, rgba(80, 181, 255, 0.05) 0%, rgba(0, 198, 251, 0.05) 100%)
+    opacity: 1
 
   &-auth
     display: flex
@@ -45,6 +45,8 @@
       border-top-right-radius: 15px
       border-bottom-right-radius: 15px
       border-bottom-left-radius: 15px
+      background: var(--white-1)
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3)
 
       .tab-group
         list-style: none
@@ -52,8 +54,9 @@
         margin: 0
 
         .active button
-          background: var(--white-3)
-          color: var(--gray-2)
+          background: var(--white-2)
+          color: var(--black-1)
+          border-top: 3px solid var(--primary-1)
 
         li button,
         .forgot-password, .reset-password
@@ -61,7 +64,7 @@
           text-decoration: none
           padding: 15px
           background: var(--white-1)
-          color: var(--gray-1)
+          color: var(--black-2)
           font-size: 20px
           float: left
           width: 50%
@@ -69,6 +72,11 @@
           text-align: center
           border-top: 3px solid transparent
           transition: all 0.4s ease-in-out
+          cursor: pointer
+
+          &:hover
+            background: var(--white-2)
+            color: var(--black-1)
 
       .tab-item
         padding: 30px 0 0

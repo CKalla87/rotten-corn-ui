@@ -20,6 +20,15 @@ body
   width: 100%
   background-color: var(--white-10)
   position: fixed
+  color: var(--black-1)
+
+// Dark theme adjustments
+*
+  color-scheme: dark
+
+html
+  -webkit-text-size-adjust: 100%
+  -ms-text-size-adjust: 100%
 
 h1, h2, h3, h4, h5, h6
   margin: 0
@@ -45,7 +54,7 @@ p
   margin: auto
   height: 40px
   background-color: var(--white-1)
-  margin-top: 20px
+  //margin-top: 20px
   margin-bottom: 20px
   font-weight: bold
   font-size: 20px
@@ -53,6 +62,16 @@ p
   align-items: center
   padding-left: 10px
   border-radius: 5px
+  color: var(--black-1)
+
+  @media (max-width: 768px)
+    max-width: 100%
+    padding: 0 10px
+    font-size: 18px
+    height: auto
+    min-height: 40px
+    margin-top: 10px
+    margin-bottom: 10px
 
 .empty-page
   max-width: 1152px
@@ -63,6 +82,13 @@ p
   text-align: center
   font-size: 18px
   font-weight: 700
+  color: var(--black-1)
+
+  @media (max-width: 768px)
+    max-width: 100%
+    margin: 10px
+    padding: 16px
+    font-size: 16px
 
 .avatar-skeleton
   width: 50px

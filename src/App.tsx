@@ -8,6 +8,8 @@ import type { RootState } from '@redux/store';
 import type { NotificationItem } from '@redux/reducers/notifications/notificationSlice';
 import '@root/App.sass';
 
+export const APP_ENVIRONMENT = import.meta.env.VITE_APP_ENVIRONMENT || import.meta.env.MODE || 'local';
+
 interface ToastItem {
   id?: string;
   description: string;

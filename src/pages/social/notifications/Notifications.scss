@@ -1,8 +1,9 @@
 .notifications-container {
-  overflow-y: scroll;
-  height: 100vh;
+  overflow-y: auto;
+  height: calc(100vh - 75px);
   max-width: 1152px;
   margin: auto;
+  padding: 20px;
 
   .notifications-box {
     padding: 15px 24px 24px;

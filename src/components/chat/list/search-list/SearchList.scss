@@ -1,0 +1,45 @@
+.search-result {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--white-1);
+  border: 1px solid var(--white-4);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  &-container {
+    display: flex;
+    flex-direction: column;
+
+    &-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: var(--white-2);
+      }
+
+      .username {
+        margin-left: 10px;
+        font-weight: 600;
+        color: var(--black-3);
+      }
+    }
+
+    &-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--gray-1);
+      font-size: 14px;
+    }
+  }
+}
+

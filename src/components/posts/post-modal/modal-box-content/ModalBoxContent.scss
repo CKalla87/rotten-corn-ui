@@ -1,0 +1,121 @@
+.modal-box-content {
+  display: flex;
+  padding: 0 16px;
+  margin: 0.5rem 0;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+
+  .user-post-image {
+    .post-rounded-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+  }
+
+  .modal-box-info {
+    min-height: 45px;
+    color: var(--gray-3);
+    margin-left: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex: 1;
+
+    .inline-title-display {
+      display: inline-block;
+      margin-bottom: 0;
+      font-size: 16px;
+      font-weight: 400;
+      margin-right: 5px;
+      line-height: 1.5;
+      color: var(--gray-7);
+      text-transform: capitalize;
+    }
+
+    .inline-display {
+      margin-bottom: 0;
+      display: inline-block;
+      min-height: 18px;
+      line-height: 1.5;
+      margin-top: 2px;
+
+      .feeling-icon {
+        object-fit: cover;
+        width: 20px;
+        height: 20px;
+        vertical-align: middle;
+        margin: 0 4px;
+      }
+
+      span {
+        display: inline;
+        font-weight: bolder;
+        color: var(--gray-3);
+      }
+    }
+
+    .time-text-display {
+      font-size: 15px;
+      color: var(--primary-1);
+      cursor: pointer;
+      text-transform: capitalize;
+      margin-top: 4px;
+      line-height: 1.5;
+      display: block;
+      margin-left: 0;
+      padding-left: 0;
+      text-align: left;
+
+      .selected-item-text {
+        vertical-align: middle;
+        display: inline-block;
+        font-weight: 500;
+        margin-right: 4px;
+        margin-left: 0;
+        
+        &:empty {
+          display: none;
+        }
+      }
+
+      .globe {
+        margin-right: 3px;
+        vertical-align: middle;
+      }
+
+      > div {
+        display: inline-block;
+        margin-left: 0;
+        padding-left: 0;
+        vertical-align: middle;
+      }
+
+      .privacy-item {
+        display: inline-flex;
+        align-items: center;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        pointer-events: auto;
+        cursor: pointer;
+        contenteditable: false;
+        position: relative;
+        z-index: 2;
+        font-weight: 700;
+        margin-left: 0;
+        padding-left: 0;
+
+        span {
+          margin-left: 5px;
+          font-size: 14px;
+          color: var(--gray-11);
+          font-weight: 700;
+        }
+      }
+    }
+  }
+}
+

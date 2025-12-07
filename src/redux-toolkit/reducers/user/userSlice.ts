@@ -6,6 +6,7 @@ export interface UserProfile {
   email?: string;
   avatarColor?: string;
   avatarImage?: string;
+  profilePicture?: string;
   [key: string]: unknown;
 }
 
@@ -27,10 +28,24 @@ const userSlice = createSlice({
       const { token, profile } = action.payload;
       state.token = token;
       state.profile = profile;
+      // Store token in localStorage for axios interceptor
+      if (token) {
+        try {
+          localStorage.setItem('authToken', token);
+        } catch (error) {
+          console.error('Failed to store token in localStorage:', error);
+        }
+      }
     },
     clearUser: (state) => {
       state.token = '';
       state.profile = null;
+      // Remove token from localStorage
+      try {
+        localStorage.removeItem('authToken');
+      } catch (error) {
+        console.error('Failed to remove token from localStorage:', error);
+      }
     },
     updateUserProfile: (state, action) => {
       state.profile = action.payload;
