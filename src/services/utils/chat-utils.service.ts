@@ -191,7 +191,7 @@ export class ChatUtils {
     setConversationId: (id: string) => void,
     setChatMessages: (messages: ChatUser[]) => void
   ): void {
-    const updatedChatMessages = cloneDeep(chatMessages);
+    let updatedChatMessages = cloneDeep(chatMessages);
     socketService?.socket?.on('message received', (data: ChatUser) => {
       if (
         (data.senderUsername as string)?.toLowerCase() === username?.toLowerCase() ||

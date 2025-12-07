@@ -118,7 +118,7 @@ const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, del
                     showReactionIcon={showReactionIcon}
                     index={index}
                     activeElementIndex={activeElementIndex || undefined}
-                    reactionRef={reactionRef}
+                    reactionRef={reactionRef as React.RefObject<HTMLDivElement>}
                     setToggleReaction={setToggleReaction}
                     handleReactionClick={handleReactionClick}
                     deleteMessage={deleteMessage}
@@ -138,7 +138,7 @@ const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, del
                     showReactionIcon={showReactionIcon}
                     index={index}
                     activeElementIndex={activeElementIndex || undefined}
-                    reactionRef={reactionRef}
+                    reactionRef={reactionRef as React.RefObject<HTMLDivElement>}
                     setToggleReaction={setToggleReaction}
                     handleReactionClick={handleReactionClick}
                     deleteMessage={deleteMessage}

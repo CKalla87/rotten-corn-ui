@@ -20,7 +20,7 @@ const ChatListSkeleton = () => {
 
         <div className="conversation-container-body">
           <div className="conversation">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((data, index) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((_data, index) => (
               <div className="conversation-item" key={index}>
                 <div className="avatar">
                   <Skeleton baseColor="#EFF1F6" circle height={45} width={45} />

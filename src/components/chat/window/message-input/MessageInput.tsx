@@ -29,6 +29,7 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
   const [file, setFile] = useState('');
   const [base64File, setBase64File] = useState('');
   const [gifUrl, setGifUrl] = useState('');
+  const [hasFocus, setHasFocus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const inputAreaRef = useRef<HTMLDivElement>(null);
@@ -137,7 +138,7 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
         {showEmojiContainer && (
           <div className="emoji-picker-wrapper" ref={emojiPickerRef}>
             <EmojiPickerComponent
-              onEmojiClick={(emojiObject) => {
+              onEmojiClick={(emojiObject: { emoji: string }) => {
                 setMessage((text) => (text += emojiObject.emoji));
               }}
               pickerStyle={{ width: '352px', height: '447px' }}
