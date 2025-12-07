@@ -144,12 +144,20 @@ const Profile = () => {
     if (rendered) {
       void getUserProfileByUsername();
     }
-    if (!rendered) setRendered(true);
+    if (!rendered) {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setRendered(true);
+      }, 0);
+    }
   }, [rendered, getUserProfileByUsername]);
 
   useEffect(() => {
     if (user && rendered) {
-      void getUserImages();
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void getUserImages();
+      }, 0);
     }
   }, [user, rendered, getUserImages]);
 

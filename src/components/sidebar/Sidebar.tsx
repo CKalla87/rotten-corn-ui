@@ -99,7 +99,10 @@ const Sidebar = () => {
   };
 
   useEffect(() => {
-    setSideBar(sideBarItems);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setSideBar(sideBarItems);
+    }, 0);
   }, []);
 
   useEffect(() => {

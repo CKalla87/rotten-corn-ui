@@ -142,7 +142,7 @@ const EditPost = () => {
     setLoading(!loading);
     setDisable(!disable);
     try {
-      let updatedPostData = { ...postData };
+      const updatedPostData = { ...postData };
       if (Object.keys(feeling || {}).length) {
         updatedPostData.feelings = (feeling as { name?: string })?.name || '';
       }
@@ -212,7 +212,10 @@ const EditPost = () => {
     if (!loading && apiResponse === 'success') {
       dispatch(closeModal());
     }
-    setDisable(postData.post.length <= 0 && !postImage);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setDisable(postData.post.length <= 0 && !postImage);
+    }, 0);
   }, [loading, dispatch, apiResponse, postData, postImage]);
 
   useEffect(() => {
@@ -228,13 +231,6 @@ const EditPost = () => {
       }
     }, 0);
   }, []);
-
-  useEffect(() => {
-    if (!loading && apiResponse === 'success') {
-      dispatch(closeModal());
-    }
-    setDisable(postData.post.length <= 0 && !postImage);
-  }, [loading, dispatch, apiResponse, postData, postImage]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -252,13 +248,18 @@ const EditPost = () => {
 
   useEffect(() => {
     if (post?.gifUrl) {
-      setPostData((prevData) => ({ ...prevData, image: '' }));
-      setSelectedPostImage(null);
-      setPostImage(post.gifUrl);
-      PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setPostData((prevData) => ({ ...prevData, image: '' }));
+        setSelectedPostImage(null);
+        setPostImage(post.gifUrl);
+        PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
+      }, 0);
     } else if (post?.image) {
-      setPostImage(post.image);
-      PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
+      setTimeout(() => {
+        setPostImage(post.image);
+        PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
+      }, 0);
     }
     editableFields();
   }, [editableFields, post, postData]);

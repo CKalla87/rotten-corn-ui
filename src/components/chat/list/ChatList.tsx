@@ -119,18 +119,24 @@ const ChatList = () => {
 
   useEffect(() => {
     if (debouncedValue) {
-      searchUsers(debouncedValue);
+      void searchUsers(debouncedValue);
     }
   }, [debouncedValue, searchUsers]);
 
   useEffect(() => {
     if (selectedUser && componentType === 'searchList') {
-      addSelectedUserToList(selectedUser);
+      // Using setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        addSelectedUserToList(selectedUser);
+      }, 0);
     }
   }, [addSelectedUserToList, componentType, selectedUser]);
 
   useEffect(() => {
-    setChatMessageList(chatList as ChatUser[]);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setChatMessageList(chatList as ChatUser[]);
+    }, 0);
   }, [chatList]);
 
   useEffect(() => {

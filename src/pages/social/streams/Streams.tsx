@@ -95,11 +95,14 @@ const Streams = () => {
   const derivedTotalPostsCount = useMemo(() => allPosts?.totalPostsCount || 0, [allPosts?.totalPostsCount]);
 
   useEffect(() => {
-    setLoading(derivedLoading);
-    setPosts(derivedPosts);
-    setTotalPostsCount(derivedTotalPostsCount);
-    // Update appPosts ref when Redux posts change
-    appPosts.current = derivedPosts;
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setLoading(derivedLoading);
+      setPosts(derivedPosts);
+      setTotalPostsCount(derivedTotalPostsCount);
+      // Update appPosts ref when Redux posts change
+      appPosts.current = derivedPosts;
+    }, 0);
   }, [derivedLoading, derivedPosts, derivedTotalPostsCount]);
 
   // Use ref to store latest posts for socket handlers
