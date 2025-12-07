@@ -104,7 +104,7 @@ const ChangePassword = () => {
               label="Update"
               className="update"
               disabled={!currentPassword || !newPassword || !confirmPassword}
-              handleClick={changePassword as () => void}
+              handleClick={() => {}}
             />
             <span className="eye-icon" data-testid="eye-icon" onClick={togglePasswordDisplay}>
               {!togglePassword ? <FaRegEyeSlash /> : <FaRegEye />}

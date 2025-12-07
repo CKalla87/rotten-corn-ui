@@ -81,7 +81,7 @@ const ContentEditable = ({
     onChange?.({ target: { value } });
   };
 
-  const Tag = tagName as keyof JSX.IntrinsicElements;
+  const Tag = tagName as keyof React.JSX.IntrinsicElements;
 
   return (
     <Tag
