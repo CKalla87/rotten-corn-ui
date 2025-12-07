@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { FaSpinner } from 'react-icons/fa';
 import { postService } from '@services/api/post/post.service';
 import { reactionsMap } from '@services/utils/static.data';
 import { Utils } from '@services/utils/utils.service';
 import { toggleReactionsModal, toggleCommentsModal } from '@redux/reducers/modal/modalSlice';
 import { updatePostItem } from '@redux/reducers/post/postSlice';
-import type { RootState, AppDispatch } from '@redux/store';
+import type { AppDispatch } from '@redux/store';
 import './ReactionsAndCommentsDisplay.scss';
 
 interface ReactionItem {
@@ -90,8 +90,11 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
 
   useEffect(() => {
     const formattedReactions = Utils.formattedReactions(post?.reactions as PostReactionsCount || {});
-    setReactions(formattedReactions);
-    getPostReactions();
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setReactions(formattedReactions);
+    }, 0);
+    void getPostReactions();
   }, [post, getPostReactions]);
 
   const reactionsCount = sumAllReactions(reactions);

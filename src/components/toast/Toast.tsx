@@ -25,19 +25,14 @@ const Toast = ({ toastList, position = 'top-right', autoDelete = true, autoDelet
   const dispatch = useDispatch();
   const prevToastListRef = useRef<ToastItem[]>([]);
 
-  const syncedList = useMemo(() => {
+  useEffect(() => {
     if (JSON.stringify(prevToastListRef.current) !== JSON.stringify(toastList)) {
       prevToastListRef.current = toastList;
-      return toastList;
+      if (JSON.stringify(list) !== JSON.stringify(toastList)) {
+        setList(toastList);
+      }
     }
-    return list;
   }, [toastList, list]);
-
-  useEffect(() => {
-    if (JSON.stringify(list) !== JSON.stringify(syncedList)) {
-      setList(syncedList);
-    }
-  }, [syncedList]);
 
   const deleteToast = useCallback(() => {
     listData.current = cloneDeep(list);

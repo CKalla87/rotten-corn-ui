@@ -34,7 +34,7 @@ const ResetPassword = () => {
       setAlertType('alert-error');
       setLoading(false);
       setShowAlert(true);
-      setResponseMessage(error?.response?.data?.message);
+      setResponseMessage(axiosError?.response?.data?.message);
     }
   };
 

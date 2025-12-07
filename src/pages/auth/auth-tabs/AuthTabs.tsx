@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AuthTabs.sass';
 import { Login, Register } from '@pages/auth';
-import { Utils } from '@services/utils/utils.service';
 import useLocalStorage from '@hooks/useLocalStorage';
 import PageLoader from '@components/page-loader/PageLoader';
 
