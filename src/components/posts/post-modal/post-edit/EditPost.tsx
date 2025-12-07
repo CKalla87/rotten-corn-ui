@@ -11,7 +11,6 @@ import Spinner from '@components/spinner/Spinner';
 import { bgColors, feelingsList } from '@services/utils/static.data';
 import { PostUtils } from '@services/utils/post-utils.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
-import { postService } from '@services/api/post/post.service';
 import { Utils } from '@services/utils/utils.service';
 import { toggleGifModal, closeModal, addPostFeeling } from '@redux/reducers/modal/modalSlice';
 import type { RootState, AppDispatch } from '@redux/store';
@@ -21,7 +20,7 @@ import './EditPost.scss';
 const EditPost = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { gifModalIsOpen, feeling } = useSelector((state: RootState) => state.modal);
-  const { post } = useSelector((state: RootState) => state.post);
+  const postState = useSelector((state: RootState) => state.post);
   const { profile } = useSelector((state: RootState) => state.user);
   const [loading, setLoading] = useState(false);
   const [postImage, setPostImage] = useState('');
@@ -45,7 +44,6 @@ const EditPost = () => {
   const [apiResponse, setApiResponse] = useState('');
   const [selectedPostImage, setSelectedPostImage] = useState<File | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
-  const [hasVideo, setHasVideo] = useState(false);
   const counterRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLDivElement>(null);
@@ -60,8 +58,10 @@ const EditPost = () => {
 
   const clearImage = () => {
     setSelectedVideo(null);
-    setHasVideo(false);
-    PostUtils.clearImage(postData, post?.post || '', inputRef, dispatch, setSelectedPostImage, setPostImage, setPostData);
+    const postDataForUtils = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
+    PostUtils.clearImage(postDataForUtils, postState.post || '', inputRef, dispatch, setSelectedPostImage, setPostImage, setDisable, (data) => {
+      setPostData((prev) => ({ ...prev, ...data }));
+    });
   };
 
   const getFeeling = useCallback(
@@ -77,73 +77,90 @@ const EditPost = () => {
   const postInputData = useCallback(() => {
     setTimeout(() => {
       if (imageInputRef?.current) {
-        postData.post = post?.post || '';
-        imageInputRef.current.textContent = post?.post || '';
-        setPostData(postData);
+        setPostData((prevData) => {
+          const updatedData = { ...prevData, post: postState.post || '' };
+          if (imageInputRef.current) {
+            imageInputRef.current.textContent = postState.post || '';
+          }
+          return updatedData;
+        });
       }
     }, 0);
-  }, []);
+  }, [postState.post]);
 
   const editableFields = useCallback(() => {
-    if (post?.feelings) {
-      getFeeling(post.feelings);
+    if (postState.feelings) {
+      getFeeling(postState.feelings);
     }
-    if (post?.bgColor) {
-      postData.bgColor = post.bgColor;
-      setPostData({ ...postData });
-      setTextAreaBackground(post.bgColor);
+    if (postState.bgColor) {
+      setPostData((prevData) => ({ ...prevData, bgColor: postState.bgColor }));
+      setTextAreaBackground(postState.bgColor);
       setTimeout(() => {
         if (inputRef?.current) {
-          postData.post = post?.post || '';
-          inputRef.current.textContent = post?.post || '';
-          setPostData({ ...postData });
+          setPostData((prevData) => {
+            const updatedData = { ...prevData, post: postState.post || '' };
+            if (inputRef.current) {
+              inputRef.current.textContent = postState.post || '';
+            }
+            return updatedData;
+          });
         }
       }, 0);
     }
-    if (post?.gifUrl && !post?.imgId && !post.videoId) {
-      postData.gifUrl = post.gifUrl;
-      postData.videoId = '';
-      postData.videoVersion = '';
-      postData.imgId = '';
-      postData.imgVersion = '';
-      postData.video = '';
-      postData.image = '';
-      setPostImage(post.gifUrl);
-      setHasVideo(false);
+    const postStateWithExtras2 = postState as { imgId?: string; imgVersion?: string; videoId?: string; videoVersion?: string };
+    if (postState.gifUrl && !postState.imgId && !postStateWithExtras2.videoId) {
+      setPostData((prevData) => ({
+        ...prevData,
+        gifUrl: postState.gifUrl,
+        videoId: '',
+        videoVersion: '',
+        imgId: '',
+        imgVersion: '',
+        video: '',
+        image: ''
+      }));
+      setPostImage(postState.gifUrl);
       postInputData();
     }
-    if (post?.imgId && !post?.gifUrl) {
-      postData.imgId = post.imgId;
-      postData.imgVersion = post.imgVersion || '';
-      postData.videoId = '';
-      postData.videoVersion = '';
-      const imageUrl = Utils.getImage(post.imgId, post.imgVersion);
+    if (postState.imgId && !postState.gifUrl) {
+      const postStateWithExtras = postState as { imgId?: string; imgVersion?: string; videoId?: string; videoVersion?: string };
+      setPostData((prevData) => ({
+        ...prevData,
+        imgId: postStateWithExtras.imgId || '',
+        imgVersion: postStateWithExtras.imgVersion || '',
+        videoId: '',
+        videoVersion: ''
+      }));
+      const imageUrl = Utils.getImage(postStateWithExtras.imgId || '', postStateWithExtras.imgVersion || '');
       setPostImage(imageUrl);
-      setHasVideo(false);
       postInputData();
     }
-    if (post?.videoId && !post?.imgId && !post?.gifUrl) {
-      postData.videoId = post.videoId;
-      postData.videoVersion = post.videoVersion || '';
-      const videoUrl = Utils.getVideo(post.videoId, post.videoVersion);
+    const postStateWithExtras = postState as { imgId?: string; imgVersion?: string; videoId?: string; videoVersion?: string };
+    if (postStateWithExtras.videoId && !postState.imgId && !postState.gifUrl) {
+      setPostData((prevData) => ({
+        ...prevData,
+        videoId: postStateWithExtras.videoId || '',
+        videoVersion: postStateWithExtras.videoVersion || ''
+      }));
+      const videoUrl = Utils.getVideo(postStateWithExtras.videoId || '', postStateWithExtras.videoVersion || '');
       setPostImage(videoUrl);
-      setHasVideo(true);
       postInputData();
     }
-  }, [post, postData, getFeeling, postInputData]);
+  }, [postState, getFeeling, postInputData]);
 
   const updatePost = async () => {
     setLoading(!loading);
     setDisable(!disable);
     try {
+      const updatedPostData = { ...postData };
       if (Object.keys(feeling || {}).length) {
-        postData.feelings = (feeling as { name?: string })?.name || '';
+        updatedPostData.feelings = (feeling as { name?: string })?.name || '';
       }
-      if (postData.gifUrl || (postData.imgId && postData.imgVersion)) {
-        postData.bgColor = '#ffffff';
+      if (updatedPostData.gifUrl || (updatedPostData.imgId && updatedPostData.imgVersion)) {
+        updatedPostData.bgColor = '#ffffff';
       }
-      postData.privacy = post?.privacy || 'Public';
-      postData.profilePicture = profile?.profilePicture || '';
+      updatedPostData.privacy = postState.privacy || 'Public';
+      updatedPostData.profilePicture = profile?.profilePicture || '';
       if (selectedPostImage || selectedVideo) {
         let result = '';
         if (selectedPostImage) {
@@ -154,38 +171,39 @@ const EditPost = () => {
         }
         const type = selectedPostImage ? 'image' : 'video';
         if (type === 'image') {
-          postData.image = result;
-          postData.video = '';
+          updatedPostData.image = result;
+          updatedPostData.video = '';
         } else {
-          postData.image = '';
-          postData.video = result;
+          updatedPostData.image = '';
+          updatedPostData.video = result;
         }
-        postData.gifUrl = '';
-        postData.imgId = '';
-        postData.imgVersion = '';
-        postData.videoId = '';
-        postData.videoVersion = '';
+        updatedPostData.gifUrl = '';
+        updatedPostData.imgId = '';
+        updatedPostData.imgVersion = '';
+        updatedPostData.videoId = '';
+        updatedPostData.videoVersion = '';
         await PostUtils.sendUpdatePostWithFileRequest(
           type,
-          post?._id || '',
-          postData,
+          postState._id || '',
+          updatedPostData,
           setApiResponse,
           setLoading,
           dispatch
         );
       } else {
         await PostUtils.sendUpdatePostRequest(
-          post?._id || '',
-          postData,
+          postState._id || '',
+          updatedPostData,
           setApiResponse,
           setLoading,
           setDisable,
           dispatch
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -198,13 +216,16 @@ const EditPost = () => {
 
   useEffect(() => {
     PostUtils.positionCursor('editable');
-  }, [post]);
+  }, [postState]);
 
   useEffect(() => {
     if (!loading && apiResponse === 'success') {
       dispatch(closeModal());
     }
-    setDisable(postData.post.length <= 0 && !postImage);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setDisable(postData.post.length <= 0 && !postImage);
+    }, 0);
   }, [loading, dispatch, apiResponse, postData, postImage]);
 
   useEffect(() => {
@@ -222,13 +243,6 @@ const EditPost = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && apiResponse === 'success') {
-      dispatch(closeModal());
-    }
-    setDisable(postData.post.length <= 0 && !postImage);
-  }, [loading, dispatch, apiResponse, postData, postImage]);
-
-  useEffect(() => {
     setTimeout(() => {
       if (imageInputRef?.current && imageInputRef?.current.textContent?.length) {
         if (counterRef.current) {
@@ -243,17 +257,31 @@ const EditPost = () => {
   }, []);
 
   useEffect(() => {
-    if (post?.gifUrl) {
-      postData.image = '';
-      setSelectedPostImage(null);
-      setPostImage(post.gifUrl);
-      PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
-    } else if (post?.image) {
-      setPostImage(post.image);
-      PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
+    if (postState.gifUrl) {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setPostData((prevData) => ({ ...prevData, image: '' }));
+        setSelectedPostImage(null);
+        setPostImage(postState.gifUrl);
+        const postDataForUtils = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
+        PostUtils.postInputData(imageInputRef, postDataForUtils, postState.post || '', (data) => {
+          setPostData((prev) => ({ ...prev, ...data }));
+        });
+      }, 0);
+    } else if (postState.image) {
+      setTimeout(() => {
+        setPostImage(postState.image);
+        const postDataForUtils2 = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
+        PostUtils.postInputData(imageInputRef, postDataForUtils2, postState.post || '', (data) => {
+          setPostData((prev) => ({ ...prev, ...data }));
+        });
+      }, 0);
     }
-    editableFields();
-  }, [editableFields, post, postData]);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      editableFields();
+    }, 0);
+  }, [editableFields, postState, postData]);
 
   return (
     <>
@@ -263,7 +291,7 @@ const EditPost = () => {
           <div
             className="modal-box"
             style={{
-              height: selectedPostImage || post?.gifUrl || post?.imgId || postData?.gifUrl || postData?.image ? '700px' : 'auto'
+              height: selectedPostImage || postState.gifUrl || postState.imgId || postData?.gifUrl || postData?.image ? '700px' : 'auto'
             }}
           >
             {loading && (
@@ -299,7 +327,6 @@ const EditPost = () => {
                         }}
                         id="editable"
                         data-testid="editable"
-                        name="post"
                         className={`editable flex-item ${textAreaBackground !== '#ffffff' ? 'textInputColor' : ''} ${postData.post.length === 0 && textAreaBackground !== '#ffffff' ? 'defaultInputTextColor' : ''}`}
                         contentEditable={true}
                         data-placeholder="What's on your mind?..."
@@ -312,7 +339,10 @@ const EditPost = () => {
                           }
                           setAllowedNumberOfCharacters(`${counter}/${maxNumberOfCharacters}`);
                           setDisable(currentTextLength <= 0 && !postImage);
-                          PostUtils.postInputEditable(textContent, postData, setPostData, setDisable);
+                          const postDataForUtils3 = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
+                          PostUtils.postInputEditable(textContent, postDataForUtils3, (data) => {
+                            setPostData((prev) => ({ ...prev, ...data }));
+                          }, setDisable);
                         }}
                         onKeyDown={onKeyDown}
                       ></div>
@@ -330,7 +360,6 @@ const EditPost = () => {
                       imageInputRef?.current?.focus();
                     }}
                     data-testid="post-editable"
-                    name="post"
                     className="post-input flex-item"
                     contentEditable={true}
                     data-placeholder="What's on your mind?..."
@@ -343,7 +372,11 @@ const EditPost = () => {
                       }
                       setAllowedNumberOfCharacters(`${counter}/${maxNumberOfCharacters}`);
                       setDisable(currentTextLength <= 0 && !postImage);
-                      PostUtils.postInputEditable(textContent, postData, setPostData, setDisable);
+                      // Cast postData to match PostUtils interface (it only uses the post field)
+                      const postDataForUtils = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
+                      PostUtils.postInputEditable(textContent, postDataForUtils, (data) => {
+                        setPostData((prev) => ({ ...prev, ...data }));
+                      }, setDisable);
                     }}
                     onKeyDown={onKeyDown}
                   ></div>
@@ -365,9 +398,8 @@ const EditPost = () => {
                     className={`${color === '#ffffff' ? 'whiteColorBorder' : ''}`}
                     style={{ backgroundColor: `${color}` }}
                     onClick={() => {
-                      postData.bgColor = color;
+                      setPostData((prevData) => ({ ...prevData, bgColor: color }));
                       setTextAreaBackground(color);
-                      setPostData({ ...postData });
                       setDisable(false);
                     }}
                   ></li>
@@ -377,7 +409,7 @@ const EditPost = () => {
             <span className="char_count" data-testid="allowed-number" ref={counterRef}>
               {allowedNumberOfCharacters}
             </span>
-            <ModalBoxSelection setSelectedPostImage={setSelectedPostImage} />
+            <ModalBoxSelection setSelectedPostImage={setSelectedPostImage} setSelectedVideo={setSelectedVideo} />
             <div className="modal-box-button" data-testid="post-button">
               <Button label="Update Post" className="post-button" disabled={disable} handleClick={updatePost} />
             </div>

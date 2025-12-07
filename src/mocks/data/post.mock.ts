@@ -12,16 +12,16 @@ export const postMockData = {
   feelings: 'happy',
   gifUrl: '',
   privacy: 'Public',
-  commentsCount: 3,
+  commentsCount: '3',
   createdAt: '2022-05-16',
-  reactions: {
-    like: 1,
-    love: 2,
-    happy: 0,
-    wow: 0,
-    sad: 0,
-    angry: 0
-  }
+  reactions: [
+    { like: 1 },
+    { love: 2 },
+    { happy: 0 },
+    { wow: 0 },
+    { sad: 0 },
+    { angry: 0 }
+  ]
 };
 
 export const editPostMockData = {
@@ -38,16 +38,16 @@ export const editPostMockData = {
   feelings: 'happy',
   gifUrl: '',
   privacy: 'Public',
-  commentsCount: 3,
+  commentsCount: '3',
   createdAt: '2022-05-16',
-  reactions: {
-    like: 1,
-    love: 2,
-    happy: 0,
-    wow: 0,
-    sad: 0,
-    angry: 0
-  }
+  reactions: [
+    { like: 1 },
+    { love: 2 },
+    { happy: 0 },
+    { wow: 0 },
+    { sad: 0 },
+    { angry: 0 }
+  ]
 };
 
 export const postComment = {

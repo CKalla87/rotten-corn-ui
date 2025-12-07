@@ -80,7 +80,7 @@ const CommentArea = ({ post }: CommentAreaProps) => {
   };
 
   const updatePostReactions = (newReaction: string, hasResponse: number, previousReaction?: string) => {
-    let updatedPost = cloneDeep(post);
+    const updatedPost = cloneDeep(post);
     const reactionsObj = updatedPost.reactions as PostReactionsCount;
     
     if (!hasResponse) {
@@ -166,13 +166,17 @@ const CommentArea = ({ post }: CommentAreaProps) => {
           await postService.addReaction(reactionsData);
         }
       }
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
   useEffect(() => {
-    selectedUserReaction(reactions);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      selectedUserReaction(reactions);
+    }, 0);
   }, [selectedUserReaction, reactions]);
 
   return (

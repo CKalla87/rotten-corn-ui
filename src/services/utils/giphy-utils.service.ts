@@ -2,7 +2,7 @@ import { giphyService } from '@services/api/giphy/giphy.service';
 
 export class GiphyUtils {
   static async getTrendingGifs(
-    setGifs: (gifs: any[]) => void,
+    setGifs: (gifs: Array<Record<string, unknown>>) => void,
     setLoading: (loading: boolean) => void
   ): Promise<void> {
     setLoading(true);
@@ -10,8 +10,9 @@ export class GiphyUtils {
       const response = await giphyService.trending();
       setGifs(response.data.data);
       setLoading(false);
-    } catch (error: any) {
-      console.error('Error fetching trending GIFs:', error.message || error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error fetching trending GIFs:', errorMessage);
       setGifs([]);
       setLoading(false);
     }
@@ -19,7 +20,7 @@ export class GiphyUtils {
 
   static async searchGifs(
     gif: string,
-    setGifs: (gifs: any[]) => void,
+    setGifs: (gifs: Array<Record<string, unknown>>) => void,
     setLoading: (loading: boolean) => void
   ): Promise<void> {
     if (gif.length <= 1) {
@@ -31,8 +32,9 @@ export class GiphyUtils {
       const response = await giphyService.search(gif);
       setGifs(response.data.data);
       setLoading(false);
-    } catch (error: any) {
-      console.error('Error searching GIFs:', error.message || error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error searching GIFs:', errorMessage);
       setGifs([]);
       setLoading(false);
     }

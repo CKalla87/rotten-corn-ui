@@ -67,8 +67,6 @@ export class ImageUtils {
         gifUrl: '',
         imgId: '',
         imgVersion: '',
-        videoId: '',
-        videoVersion: '',
         post: post.post || ''
       })
     );
@@ -156,13 +154,13 @@ export class ImageUtils {
   }
 
   static convertRGBToHex(red: number, green: number, blue: number): string {
-    red = red.toString(16);
-    green = green.toString(16);
-    blue = blue.toString(16);
-    red = red.length === 1 ? '0' + red : red;
-    green = green.length === 1 ? '0' + green : green;
-    blue = blue.length === 1 ? '0' + blue : blue;
-    return `#${red}${green}${blue}`;
+    let redHex = red.toString(16);
+    let greenHex = green.toString(16);
+    let blueHex = blue.toString(16);
+    redHex = redHex.length === 1 ? '0' + redHex : redHex;
+    greenHex = greenHex.length === 1 ? '0' + greenHex : greenHex;
+    blueHex = blueHex.length === 1 ? '0' + blueHex : blueHex;
+    return `#${redHex}${greenHex}${blueHex}`;
   }
 }
 

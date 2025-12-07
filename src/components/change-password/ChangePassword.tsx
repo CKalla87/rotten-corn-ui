@@ -19,9 +19,12 @@ const ChangePassword = () => {
   const [type, setType] = useState('password');
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const [, deleteStorageUsername] = useLocalStorage<unknown>('username', 'delete') as [() => void];
-  const [, deleteSessionPageReload] = useSessionStorage<unknown>('pageReload', 'delete') as [() => void];
-  const [, setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
+  const storageResult = useLocalStorage<unknown>('username', 'delete');
+  const deleteStorageUsername = Array.isArray(storageResult) ? storageResult[0] : (() => {}) as () => void;
+  const sessionResult = useSessionStorage<unknown>('pageReload', 'delete');
+  const deleteSessionPageReload = Array.isArray(sessionResult) ? sessionResult[0] : (() => {}) as () => void;
+  const loggedInResult = useLocalStorage<boolean>('keepLoggedIn', 'set');
+  const setLoggedIn = Array.isArray(loggedInResult) ? loggedInResult[0] : (() => {}) as (value: boolean) => void;
 
   const togglePasswordDisplay = () => {
     setTogglePassword(!togglePassword);
@@ -53,8 +56,9 @@ const ChangePassword = () => {
           navigate('/');
         }, 3000);
       }
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -100,7 +104,7 @@ const ChangePassword = () => {
               label="Update"
               className="update"
               disabled={!currentPassword || !newPassword || !confirmPassword}
-              handleClick={changePassword}
+              handleClick={changePassword as () => void}
             />
             <span className="eye-icon" data-testid="eye-icon" onClick={togglePasswordDisplay}>
               {!togglePassword ? <FaRegEyeSlash /> : <FaRegEye />}

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 const useChatScrollToBottom = (prop: unknown) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -9,7 +9,7 @@ const useChatScrollToBottom = (prop: unknown) => {
     }
   }, [prop]);
 
-  return scrollRef;
+  return scrollRef as React.RefObject<HTMLDivElement>;
 };
 
 export default useChatScrollToBottom;

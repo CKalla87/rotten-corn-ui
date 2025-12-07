@@ -17,7 +17,7 @@ const decodeHtmlEntities = (text: string): string => {
   if (!text) return '';
   const textarea = document.createElement('textarea');
   textarea.innerHTML = text;
-  let decoded = textarea.value;
+  const decoded = textarea.value;
   return decoded;
 };
 
@@ -85,7 +85,7 @@ const ContentEditable = ({
 
   return (
     <Tag
-      ref={ref as any}
+      ref={ref as React.RefObject<HTMLElement>}
       contentEditable={!disabled}
       onInput={handleInput}
       className={className}

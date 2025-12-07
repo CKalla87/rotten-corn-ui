@@ -29,8 +29,9 @@ const CommentsModal = () => {
     try {
       const response = await postService.getPostComments(post?._id || '');
       setPostComments(response.data?.comments || []);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 

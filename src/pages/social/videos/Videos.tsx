@@ -31,8 +31,6 @@ const Videos = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [rightImageIndex, setRightImageIndex] = useState<number>(0);
-  const [leftImageIndex, setLeftImageIndex] = useState<number>(0);
   const [lastItemRight, setLastItemRight] = useState(false);
   const [lastItemLeft, setLastItemLeft] = useState(false);
 
@@ -41,7 +39,7 @@ const Videos = () => {
       const response = await postService.getPostsWithVideos(1);
       setPosts(response.data.posts);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
@@ -51,7 +49,7 @@ const Videos = () => {
     try {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };

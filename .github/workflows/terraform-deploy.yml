@@ -36,6 +36,7 @@ jobs:
           fi
           echo "Deployment confirmed for environment: ${{ github.event.inputs.environment }}"
 
+<<<<<<< HEAD
       - name: Validate AWS secrets
         run: |
           if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
@@ -50,6 +51,8 @@ jobs:
           fi
           echo "AWS secrets validation passed"
 
+=======
+>>>>>>> aa7dd279fc712d6c4142925a0e6b3548bece8e58
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

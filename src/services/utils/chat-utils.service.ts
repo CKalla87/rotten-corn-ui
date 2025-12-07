@@ -63,6 +63,10 @@ export class ChatUtils {
     });
   }
 
+  static clearPrivateChatMessages(): void {
+    ChatUtils.privateChatMessages = [];
+  }
+
   static joinRoomEvent(user: ChatUser, profile: UserData): void {
     const users = {
       receiverId: user.receiverId,
@@ -132,7 +136,6 @@ export class ChatUtils {
     chatMessageList,
     profile,
     username,
-    setSelectedChatUser: setSelectedChatUserProp,
     params,
     pathname,
     navigate,
@@ -188,7 +191,7 @@ export class ChatUtils {
     setConversationId: (id: string) => void,
     setChatMessages: (messages: ChatUser[]) => void
   ): void {
-    let updatedChatMessages = cloneDeep(chatMessages);
+    const updatedChatMessages = cloneDeep(chatMessages);
     socketService?.socket?.on('message received', (data: ChatUser) => {
       if (
         (data.senderUsername as string)?.toLowerCase() === username?.toLowerCase() ||
@@ -227,7 +230,7 @@ export class ChatUtils {
         (data.senderUsername as string)?.toLowerCase() === username?.toLowerCase() ||
         (data.receiverUsername as string)?.toLowerCase() === username?.toLowerCase()
       ) {
-        let updatedChatMessages = cloneDeep(chatMessages);
+        const updatedChatMessages = cloneDeep(chatMessages);
         setConversationId(data.conversationId || '');
         const messageIndex = findIndex(updatedChatMessages, (message) => (message as ChatUser & { _id?: string })?._id === (data as ChatUser & { _id?: string })?._id);
         if (messageIndex > -1) {

@@ -31,8 +31,6 @@ const Photos = () => {
   const [following, setFollowing] = useState<unknown[]>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
-  const [rightImageIndex, setRightImageIndex] = useState<number>();
-  const [leftImageIndex, setLeftImageIndex] = useState<number>();
   const [lastItemRight, setLastItemRight] = useState(false);
   const [lastItemLeft, setLastItemLeft] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,7 +40,7 @@ const Photos = () => {
       const response = await postService.getPostsWithImages(1);
       setPosts(response.data.posts);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
@@ -52,7 +50,7 @@ const Photos = () => {
     try {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
@@ -60,10 +58,6 @@ const Photos = () => {
   const postImageUrl = (post: PostData) => {
     const imgUrl = Utils.getImage(post?.imgId, post?.imgVersion);
     return post?.gifUrl ? post?.gifUrl : imgUrl;
-  };
-
-  const emptyPost = (post: PostData) => {
-    return Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId);
   };
 
   const displayImage = (post: PostData) => {

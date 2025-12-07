@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { RefObject } from 'react';
 
 const useDetectOutsideClick = <T extends HTMLElement>(
-  ref: RefObject<T>,
+  ref: RefObject<T | null>,
   initialState: boolean
 ): [boolean, (value: boolean | ((prev: boolean) => boolean)) => void] => {
   const [isActive, setIsActive] = useState(initialState);

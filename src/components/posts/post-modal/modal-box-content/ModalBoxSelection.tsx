@@ -20,7 +20,7 @@ interface ModalBoxSelectionProps {
 
 const ModalBoxSelection = ({ setSelectedPostImage, setSelectedVideo }: ModalBoxSelectionProps) => {
   const { feelingsIsOpen, gifModalIsOpen } = useSelector((state: RootState) => state.modal);
-  const { post } = useSelector((state: RootState) => state.post);
+  const post = useSelector((state: RootState) => state.post);
   const feelingsRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);

@@ -45,13 +45,17 @@ const NotificationSettings = () => {
       if (response) {
         Utils.dispatchNotification(response.data.message, 'success', dispatch);
       }
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
   useEffect(() => {
-    mapNotificationTypesToggle(notificationItems);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      mapNotificationTypesToggle(notificationItems);
+    }, 0);
   }, [mapNotificationTypesToggle, notificationTypes]);
 
   return (

@@ -73,18 +73,6 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     // Don't touch the cursor here - let the onInput handler manage it
   };
 
-  const insertEmojiAtCursor = (emoji: string) => {
-    const editableElement = inputRef.current;
-    if (editableElement) {
-      PostUtils.insertTextAtCursor(editableElement, emoji);
-      // Trigger input event to update state
-      const event = new Event('input', { bubbles: true });
-      editableElement.dispatchEvent(event);
-      // Also manually update the post data
-      const textContent = editableElement.textContent || '';
-      postInputEditable({ currentTarget: editableElement } as React.FormEvent<HTMLDivElement>, textContent);
-    }
-  };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const element = event.currentTarget as HTMLDivElement;
@@ -138,16 +126,17 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     setLoading(!loading);
     setDisable(!disable);
     try {
+      const updatedPostData = { ...postData };
       if (feeling) {
-        postData.feelings = feeling;
+        updatedPostData.feelings = feeling;
       }
-      postData.privacy = privacy || 'Public';
-      postData.gifUrl = gifUrl || '';
-      postData.profilePicture = profile?.profilePicture || '';
+      updatedPostData.privacy = privacy || 'Public';
+      updatedPostData.gifUrl = gifUrl || '';
+      updatedPostData.profilePicture = profile?.profilePicture || '';
       if (postImage) {
-        postData.post = imageInputRef.current?.textContent || postData.post || '';
+        updatedPostData.post = imageInputRef.current?.textContent || updatedPostData.post || '';
       } else {
-        postData.post = inputRef.current?.textContent || postData.post || '';
+        updatedPostData.post = inputRef.current?.textContent || updatedPostData.post || '';
       }
       if (selectedPostItem || selectedImage || selectedVideo || selectedPostVideo) {
         let result = '';
@@ -165,15 +154,15 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
         }
         const type = selectedPostItem || selectedImage ? 'image' : 'video';
         if (type === 'image') {
-          postData.image = result;
-          postData.video = '';
+          updatedPostData.image = result;
+          updatedPostData.video = '';
         } else {
-          postData.image = '';
-          postData.video = result;
+          updatedPostData.image = '';
+          updatedPostData.video = result;
         }
         const response = await PostUtils.sendPostWithFileRequest(
           type,
-          postData,
+          updatedPostData,
           imageInputRef,
           setApiResponse,
           setLoading,
@@ -184,16 +173,17 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
           PostUtils.closePostModal(dispatch);
         }
       } else {
-        const response = await postService.createPost(postData);
+        const response = await postService.createPost(updatedPostData);
         if (response) {
           setApiResponse('success');
           setLoading(false);
           PostUtils.closePostModal(dispatch);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -247,22 +237,34 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     if (!loading && apiResponse === 'success') {
       dispatch(closeModal());
     }
-    setDisable(postData.post.length <= 0 && !postImage);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setDisable(postData.post.length <= 0 && !postImage);
+    }, 0);
   }, [loading, dispatch, apiResponse, postData, postImage]);
 
   useEffect(() => {
     if (gifUrl) {
-      setPostImage(gifUrl);
-      setHasVideo(false);
-      PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setPostImage(gifUrl);
+        setHasVideo(false);
+        PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+      }, 0);
     } else if (image) {
-      setPostImage(image);
-      setHasVideo(false);
-      PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setPostImage(image);
+        setHasVideo(false);
+        PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+      }, 0);
     } else if (video) {
-      setHasVideo(true);
-      setPostImage(video);
-      PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setHasVideo(true);
+        setPostImage(video);
+        PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+      }, 0);
     }
   }, [gifUrl, image, video, postData]);
 
@@ -313,7 +315,6 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                         }}
                         id="editable"
                         data-testid="editable"
-                        name="post"
                         className={`editable flex-item ${textAreaBackground !== '#ffffff' ? 'textInputColor' : ''} ${postData.post.length === 0 && textAreaBackground !== '#ffffff' ? 'defaultInputTextColor' : ''}`}
                         contentEditable={true}
                         dir="ltr"
@@ -338,7 +339,7 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                         try {
                           selection.removeAllRanges();
                           selection.addRange(savedRange);
-                        } catch (err) {
+                        } catch {
                           // If range is invalid, position at end
                           const range = document.createRange();
                           range.selectNodeContents(element);
@@ -406,7 +407,6 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                       }
                     }}
                     data-testid="post-editable"
-                    name="post"
                     className="post-input flex-item"
                     contentEditable={true}
                     dir="ltr"
@@ -431,7 +431,7 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                         try {
                           selection.removeAllRanges();
                           selection.addRange(savedRange);
-                        } catch (err) {
+                        } catch {
                           // If range is invalid, position at end
                           const range = document.createRange();
                           range.selectNodeContents(element);

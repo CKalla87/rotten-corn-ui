@@ -123,8 +123,8 @@ export class Utils {
       return '';
     }
     // Strip quotes if present (fixes issues with stringified values)
-    let version = typeof imgVersion === 'string' ? imgVersion.replace(/['"]+/g, '') : imgVersion;
-    let id = typeof imgId === 'string' ? imgId.replace(/['"]+/g, '') : imgId;
+    const version = typeof imgVersion === 'string' ? imgVersion.replace(/['"]+/g, '') : imgVersion;
+    const id = typeof imgId === 'string' ? imgId.replace(/['"]+/g, '') : imgId;
     const cloudName = import.meta.env.VITE_CLOUD_NAME;
     if (!cloudName) {
       return '';

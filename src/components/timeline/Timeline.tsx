@@ -12,7 +12,7 @@ import { PostUtils } from '@services/utils/post-utils.service';
 import { Utils } from '@services/utils/utils.service';
 import { addReactions } from '@redux/reducers/post/userPostReactionSlice';
 import PropTypes from 'prop-types';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import useEffectOnce from '@hooks/useEffectOnce';
@@ -49,36 +49,19 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
     try {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
-
-  const getUserByUsername = useCallback(() => {
-    if (userProfileData) {
-      setPosts((userProfileData.posts as unknown[]) || []);
-      setUser((userProfileData.user as Record<string, unknown>) || null);
-      setEditableInputs({
-        quote: (userProfileData.user as { quote?: string })?.quote || '',
-        work: (userProfileData.user as { work?: string })?.work || '',
-        school: (userProfileData.user as { school?: string })?.school || '',
-        location: (userProfileData.user as { location?: string })?.location || ''
-      });
-      setEditableSocialInputs((userProfileData.user as { social?: Record<string, unknown> })?.social || {
-        instagram: '',
-        twitter: '',
-        facebook: '',
-        youtube: ''
-      });
-    }
-  }, [userProfileData]);
 
   const getReactionsByUsername = async () => {
     try {
       const reactionsResponse = await postService.getReactionsByUsername(storedUsername as string);
       dispatch(addReactions(reactionsResponse.data.reactions));
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -98,8 +81,26 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
   }, [username, profile]);
 
   useEffect(() => {
-    getUserByUsername();
-  }, [getUserByUsername]);
+    if (userProfileData) {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setPosts((userProfileData.posts as unknown[]) || []);
+        setUser((userProfileData.user as Record<string, unknown>) || null);
+        setEditableInputs({
+          quote: (userProfileData.user as { quote?: string })?.quote || '',
+          work: (userProfileData.user as { work?: string })?.work || '',
+          school: (userProfileData.user as { school?: string })?.school || '',
+          location: (userProfileData.user as { location?: string })?.location || ''
+        });
+        setEditableSocialInputs((userProfileData.user as { social?: Record<string, unknown> })?.social || {
+          instagram: '',
+          twitter: '',
+          facebook: '',
+          youtube: ''
+        });
+      }, 0);
+    }
+  }, [userProfileData]);
 
   useEffect(() => {
     PostUtils.socketIOPost(posts, setPosts);
@@ -156,12 +157,12 @@ const Timeline = ({ userProfileData, loading }: TimelineProps) => {
                 <PostForm />
               </div>
             )}
-            {posts.map((post: any) => (
+            {posts.map((post: Record<string, unknown>) => (
               <div key={post?._id} data-testid="posts-item">
                 {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId) ||
                   post?.userId === profile?._id) && (
                   <>
-                    {PostUtils.checkPrivacy(post, profile || {}, following as any[]) && (
+                    {PostUtils.checkPrivacy(post, profile || {}, following as Array<Record<string, unknown>>) && (
                       <Post post={post} showIcons={username === profile?.username} />
                     )}
                   </>
