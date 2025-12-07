@@ -1,0 +1,109 @@
+name: Terraform Deploy (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - develop
+          - staging
+          - main
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'deploy'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+            echo "Error: Confirmation must be 'deploy'"
+            exit 1
+          fi
+          echo "Deployment confirmed for environment: ${{ github.event.inputs.environment }}"
+
+      - name: Validate AWS secrets
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "Error: AWS_ACCESS_KEY_ID secret is not set"
+            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "Error: AWS_SECRET_ACCESS_KEY secret is not set"
+            echo "Please configure this secret in GitHub: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          echo "AWS secrets validation passed"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Create temp folder
+        run: mkdir -p temp_folder
+
+      - name: Terraform Init and Apply
+        working-directory: infrastructure
+        run: |
+          terraform init
+          terraform workspace select ${{ github.event.inputs.environment }} || terraform workspace new ${{ github.event.inputs.environment }}
+          
+          # Show plan first
+          echo "Running terraform plan..."
+          terraform plan -out=tfplan
+          
+          # Apply with error handling
+          echo "Applying Terraform changes..."
+          if terraform apply -auto-approve tfplan; then
+            echo "Terraform apply successful"
+          else
+            echo "Terraform apply failed"
+            terraform show
+            exit 1
+          fi
+          
+          # Get CloudFront distribution ID
+          if terraform output -raw cloudfront_distribution_id > ../temp_folder/cloudfront_distribution_id.txt; then
+            echo "CloudFront distribution ID saved"
+            cat ../temp_folder/cloudfront_distribution_id.txt
+          else
+            echo "Warning: Could not get CloudFront distribution ID"
+            exit 1
+          fi
+
+      - name: Upload CloudFront distribution ID
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudfront-distribution-id-${{ github.event.inputs.environment }}
+          path: temp_folder/cloudfront_distribution_id.txt
+          retention-days: 30
+
+      - name: Deployment Summary
+        run: |
+          echo "## Terraform Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
