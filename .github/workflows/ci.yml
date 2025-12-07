@@ -238,7 +238,7 @@ jobs:
           ls -la dist/ | head -20
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-files
           path: dist/
@@ -340,7 +340,7 @@ jobs:
           fi
 
       - name: Upload CloudFront distribution ID
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cloudfront-distribution-id
           path: temp_folder/cloudfront_distribution_id.txt
@@ -527,7 +527,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Download CloudFront distribution ID artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cloudfront-distribution-id
           path: temp_folder
