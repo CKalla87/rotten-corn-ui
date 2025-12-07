@@ -53,7 +53,6 @@ const Post = ({ post, showIcons = false }: PostProps) => {
   const { post: postFromRedux } = useSelector((state: RootState) => state.post);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
-  const [backgroundImageColor, setBackgroundImageColor] = useState('');
   const selectedPostId = useLocalStorage<string>('selectedPostId', 'get');
 
 
@@ -87,8 +86,7 @@ const Post = ({ post, showIcons = false }: PostProps) => {
       imageUrl = post.gifUrl;
     }
     if (imageUrl) {
-      const bgColor = await ImageUtils.getBackgroundImageColor(imageUrl);
-      setBackgroundImageColor(bgColor);
+      await ImageUtils.getBackgroundImageColor(imageUrl);
     }
   }, []);
 
@@ -106,19 +104,18 @@ const Post = ({ post, showIcons = false }: PostProps) => {
         dispatch(toggleDeleteDialog({ toggle: false }));
         dispatch(clearPost());
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If deletion fails, we might want to re-add the post, but for now just show error
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred while deleting the post', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred while deleting the post', 'error', dispatch);
     }
   };
 
   useEffect(() => {
-    if (post?.imgId && !post?.gifUrl) {
-      getBackgroundImageColor(post);
-    } else if (post?.gifUrl) {
+    if ((post?.imgId && !post?.gifUrl) || post?.gifUrl) {
       getBackgroundImageColor(post);
     }
-  }, [post?.imgId, post?.gifUrl, getBackgroundImageColor]);
+  }, [post, getBackgroundImageColor]);
 
   return (
     <>
@@ -207,7 +204,7 @@ const Post = ({ post, showIcons = false }: PostProps) => {
               src={Utils.getImage(post.imgId as string, post.imgVersion as string)} 
               alt="" 
               style={{ objectFit: 'contain' }}
-              onError={(e) => {
+              onError={() => {
                 // 401 errors indicate images are not set to public in Cloudinary
                 // Backend needs to upload with access_mode: 'public'
                 console.error('Image failed to load. If you see 401, backend needs to set access_mode: "public" when uploading to Cloudinary.');
@@ -221,7 +218,7 @@ const Post = ({ post, showIcons = false }: PostProps) => {
               className="post-image" 
               src={Utils.fixCloudinaryUrl(post.image as string)} 
               alt=""
-              onError={(e) => {
+              onError={() => {
                 console.error('Image failed to load with image field:', {
                   image: post.image,
                   fixedUrl: Utils.fixCloudinaryUrl(post.image as string),

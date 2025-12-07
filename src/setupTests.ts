@@ -37,6 +37,15 @@ jest.mock('@services/utils/utils.service', () => ({
   }
 }));
 
+// Mock socket service to avoid import.meta issues
+jest.mock('@services/socket/socket.service', () => ({
+  socketService: {
+    socket: null,
+    setupSocketConnection: jest.fn(),
+    socketConnectionEvents: jest.fn(),
+  }
+}));
+
 // Conditionally load MSW only if needed
 // Some tests don't need MSW, so we'll try to load it but handle errors gracefully
 type MSWServer = { listen: () => void; resetHandlers: () => void; close: () => void };

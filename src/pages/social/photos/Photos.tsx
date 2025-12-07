@@ -31,8 +31,6 @@ const Photos = () => {
   const [following, setFollowing] = useState<unknown[]>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
-  const [rightImageIndex, setRightImageIndex] = useState<number>();
-  const [leftImageIndex, setLeftImageIndex] = useState<number>();
   const [lastItemRight, setLastItemRight] = useState(false);
   const [lastItemLeft, setLastItemLeft] = useState(false);
   const [loading, setLoading] = useState(true);

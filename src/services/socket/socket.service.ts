@@ -9,7 +9,22 @@ class SocketService {
       // In local development, use empty string to leverage Vite's socket.io proxy
       // The proxy in vite.config.ts will route /socket.io to http://localhost:5000
       // Otherwise, use the full BASE_ENDPOINT
-      const socketUrl = BASE_ENDPOINT || (import.meta.env.DEV ? '' : 'http://localhost:5000');
+      let isDev = false;
+      // Safely check for import.meta (available in Vite, not in Jest)
+      // Use type assertion to avoid TypeScript errors in test environment
+      const metaEnv = typeof import.meta !== 'undefined' 
+        ? (import.meta as { env?: { DEV?: boolean; MODE?: string } })?.env
+        : undefined;
+      
+      if (metaEnv) {
+        isDev = metaEnv.DEV ?? metaEnv.MODE === 'development';
+      } else {
+        // In test environment, import.meta might not be available
+        // Default to development mode for tests
+        isDev = typeof process !== 'undefined' && 
+                (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test');
+      }
+      const socketUrl = BASE_ENDPOINT || (isDev ? '' : 'http://localhost:5000');
       
       this.socket = io(socketUrl, {
         path: '/socket.io',

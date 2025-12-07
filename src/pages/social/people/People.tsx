@@ -32,7 +32,6 @@ const People = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { profile } = useSelector((state: RootState) => state.user);
   const [users, setUsers] = useState<UserData[]>([]);
-  const [followers, setFollowers] = useState<UserData[]>([]);
   const [following, setFollowing] = useState<UserData[]>([]);
   const [onlineUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

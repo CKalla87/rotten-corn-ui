@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { cloneDeep } from 'lodash';
 import { Utils } from '@services/utils/utils.service';
@@ -23,6 +23,21 @@ const Toast = ({ toastList, position = 'top-right', autoDelete = true, autoDelet
   const [list, setList] = useState<ToastItem[]>(toastList);
   const listData = useRef<ToastItem[]>([]);
   const dispatch = useDispatch();
+  const prevToastListRef = useRef<ToastItem[]>([]);
+
+  const syncedList = useMemo(() => {
+    if (JSON.stringify(prevToastListRef.current) !== JSON.stringify(toastList)) {
+      prevToastListRef.current = toastList;
+      return toastList;
+    }
+    return list;
+  }, [toastList, list]);
+
+  useEffect(() => {
+    if (JSON.stringify(list) !== JSON.stringify(syncedList)) {
+      setList(syncedList);
+    }
+  }, [syncedList]);
 
   const deleteToast = useCallback(() => {
     listData.current = cloneDeep(list);
@@ -33,10 +48,6 @@ const Toast = ({ toastList, position = 'top-right', autoDelete = true, autoDelet
       Utils.dispatchClearNotification(dispatch);
     }
   }, [list, dispatch]);
-
-  useEffect(() => {
-    setList([...toastList]);
-  }, [toastList]);
 
   useEffect(() => {
     const tick = () => {

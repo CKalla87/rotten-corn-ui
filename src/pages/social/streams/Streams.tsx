@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { uniqBy } from 'lodash';
 import Suggestions from '@components/suggestions/Suggestions';
@@ -43,8 +43,9 @@ const Streams = () => {
         setPosts(allPosts);
       }
       setLoading(false);
-    } catch (error: any) {
-      Utils.dispatchNotification(error.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -54,8 +55,9 @@ const Streams = () => {
         const response = await postService.getReactionsByUsername(storedUsername);
         dispatch(addReactions(response.data.reactions));
       }
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -63,8 +65,9 @@ const Streams = () => {
     try {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -87,14 +90,17 @@ const Streams = () => {
     getUserFollowing();
   });
 
+  const derivedLoading = useMemo(() => allPosts?.isLoading || false, [allPosts?.isLoading]);
+  const derivedPosts = useMemo(() => allPosts?.posts || [], [allPosts?.posts]);
+  const derivedTotalPostsCount = useMemo(() => allPosts?.totalPostsCount || 0, [allPosts?.totalPostsCount]);
+
   useEffect(() => {
-    setLoading(allPosts?.isLoading || false);
-    const newPosts = allPosts?.posts || [];
-    setPosts(newPosts);
-    setTotalPostsCount(allPosts?.totalPostsCount || 0);
+    setLoading(derivedLoading);
+    setPosts(derivedPosts);
+    setTotalPostsCount(derivedTotalPostsCount);
     // Update appPosts ref when Redux posts change
-    appPosts.current = newPosts;
-  }, [allPosts]);
+    appPosts.current = derivedPosts;
+  }, [derivedLoading, derivedPosts, derivedTotalPostsCount]);
 
   // Use ref to store latest posts for socket handlers
   const allPostsRef = useRef(allPosts);
@@ -112,7 +118,7 @@ const Streams = () => {
         dispatch(addToPosts([post, ...currentPosts]));
       };
 
-      const handleUpdatePost = (post: any) => {
+      const handleUpdatePost = (post: unknown) => {
         dispatch(updatePostInList(post));
       };
 
@@ -120,18 +126,28 @@ const Streams = () => {
         dispatch(removePost(postId));
       };
 
-      const handleUpdateLike = (reactionData: any) => {
+      interface ReactionData {
+        postId?: string;
+        postReactions?: unknown;
+      }
+
+      const handleUpdateLike = (reactionData: ReactionData) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        const post = (currentPosts as any[]).find((p: any) => p._id === reactionData?.postId);
+        const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === reactionData?.postId);
         if (post) {
           const updatedPost = { ...post, reactions: reactionData.postReactions };
           dispatch(updatePostInList(updatedPost));
         }
       };
 
-      const handleUpdateComment = (reactionData: any) => {
+      interface CommentData {
+        postId?: string;
+        commentsCount?: number;
+      }
+
+      const handleUpdateComment = (reactionData: CommentData) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        const post = (currentPosts as any[]).find((p: any) => p._id === reactionData?.postId);
+        const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === reactionData?.postId);
         if (post) {
           const updatedPost = { ...post, reactions: reactionData.postReactions };
           dispatch(updatePostInList(updatedPost));

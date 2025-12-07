@@ -14,7 +14,6 @@ import './OAuthCallback.sass';
 const OAuthCallback = () => {
   const { provider: providerParam } = useParams<{ provider: string }>();
   const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [setStoredUsername] = useLocalStorage<string>('username', 'set') as [(value: string) => void];
   const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
@@ -63,7 +62,6 @@ const OAuthCallback = () => {
                            axiosError?.message || 
                            'OAuth authentication failed';
         setError(errorMessage);
-        setLoading(false);
         
         // Redirect to login after 3 seconds
         setTimeout(() => {
