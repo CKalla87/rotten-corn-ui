@@ -81,7 +81,7 @@ jobs:
           fi
 
       - name: Upload CloudFront distribution ID
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cloudfront-distribution-id-${{ github.event.inputs.environment }}
           path: temp_folder/cloudfront_distribution_id.txt
