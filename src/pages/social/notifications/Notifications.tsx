@@ -156,7 +156,7 @@ const Notifications = () => {
         socketService.socket.off('delete notification');
       }
     };
-  }, [loading, profile]);
+  }, [loading, profile, notifications]);
 
   return (
     <>

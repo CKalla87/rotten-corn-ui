@@ -84,7 +84,7 @@ const Avatar = ({
       )}
       {avatarSrc && !imageError && (
         <img
-          src={Utils.fixCloudinaryUrl(avatarSrc)}
+          src={Utils.fixCloudinaryUrl ? Utils.fixCloudinaryUrl(avatarSrc) : avatarSrc}
           alt={name || ''}
           className="avatar-content avatar-container"
           style={{

@@ -14,7 +14,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  NODE_VERSION: '16.17.0'
+  NODE_VERSION: '20.x'
 
 jobs:
   install-dependencies:
@@ -25,7 +25,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Show current branch
-        run: echo "Current branch: ${{ github.ref_name }}"
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -140,7 +141,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Show current branch
-        run: echo "Current branch: ${{ github.ref_name }}"
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -196,6 +198,11 @@ jobs:
             exit 1
           fi
 
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests with environment variables..."
+          npm run test -- --coverage --watchAll=false
+
       - name: Build project
         run: |
           echo "Starting build process..."
@@ -231,7 +238,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Show current branch
-        run: echo "Current branch: ${{ github.ref_name }}"
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -255,7 +263,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Show current branch
-        run: echo "Current branch: ${{ github.ref_name }}"
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -372,6 +381,11 @@ jobs:
             exit 1
           fi
 
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests with environment variables..."
+          npm run test -- --coverage --watchAll=false
+
       - name: Build project
         run: |
           echo "Starting build process..."
@@ -397,7 +411,8 @@ jobs:
           BUCKET_NAME="chatapp-client-${{ github.ref_name }}-app-602951639614"
           echo "Verifying S3 bucket exists: $BUCKET_NAME"
           if aws s3 ls "s3://$BUCKET_NAME" 2>&1 | grep -q 'NoSuchBucket'; then
-            echo "Error: S3 bucket $BUCKET_NAME does not exist. Terraform should have created it."
+            echo "Warning: S3 bucket $BUCKET_NAME does not exist. Infrastructure may need to be deployed first."
+            echo "Note: Terraform apply must be run manually via the infrastructure deployment workflow."
             exit 1
           fi
           echo "S3 bucket verified: $BUCKET_NAME"
@@ -455,11 +470,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Download CloudFront distribution ID
+      - name: Download CloudFront distribution ID artifact
         uses: actions/download-artifact@v3
         with:
           name: cloudfront-distribution-id
-          path: temp_folder/
+          path: temp_folder
+
+      - name: Create temp folder if it doesn't exist
+        run: mkdir -p temp_folder
 
       - name: Invalidate CloudFront distribution
         run: |

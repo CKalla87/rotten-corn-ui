@@ -36,10 +36,10 @@ describe('PostForm', () => {
     expect(postModal).toBeInTheDocument();
   });
 
-  it('should have 3 list items', async () => {
+  it('should have 4 list items', async () => {
     render(<PostForm />);
     const listElement = await screen.findAllByTestId('list-item');
-    expect(listElement[0].childNodes.length).toEqual(3);
+    expect(listElement[0].childNodes.length).toEqual(4);
   });
 
   it('should have photo list item', async () => {
@@ -63,11 +63,14 @@ describe('PostForm', () => {
     const listElement = await screen.findAllByTestId('list-item');
     const { getAllByRole } = within(listElement[0]);
     const items = getAllByRole('listitem');
-    await userEvent.click(items[1]);
-    const postModal = await screen.findByTestId('post-modal');
-    expect(postModal).toBeInTheDocument();
-    expect(items[1]).toBeInTheDocument();
-    expect(items[1].textContent.trim()).toEqual('Gif');
+    // Find Gif item by text content instead of index to be more robust
+    const gifItem = items.find(item => item.textContent?.trim() === 'Gif');
+    expect(gifItem).toBeInTheDocument();
+    if (gifItem) {
+      await userEvent.click(gifItem);
+      const postModal = await screen.findByTestId('post-modal');
+      expect(postModal).toBeInTheDocument();
+    }
   });
 
   it('should have Feeling list item', async () => {
@@ -75,11 +78,14 @@ describe('PostForm', () => {
     const listElement = await screen.findAllByTestId('list-item');
     const { getAllByRole } = within(listElement[0]);
     const items = getAllByRole('listitem');
-    await userEvent.click(items[2]);
-    const postModal = await screen.findByTestId('post-modal');
-    expect(postModal).toBeInTheDocument();
-    expect(items[2]).toBeInTheDocument();
-    expect(items[2].textContent.trim()).toEqual('Feeling');
+    // Find Feeling item by text content instead of index to be more robust
+    const feelingItem = items.find(item => item.textContent?.trim() === 'Feeling');
+    expect(feelingItem).toBeInTheDocument();
+    if (feelingItem) {
+      await userEvent.click(feelingItem);
+      const postModal = await screen.findByTestId('post-modal');
+      expect(postModal).toBeInTheDocument();
+    }
   });
 });
 

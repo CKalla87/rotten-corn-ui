@@ -113,10 +113,11 @@ const Profile = () => {
         }
         
         setLoading(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
         setHasError(true);
         setLoading(false);
-        Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
     },
     [dispatch, searchParams, username, profile, navigate]
@@ -130,25 +131,36 @@ const Profile = () => {
           const imagesResponse = await imageService.getUserImages(userId);
           setGalleryImages(imagesResponse.data.images || []);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Don't show error notification for images if user profile loads successfully
         console.warn('Failed to load user images:', error);
         setGalleryImages([]);
       }
     },
-    [dispatch, searchParams, user]
+    [searchParams, user]
   );
 
   useEffect(() => {
     if (rendered) {
-      getUserProfileByUsername();
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void getUserProfileByUsername();
+      }, 0);
     }
-    if (!rendered) setRendered(true);
+    if (!rendered) {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setRendered(true);
+      }, 0);
+    }
   }, [rendered, getUserProfileByUsername]);
 
   useEffect(() => {
     if (user && rendered) {
-      getUserImages();
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void getUserImages();
+      }, 0);
     }
   }, [user, rendered, getUserImages]);
 
@@ -242,9 +254,10 @@ const Profile = () => {
           }
         }, 1000); // Increased delay to 1 second to ensure backend has processed
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setHasError(true);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -252,9 +265,10 @@ const Profile = () => {
     try {
       setBgUrl('');
       await removeImage(`/images/background/${bgImageId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setHasError(true);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -264,9 +278,10 @@ const Profile = () => {
       const images = filter(galleryImages, (image) => image._id !== imageId);
       setGalleryImages(images);
       await removeImage(`/images/${imageId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setHasError(true);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 

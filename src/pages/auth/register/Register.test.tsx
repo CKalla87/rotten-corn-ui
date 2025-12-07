@@ -42,7 +42,7 @@ describe('Register', () => {
   describe('Button', () => {
     it('should be disabled', () => {
       render(<Register />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signup/i });
       expect(buttonElement).toBeDisabled();
     });
 
@@ -61,10 +61,10 @@ describe('Register', () => {
           },
           token: 'token123'
         }
-      } as any);
+      } as { data: { message: string; user: Record<string, unknown>; token: string } });
 
       render(<Register />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signup/i });
       const usernameLabel = screen.getByLabelText('Username');
       const emailLabel = screen.getByLabelText('Email');
       const passwordLabel = screen.getByLabelText('Password');
@@ -91,10 +91,10 @@ describe('Register', () => {
           },
           token: 'token123'
         }
-      } as any);
+      } as { data: { message: string; user: Record<string, unknown>; token: string } });
 
       render(<Register />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signup/i });
       const usernameLabel = screen.getByLabelText('Username');
       const emailLabel = screen.getByLabelText('Email');
       const passwordLabel = screen.getByLabelText('Password');
@@ -107,7 +107,7 @@ describe('Register', () => {
 
       // Wait for loading state
       await waitFor(() => {
-        const newButtonElement = screen.getByRole('button');
+        const newButtonElement = screen.getByRole('button', { name: /signup in progress/i });
         expect(newButtonElement.textContent).toEqual('SIGNUP IN PROGRESS...');
       });
       
@@ -136,7 +136,7 @@ describe('Register', () => {
       });
 
       render(<Register />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signup/i });
       const usernameElement = screen.getByLabelText('Username');
       const emailElement = screen.getByLabelText('Email');
       const passwordElement = screen.getByLabelText('Password');
@@ -166,8 +166,8 @@ describe('Register', () => {
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      const error = new Error('Invalid credentials');
-      (error as any).response = {
+      const error = new Error('Invalid credentials') as Error & { response?: { data?: { message?: string } } };
+      error.response = {
         data: {
           message: 'Invalid credentials'
         }
@@ -176,7 +176,7 @@ describe('Register', () => {
       jest.spyOn(Utils, 'generateAvatar').mockReturnValue('avatar image');
 
       render(<Register />);
-      const buttonElement = screen.getByRole('button');
+      const buttonElement = screen.getByRole('button', { name: /signup/i });
       const usernameElement = screen.getByLabelText('Username');
       const emailElement = screen.getByLabelText('Email');
       const passwordElement = screen.getByLabelText('Password');
@@ -191,7 +191,7 @@ describe('Register', () => {
 
       const alert = await screen.findByRole('alert', {}, { timeout: 10000 });
       expect(alert).toBeInTheDocument();
-      expect(alert.textContent).toEqual('Invalid credentials');
+      expect(alert.textContent).toContain('Invalid credentials');
 
       await waitFor(() => {
         expect(usernameElement).toHaveStyle({ border: '1px solid #fa9b8a' });

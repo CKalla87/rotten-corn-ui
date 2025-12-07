@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { uniqBy } from 'lodash';
-import { FaCircle } from 'react-icons/fa';
+import type { AxiosError } from 'axios';
 import Avatar from '@components/avatar/Avatar';
 import CardElementButtons from '@components/card-element/CardElementButtons';
 import CardElementStats from '@components/card-element/CardElementStats';
@@ -42,9 +41,10 @@ const Followers = () => {
         setFollowers(response.data.followers);
       }
       setLoading(false);
-    } catch (error: any) {
+    } catch (error) {
       setLoading(false);
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as AxiosError<{ message?: string }>;
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }, [profile, dispatch]);
 
@@ -54,8 +54,9 @@ const Followers = () => {
       await FollowersUtils.blockUser(user, dispatch);
       // Update local state immediately
       setBlockedUsers((prev) => [...prev, user._id || '']);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
@@ -65,8 +66,9 @@ const Followers = () => {
       await FollowersUtils.unblockUser(user, dispatch);
       // Update local state immediately
       setBlockedUsers((prev) => Utils.removeUserFromList(prev, user._id || ''));
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 

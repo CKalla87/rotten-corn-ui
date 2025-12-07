@@ -99,8 +99,8 @@ describe('ForgotPassword', () => {
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      const error = new Error('Field must be valid');
-      (error as any).response = {
+      const error = new Error('Field must be valid') as Error & { response?: { data?: { message?: string } } };
+      error.response = {
         data: {
           message: 'Field must be valid'
         }

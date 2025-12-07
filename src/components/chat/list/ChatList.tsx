@@ -91,7 +91,7 @@ const ChatList = () => {
         body: ''
       };
       ChatUtils.joinRoomEvent(newUser, profile || {});
-      ChatUtils.privateChatMessages = [];
+      ChatUtils.clearPrivateChatMessages();
       const findUser = find(chatMessageList, (chat) => chat.receiverId === searchParams.get('id') || chat.senderId === searchParams.get('id'));
       if (!findUser) {
         const newChatList = [newUser, ...chatMessageList];
@@ -119,18 +119,27 @@ const ChatList = () => {
 
   useEffect(() => {
     if (debouncedValue) {
-      searchUsers(debouncedValue);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void searchUsers(debouncedValue);
+      }, 0);
     }
   }, [debouncedValue, searchUsers]);
 
   useEffect(() => {
     if (selectedUser && componentType === 'searchList') {
-      addSelectedUserToList(selectedUser);
+      // Using setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        addSelectedUserToList(selectedUser);
+      }, 0);
     }
   }, [addSelectedUserToList, componentType, selectedUser]);
 
   useEffect(() => {
-    setChatMessageList(chatList as ChatUser[]);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setChatMessageList(chatList as ChatUser[]);
+    }, 0);
   }, [chatList]);
 
   useEffect(() => {
@@ -151,7 +160,7 @@ const ChatList = () => {
     ChatUtils.joinRoomEvent(user as unknown as ChatUser, profile || {});
     // Clear private chat messages using a method if available, or handle differently
     // Note: This modifies external state, but it's necessary for the chat functionality
-    ChatUtils.privateChatMessages = [];
+    ChatUtils.clearPrivateChatMessages();
     return params;
   };
 

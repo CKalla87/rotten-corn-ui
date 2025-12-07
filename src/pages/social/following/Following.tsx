@@ -29,7 +29,6 @@ const Following = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { profile } = useSelector((state: RootState) => state.user);
   const [following, setFollowing] = useState<UserData[]>([]);
-  const [followers, setFollowers] = useState<UserData[]>([]);
   const [onlineUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -40,7 +39,7 @@ const Following = () => {
       setFollowing(response.data.following);
       setFollowers(response.data.followers || []);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
@@ -66,7 +65,7 @@ const Following = () => {
         }
         return prev;
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
@@ -81,7 +80,7 @@ const Following = () => {
       await FollowersUtils.unFollowUser(user, profile || {}, dispatch);
       // Update local state immediately - remove from following list
       setFollowing((prev) => prev.filter((u) => u._id !== user._id));
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };

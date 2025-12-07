@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { filter } from 'lodash';
@@ -18,6 +18,13 @@ const Suggestions = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
+  const initialUsers = useMemo(() => suggestions?.users || [], [suggestions?.users]);
+  
+  // Initialize users from suggestions if users is empty
+  if (users.length === 0 && initialUsers.length > 0) {
+    setUsers(initialUsers);
+  }
+
   const followUser = async (user: UserProfile) => {
     try {
       await FollowersUtils.followUser(user, dispatch);
@@ -25,14 +32,11 @@ const Suggestions = () => {
       setUsers(result);
       dispatch(addToSuggestions({ users: result, isLoading: false }));
       dispatch(getUserSuggestions());
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
-
-  useEffect(() => {
-    setUsers(suggestions?.users || []);
-  }, [suggestions]);
 
   return (
     <div className="suggestions-list-container" data-testid="suggestions-container">

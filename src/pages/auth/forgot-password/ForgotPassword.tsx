@@ -23,11 +23,12 @@ const ForgotPassword = () => {
       setResponseMessage(result.data.message);
       setShowAlert(true);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       setAlertType('alert-error');
       setLoading(false);
       setShowAlert(true);
-      setResponseMessage(error?.response?.data?.message);
+      setResponseMessage(axiosError?.response?.data?.message || 'An error occurred');
     }
   };
 

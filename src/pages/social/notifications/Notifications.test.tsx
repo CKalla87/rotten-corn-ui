@@ -65,7 +65,7 @@ describe('Notification', () => {
     const emptyPage = await screen.findByTestId('empty-page', {}, { timeout: 3000 });
     expect(cardElementItems).toBeNull();
     expect(emptyPage).toBeInTheDocument();
-    expect(emptyPage.textContent).toEqual('You have no notification');
+    expect(emptyPage.textContent).toEqual('You have no notifications');
   });
 
   it('should have 1 card element item', async () => {

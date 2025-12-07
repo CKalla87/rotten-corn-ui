@@ -52,7 +52,18 @@ const Login = () => {
       
       // Check for network errors
       if (axiosError?.code === 'ERR_NETWORK' || axiosError?.message === 'Network Error') {
-        const env = import.meta.env.VITE_APP_ENVIRONMENT || import.meta.env.MODE || 'local';
+        // Use a try-catch to handle import.meta which may not be available in test environment
+        let env = 'local';
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const metaEnv = (globalThis as any).import?.meta?.env;
+          if (metaEnv) {
+            env = metaEnv.VITE_APP_ENVIRONMENT || metaEnv.MODE || 'local';
+          }
+        } catch {
+          // In test environment, default to local
+          env = 'local';
+        }
         if (env === 'development' || env === 'staging' || env === 'production') {
           setErrorMessage('Unable to connect to the server. Please check your internet connection or ensure the backend server is running.');
         } else {

@@ -43,8 +43,9 @@ const ReactionsModal = () => {
       const orderedPosts = orderBy(response.data?.reactions, ['createdAt'], ['desc']);
       setPostReactions(orderedPosts);
       setReactionsOfPost(orderedPosts);
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 

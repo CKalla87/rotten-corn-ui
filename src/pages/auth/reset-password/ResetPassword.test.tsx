@@ -118,8 +118,8 @@ describe('ResetPassword', () => {
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      const error = new Error('Passwords do not match');
-      (error as any).response = {
+      const error = new Error('Passwords do not match') as Error & { response?: { data?: { message?: string } } };
+      error.response = {
         data: {
           message: 'Passwords do not match'
         }

@@ -5,12 +5,14 @@ import type { AppDispatch } from '../store';
 
 export const getConversationList = createAsyncThunk(
   'chat/getUserChatList',
-  async (name: string = '', { dispatch }: { dispatch: AppDispatch }) => {
+  async (_name: string | undefined, thunkAPI) => {
     try {
       const response = await chatService.getConversationList();
       return response.data;
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', thunkAPI.dispatch as AppDispatch);
+      throw error;
     }
   }
 );

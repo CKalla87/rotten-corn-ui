@@ -1,8 +1,8 @@
-import { cloneDeep, find, findIndex, remove } from 'lodash';
+import { cloneDeep, find, findIndex } from 'lodash';
+import type { AxiosResponse } from 'axios';
 import { closeModal } from '@redux/reducers/modal/modalSlice';
 import { clearPost, updatePostItem } from '@redux/reducers/post/postSlice';
 import { postService } from '@services/api/post/post.service';
-import { ImageUtils } from '@services/utils/image-utils.service';
 import { Utils } from '@services/utils/utils.service';
 import { socketService } from '@services/socket/socket.service';
 import type { AppDispatch } from '@redux/store';
@@ -51,7 +51,7 @@ export class PostUtils {
   static clearImage(
     postData: PostData,
     post: string,
-    inputRef: React.RefObject<HTMLDivElement>,
+    inputRef: React.RefObject<HTMLDivElement | null>,
     dispatch: AppDispatch,
     setSelectedPostImage: (file: File | null) => void,
     setPostImage: (image: string) => void,
@@ -70,6 +70,9 @@ export class PostUtils {
           postData.post = post;
         }
         setPostData(postData);
+        // Enable form if there's post content, otherwise disable
+        const hasContent = (post || postData.post || '').trim().length > 0;
+        setDisable(!hasContent);
       }
       PostUtils.positionCursor('editable');
     });
@@ -79,15 +82,13 @@ export class PostUtils {
         image: '',
         imgId: '',
         imgVersion: '',
-        video: '',
-        videoId: '',
-        videoVersion: ''
+        video: ''
       })
     );
   }
 
   static postInputData(
-    imageInputRef: React.RefObject<HTMLDivElement>,
+    imageInputRef: React.RefObject<HTMLDivElement | null>,
     postData: PostData,
     post: string,
     setPostData: (data: PostData | ((prev: PostData) => PostData)) => void
@@ -125,7 +126,7 @@ export class PostUtils {
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       postData.image = fileResult;
       if (imageInputRef?.current) {
@@ -138,9 +139,10 @@ export class PostUtils {
         return response;
       }
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -154,12 +156,12 @@ export class PostUtils {
   static async sendPostWithFileRequest(
     type: string,
     postData: PostData,
-    imageInputRef: React.RefObject<HTMLDivElement>,
+    imageInputRef: React.RefObject<HTMLDivElement | null>,
     setApiResponse: (response: string) => void,
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       if (imageInputRef?.current) {
         imageInputRef.current.textContent = postData.post;
@@ -174,9 +176,10 @@ export class PostUtils {
         return response;
       }
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -194,8 +197,9 @@ export class PostUtils {
   ): boolean {
     const isPrivate = post?.privacy === 'Private' && post?.userId === profile?._id;
     const isPublic = post?.privacy === 'Public';
+    const followingArray = following as Array<{ _id?: string; [key: string]: unknown }>;
     const isFollower =
-      post?.privacy === 'Followers' && Utils.checkIfUserIsFollowed(following, post?.userId, profile?._id);
+      post?.privacy === 'Followers' && Utils.checkIfUserIsFollowed(followingArray, post?.userId, profile?._id);
     return isPrivate || isPublic || isFollower;
   }
 
@@ -265,7 +269,12 @@ export class PostUtils {
       setPosts((prevPosts: unknown[]) => [post, ...prevPosts]);
     });
 
-    socketService?.socket?.on('update post', (post: any) => {
+    interface PostUpdate {
+      _id?: string;
+      [key: string]: unknown;
+    }
+
+    socketService?.socket?.on('update post', (post: PostUpdate) => {
       setPosts((prevPosts: unknown[]) => {
         const postsCopy = cloneDeep(prevPosts);
         return PostUtils.updateSinglePostInArray(postsCopy, post);
@@ -274,16 +283,21 @@ export class PostUtils {
 
     socketService?.socket?.on('delete post', (postId: string) => {
       setPosts((prevPosts: unknown[]) => {
-        const postsCopy = cloneDeep(prevPosts) as any[];
-        const filtered = postsCopy.filter((postData: any) => postData._id !== postId);
+        const postsCopy = cloneDeep(prevPosts) as Array<{ _id?: string; [key: string]: unknown }>;
+        const filtered = postsCopy.filter((postData) => postData._id !== postId);
         return filtered;
       });
     });
 
-    socketService?.socket?.on('update like', (reactionData: any) => {
+    interface ReactionData {
+      postId?: string;
+      postReactions?: unknown;
+    }
+
+    socketService?.socket?.on('update like', (reactionData: ReactionData) => {
       setPosts((prevPosts: unknown[]) => {
-        const postsCopy = cloneDeep(prevPosts) as any[];
-        const postData = find(postsCopy, (post: any) => post._id === reactionData?.postId);
+        const postsCopy = cloneDeep(prevPosts) as Array<{ _id?: string; reactions?: unknown; [key: string]: unknown }>;
+        const postData = find(postsCopy, (post) => post._id === reactionData?.postId);
         if (postData) {
           postData.reactions = reactionData.postReactions;
           return PostUtils.updateSinglePostInArray(postsCopy, postData);
@@ -292,10 +306,10 @@ export class PostUtils {
       });
     });
 
-    socketService?.socket?.on('update comment', (reactionData: any) => {
+    socketService?.socket?.on('update comment', (reactionData: ReactionData) => {
       setPosts((prevPosts: unknown[]) => {
-        const postsCopy = cloneDeep(prevPosts) as any[];
-        const postData = find(postsCopy, (post: any) => post._id === reactionData?.postId);
+        const postsCopy = cloneDeep(prevPosts) as Array<{ _id?: string; reactions?: unknown; [key: string]: unknown }>;
+        const postData = find(postsCopy, (post) => post._id === reactionData?.postId);
         if (postData) {
           postData.reactions = reactionData.postReactions;
           return PostUtils.updateSinglePostInArray(postsCopy, postData);
@@ -307,25 +321,27 @@ export class PostUtils {
 
   static updateSinglePostInArray(
     posts: unknown[],
-    post: any
+    post: unknown
   ): unknown[] {
     const postsCopy = cloneDeep(posts);
-    const index = findIndex(postsCopy as any[], ['_id', post?._id]);
+    const postData = post as { _id?: string; [key: string]: unknown };
+    const index = findIndex(postsCopy as Array<{ _id?: string; [key: string]: unknown }>, ['_id', postData?._id]);
     if (index > -1) {
-      (postsCopy as any[]).splice(index, 1, post);
+      (postsCopy as Array<{ _id?: string; [key: string]: unknown }>).splice(index, 1, postData);
     }
     return postsCopy;
   }
 
   static updateSinglePost(
     posts: unknown[],
-    post: any,
+    post: unknown,
     setPosts: (posts: unknown[]) => void
   ): void {
-    let postsCopy = cloneDeep(posts);
-    const index = findIndex(postsCopy as any[], ['_id', post?._id]);
+    const postsCopy = cloneDeep(posts);
+    const postData = post as { _id?: string; [key: string]: unknown };
+    const index = findIndex(postsCopy as Array<{ _id?: string; [key: string]: unknown }>, ['_id', postData?._id]);
     if (index > -1) {
-      (postsCopy as any[]).splice(index, 1, post);
+      (postsCopy as Array<{ _id?: string; [key: string]: unknown }>).splice(index, 1, postData);
       setPosts(postsCopy);
     }
   }
@@ -337,7 +353,7 @@ export class PostUtils {
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       const response = await postService.updatePost(postId, postData);
       if (response) {
@@ -356,9 +372,10 @@ export class PostUtils {
         PostUtils.closePostModal(dispatch);
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -377,7 +394,7 @@ export class PostUtils {
     setLoading: (loading: boolean) => void,
     setDisable: (disabled: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       postData.image = fileResult;
       postData.gifUrl = '';
@@ -399,9 +416,10 @@ export class PostUtils {
         }, 3000);
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -419,7 +437,7 @@ export class PostUtils {
     setApiResponse: (response: string) => void,
     setLoading: (loading: boolean) => void,
     dispatch: AppDispatch
-  ): Promise<any> {
+  ): Promise<AxiosResponse | null> {
     try {
       const response =
         type === 'image'
@@ -441,9 +459,10 @@ export class PostUtils {
         PostUtils.closePostModal(dispatch);
       }
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,

@@ -47,12 +47,20 @@ const Sidebar = () => {
     navigate(url);
   };
 
+  interface ChatUserForUtils {
+    receiverId?: string;
+    receiverUsername?: string;
+    senderId?: string;
+    senderUsername?: string;
+    [key: string]: unknown;
+  }
+
   const createChatUrlParams = useCallback(
     (url: string) => {
       if (chatList.length) {
-        const chatUser = chatList[0] as unknown as { receiverUsername?: string; senderUsername?: string; [key: string]: unknown };
-        const params = ChatUtils.chatUrlParams(chatUser as any, profile || {});
-        ChatUtils.joinRoomEvent(chatUser as any, profile || {});
+        const chatUser = chatList[0] as unknown as ChatUserForUtils;
+        const params = ChatUtils.chatUrlParams(chatUser, profile || {});
+        ChatUtils.joinRoomEvent(chatUser, profile || {});
         return `${url}?${createSearchParams(params)}`;
       }
       return url;
@@ -69,8 +77,9 @@ const Sidebar = () => {
         }
         const userTwoName = user?.receiverUsername !== profile?.username ? user?.receiverUsername : user?.senderUsername;
         await chatService.addChatUsers({ userOne: profile?.username, userTwo: userTwoName });
-      } catch (error: any) {
-        Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+        Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
     },
     [dispatch, profile]
@@ -81,15 +90,19 @@ const Sidebar = () => {
       const chatUser = (chatList[0] as unknown as { receiverUsername?: string; senderUsername?: string; [key: string]: unknown }) || {};
       const userTwoName =
         chatUser?.receiverUsername !== profile?.username ? chatUser?.receiverUsername : chatUser?.senderUsername;
-      ChatUtils.privateChatMessages = [];
+      ChatUtils.clearPrivateChatMessages();
       await chatService.removeChatUsers({ userOne: profile?.username, userTwo: userTwoName });
-    } catch (error: any) {
-      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
 
   useEffect(() => {
-    setSideBar(sideBarItems);
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      setSideBar(sideBarItems);
+    }, 0);
   }, []);
 
   useEffect(() => {
@@ -97,7 +110,7 @@ const Sidebar = () => {
       const url = createChatUrlParams('/app/social/chat/messages');
       navigate(url);
       if (chatList.length && !(chatList[0] as { isRead?: boolean }).isRead) {
-        markMessagesAsRead(chatList[0] as any);
+        markMessagesAsRead(chatList[0] as { receiverUsername?: string; senderUsername?: string; receiverId?: string; senderId?: string; isRead?: boolean; [key: string]: unknown });
       }
     }
   }, [chatList, chatPageName, createChatUrlParams, markMessagesAsRead, navigate]);
