@@ -31,12 +31,12 @@ class AuthService {
     return response;
   }
 
-  async resetPassword(token: string, body: any) {
+  async resetPassword(token: string, body: Record<string, unknown>) {
     const response = await axios.post(`/reset-password/${token}`, body);
     return response;
   }
 
-  async authPostData(url: string, data: any, token: string) {
+  async authPostData(url: string, data: Record<string, unknown>, token: string) {
     const response = await axios.post(`/${url}/${token}`, data);
     return response;
   }

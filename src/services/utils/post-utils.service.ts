@@ -140,7 +140,7 @@ export class PostUtils {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -177,7 +177,7 @@ export class PostUtils {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -370,7 +370,7 @@ export class PostUtils {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -414,7 +414,7 @@ export class PostUtils {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,
@@ -457,7 +457,7 @@ export class PostUtils {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       PostUtils.dispatchNotification(
-        error.response?.data?.message || 'An error occurred',
+        axiosError?.response?.data?.message || 'An error occurred',
         'error',
         setApiResponse,
         setLoading,

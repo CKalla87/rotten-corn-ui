@@ -137,12 +137,15 @@ const Profile = () => {
         setGalleryImages([]);
       }
     },
-    [dispatch, searchParams, user]
+    [searchParams, user]
   );
 
   useEffect(() => {
     if (rendered) {
-      void getUserProfileByUsername();
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void getUserProfileByUsername();
+      }, 0);
     }
     if (!rendered) {
       // Use setTimeout to avoid synchronous setState in effect

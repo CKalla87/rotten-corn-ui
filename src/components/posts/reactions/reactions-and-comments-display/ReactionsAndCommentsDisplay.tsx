@@ -93,8 +93,8 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
       setReactions(formattedReactions);
+      void getPostReactions();
     }, 0);
-    void getPostReactions();
   }, [post, getPostReactions]);
 
   const reactionsCount = sumAllReactions(reactions);

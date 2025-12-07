@@ -75,7 +75,7 @@ export interface EmptyPostData {
   email: string;
   avatarColor: string;
   commentsCount: string;
-  reactions: any[];
+  reactions: Array<Record<string, unknown>>;
   imgVersion: string;
   imgId: string;
   createdAt: string;

@@ -123,8 +123,8 @@ describe('SigIn', () => {
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      const error = new Error('Invalid credentials');
-      (error as any).response = {
+      const error = new Error('Invalid credentials') as Error & { response?: { data?: { message?: string } } };
+      error.response = {
         data: {
           message: 'Invalid credentials'
         }

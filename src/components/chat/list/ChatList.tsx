@@ -119,7 +119,10 @@ const ChatList = () => {
 
   useEffect(() => {
     if (debouncedValue) {
-      void searchUsers(debouncedValue);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void searchUsers(debouncedValue);
+      }, 0);
     }
   }, [debouncedValue, searchUsers]);
 

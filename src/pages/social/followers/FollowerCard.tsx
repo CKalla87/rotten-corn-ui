@@ -42,7 +42,7 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
       const response = await followerService.getUserFollowers(searchParams.get('id') || '');
       setFollowers(response.data.followers);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
@@ -55,7 +55,7 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
         searchParams.get('uId') || ''
       );
       setUser(response.data.user);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
@@ -69,7 +69,7 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
         const updatedBlocked = [...((user.blocked as string[]) || []), userInfo._id || ''];
         setUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
@@ -83,7 +83,7 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
         const updatedBlocked = Utils.removeUserFromList((user.blocked as string[]) || [], userInfo._id || '');
         setUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };

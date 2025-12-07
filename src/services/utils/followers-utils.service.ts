@@ -35,7 +35,7 @@ export class FollowersUtils {
     try {
       const response = await followerService.followUser(user?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
@@ -44,7 +44,7 @@ export class FollowersUtils {
     try {
       const response = await followerService.unFollowUser(user?._id || '', profile?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
@@ -53,7 +53,7 @@ export class FollowersUtils {
     try {
       const response = await followerService.blockUser(user?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }
@@ -62,7 +62,7 @@ export class FollowersUtils {
     try {
       const response = await followerService.unblockUser(user?._id || '');
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   }

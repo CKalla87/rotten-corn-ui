@@ -22,14 +22,21 @@ const postsSlice = createSlice({
     },
     removePost: (state, action) => {
       const originalLength = state.posts.length;
-      state.posts = state.posts.filter((post: any) => post._id !== action.payload);
+      state.posts = state.posts.filter((post: unknown) => {
+        const postObj = post as { _id?: string };
+        return postObj._id !== action.payload;
+      });
       // Decrement total count if we actually removed a post
       if (state.posts.length < originalLength) {
         state.totalPostsCount = Math.max(0, state.totalPostsCount - 1);
       }
     },
     updatePostInList: (state, action) => {
-      const index = state.posts.findIndex((post: any) => post._id === action.payload._id);
+      const payload = action.payload as { _id?: string };
+      const index = state.posts.findIndex((post: unknown) => {
+        const postObj = post as { _id?: string };
+        return postObj._id === payload._id;
+      });
       if (index > -1) {
         state.posts[index] = action.payload;
       }
