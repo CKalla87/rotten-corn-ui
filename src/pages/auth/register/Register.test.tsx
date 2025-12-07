@@ -61,7 +61,7 @@ describe('Register', () => {
           },
           token: 'token123'
         }
-      } as any);
+      } as { data: { message: string; user: Record<string, unknown>; token: string } });
 
       render(<Register />);
       const buttonElement = screen.getByRole('button');
@@ -91,7 +91,7 @@ describe('Register', () => {
           },
           token: 'token123'
         }
-      } as any);
+      } as { data: { message: string; user: Record<string, unknown>; token: string } });
 
       render(<Register />);
       const buttonElement = screen.getByRole('button');
@@ -166,8 +166,8 @@ describe('Register', () => {
   describe('Error', () => {
     it('should display error alert and border', async () => {
       const user = userEvent.setup();
-      const error = new Error('Invalid credentials');
-      (error as any).response = {
+      const error = new Error('Invalid credentials') as Error & { response?: { data?: { message?: string } } };
+      error.response = {
         data: {
           message: 'Invalid credentials'
         }

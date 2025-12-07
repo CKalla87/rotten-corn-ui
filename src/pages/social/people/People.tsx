@@ -56,7 +56,7 @@ const People = () => {
       setTotalUsersCount(response.data.totalUsers);
       setFollowers(response.data.followers || []);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
@@ -91,7 +91,7 @@ const People = () => {
         }
         return prev;
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };
@@ -108,7 +108,7 @@ const People = () => {
       }
       setTotalUsersCount(response.data.totalUsers);
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoading(false);
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
@@ -125,7 +125,7 @@ const People = () => {
       // Update local state immediately - remove from following list
       setFollowing((prev) => prev.filter((u) => u._id !== user._id));
       setFollowers((prev) => prev.filter((u) => u._id !== user._id));
-    } catch (error: any) {
+    } catch (error: unknown) {
       Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };

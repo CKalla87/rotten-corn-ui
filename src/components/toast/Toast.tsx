@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { cloneDeep } from 'lodash';
 import { Utils } from '@services/utils/utils.service';
@@ -29,7 +29,10 @@ const Toast = ({ toastList, position = 'top-right', autoDelete = true, autoDelet
     if (JSON.stringify(prevToastListRef.current) !== JSON.stringify(toastList)) {
       prevToastListRef.current = toastList;
       if (JSON.stringify(list) !== JSON.stringify(toastList)) {
-        setList(toastList);
+        // Use setTimeout to avoid synchronous setState in effect
+        setTimeout(() => {
+          setList(toastList);
+        }, 0);
       }
     }
   }, [toastList, list]);

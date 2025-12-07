@@ -261,7 +261,10 @@ const EditPost = () => {
         PostUtils.postInputData(imageInputRef, postData, post?.post || '', setPostData);
       }, 0);
     }
-    editableFields();
+    // Use setTimeout to avoid synchronous setState in effect
+    setTimeout(() => {
+      editableFields();
+    }, 0);
   }, [editableFields, post, postData]);
 
   return (

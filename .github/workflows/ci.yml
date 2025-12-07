@@ -321,7 +321,7 @@ jobs:
   upload-build-to-s3:
     name: Upload Build to S3
     runs-on: ubuntu-latest
-    needs: [build-app, terraform-plan-and-apply]
+    needs: [build-app, terraform-plan]
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
@@ -411,7 +411,8 @@ jobs:
           BUCKET_NAME="chatapp-client-${{ github.ref_name }}-app-602951639614"
           echo "Verifying S3 bucket exists: $BUCKET_NAME"
           if aws s3 ls "s3://$BUCKET_NAME" 2>&1 | grep -q 'NoSuchBucket'; then
-            echo "Error: S3 bucket $BUCKET_NAME does not exist. Terraform should have created it."
+            echo "Warning: S3 bucket $BUCKET_NAME does not exist. Infrastructure may need to be deployed first."
+            echo "Note: Terraform apply must be run manually via the infrastructure deployment workflow."
             exit 1
           fi
           echo "S3 bucket verified: $BUCKET_NAME"
@@ -469,11 +470,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Download CloudFront distribution ID
-        uses: actions/download-artifact@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          name: cloudfront-distribution-id
-          path: temp_folder/
+          terraform_version: latest
+
+      - name: Get CloudFront distribution ID from Terraform
+        working-directory: infrastructure
+        run: |
+          terraform init -backend=false
+          terraform workspace select ${{ github.ref_name }} || terraform workspace new ${{ github.ref_name }}
+          
+          # Try to get CloudFront distribution ID from Terraform output
+          if CLOUDFRONT_ID=$(terraform output -raw cloudfront_distribution_id 2>/dev/null); then
+            echo "$CLOUDFRONT_ID" > ../temp_folder/cloudfront_distribution_id.txt
+            echo "CloudFront distribution ID retrieved: $CLOUDFRONT_ID"
+          else
+            echo "Warning: Could not get CloudFront distribution ID from Terraform"
+            echo "This may mean infrastructure hasn't been deployed yet."
+            exit 1
+          fi
 
       - name: Invalidate CloudFront distribution
         run: |
