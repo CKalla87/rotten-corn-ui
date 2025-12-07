@@ -32,7 +32,30 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       // dispatch conversation list
       setUserData(response.data.user);
       setTokenIsValid(true);
-      dispatch(addUser({ token: response.data.token, profile: response.data.user }));
+      
+      // Generate avatarImage URL from image ID/version fields
+      const userProfile = { ...response.data.user };
+      let avatarImageUrl = '';
+      
+      // Only generate from ID/version if they exist, otherwise preserve existing URL
+      if (userProfile.profileImageId && userProfile.profileImageVersion) {
+        avatarImageUrl = Utils.getImage(userProfile.profileImageId as string, userProfile.profileImageVersion as string);
+      } else if (userProfile.avatarImageId && userProfile.avatarImageVersion) {
+        avatarImageUrl = Utils.getImage(userProfile.avatarImageId as string, userProfile.avatarImageVersion as string);
+      } else {
+        // Fallback to existing URL fields if they exist
+        avatarImageUrl = (userProfile.profilePicture as string) ||
+                        (userProfile.avatarImage as string) ||
+                        '';
+      }
+      
+      // Only update if we have a valid URL
+      if (avatarImageUrl) {
+        userProfile.avatarImage = avatarImageUrl;
+        userProfile.profilePicture = avatarImageUrl;
+      }
+      
+      dispatch(addUser({ token: response.data.token, profile: userProfile }));
     } catch {
       setTokenIsValid(false);
       setTimeout(async () => {

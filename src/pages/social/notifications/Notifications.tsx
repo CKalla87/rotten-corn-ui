@@ -6,6 +6,7 @@ import { NotificationPreview } from '@components/dialog';
 import { Utils } from '@services/utils/utils.service';
 import { NotificationUtils } from '@services/utils/notification-utils.service';
 import { notificationService } from '@services/api/notifications/notification.service';
+import { socketService } from '@services/socket/socket.service';
 import type { AppDispatch, RootState } from '@redux/store';
 import './Notifications.scss';
 
@@ -61,7 +62,28 @@ const Notifications = () => {
     try {
       const response = await notificationService.getUserNotifications();
       if (response?.data?.notifications) {
-        setNotifications(response.data.notifications);
+        // Generate profile picture URLs for each notification
+        const notificationsWithUrls = response.data.notifications.map((notification: Notification) => {
+          if (notification?.userFrom) {
+            const userFrom = notification.userFrom as UserFrom & { profileImageId?: string; profileImageVersion?: string; avatarImageId?: string; avatarImageVersion?: string };
+            let profilePicUrl = '';
+            
+            // Generate URL from image ID/version if available
+            if (userFrom.profileImageId && userFrom.profileImageVersion) {
+              profilePicUrl = Utils.getImage(userFrom.profileImageId, userFrom.profileImageVersion);
+            } else if (userFrom.avatarImageId && userFrom.avatarImageVersion) {
+              profilePicUrl = Utils.getImage(userFrom.avatarImageId, userFrom.avatarImageVersion);
+            } else if (userFrom.profilePicture) {
+              profilePicUrl = userFrom.profilePicture as string;
+            }
+            
+            if (profilePicUrl) {
+              userFrom.profilePicture = profilePicUrl;
+            }
+          }
+          return notification;
+        });
+        setNotifications(notificationsWithUrls);
       } else {
         setNotifications([]);
       }
@@ -81,6 +103,12 @@ const Notifications = () => {
         description: notification.description || notification.message || ''
       };
       await NotificationUtils.markMessageAsRead(notification?._id || '', notificationItem, setNotificationDialogContent);
+      // Update the notification as read in local state
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((n) =>
+          n._id === notification._id ? { ...n, read: true } : n
+        )
+      );
     } catch (error: unknown) {
       const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
       Utils.dispatchNotification(errorMessage, 'error', dispatch);
@@ -93,6 +121,8 @@ const Notifications = () => {
       const response = await notificationService.deleteNotification(messageId);
       const successMessage = response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'message' in response.data && typeof response.data.message === 'string' ? response.data.message : 'Notification deleted successfully';
       Utils.dispatchNotification(successMessage, 'success', dispatch);
+      // Remove the notification from the local state
+      setNotifications((prevNotifications) => prevNotifications.filter((n) => n._id !== messageId));
     } catch (error: unknown) {
       const errorMessage = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string' ? error.response.data.message : 'An error occurred';
       Utils.dispatchNotification(errorMessage, 'error', dispatch);
@@ -105,26 +135,28 @@ const Notifications = () => {
   }, []);
 
   useEffect(() => {
-    // Only set up socket listeners if we have notifications and a profile
-    // This should not interfere with initial loading - it only sets up real-time updates
-    // Skip if still loading or if we don't have the required data
-    if (loading || !profile || notifications.length === 0) {
+    // Only set up socket listeners after initial load is complete
+    if (loading || !profile) {
       return;
     }
     
-    // Only set up socket listeners after initial load is complete
-    // This prevents interference with the initial notification loading
+    // Set up socket listeners for real-time updates
     const notificationItems = notifications.map((notification) => ({
       ...notification,
       description: notification.description || notification.message || ''
     }));
     
-    // Call socketIONotification but don't let it interfere with existing notifications
-    // The mock in tests won't do anything, so this is safe
     NotificationUtils.socketIONotification(profile, notificationItems, setNotifications, 'notificationPage');
     
-    // No cleanup needed - socketIONotification handles its own cleanup
-  }, [loading, profile, notifications]);
+    // Cleanup socket listeners on unmount
+    return () => {
+      if (socketService.socket) {
+        socketService.socket.off('insert notification');
+        socketService.socket.off('update notification');
+        socketService.socket.off('delete notification');
+      }
+    };
+  }, [loading, profile]);
 
   return (
     <>
@@ -190,10 +222,14 @@ const Notifications = () => {
           ))}
         </div>
       )}
-      {loading && !notifications.length && <div className="notifications-box"></div>}
-      {!loading && !notifications.length && (
+      {loading && (
+        <div className="notifications-box">
+          <div className="empty-page">Loading notifications...</div>
+        </div>
+      )}
+      {!loading && notifications.length === 0 && (
         <h3 className="empty-page" data-testid="empty-page">
-          You have no notification
+          You have no notifications
         </h3>
       )}
       </div>

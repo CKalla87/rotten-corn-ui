@@ -1,16 +1,21 @@
 .dashboard {
   display: flex;
+  height: calc(100vh - 75px);
+  overflow: hidden;
 
   &-sidebar {
     flex: 2;
     max-width: 15%;
-    background-color: red;
+    //background-color: red;
+    overflow-y: auto;
   }
 
   &-content {
     flex: 6;
-    height: 100vh;
-    background-color: blue;
+    height: 100%;
+    background-color: var(--white-10);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 

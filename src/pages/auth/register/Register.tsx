@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { AxiosError } from 'axios';
 import Input from '@components/input/Input';
 import Button from '@components/button/Button';
+import { OAuthButton } from '@components/oauth-button';
 import { authService } from '@services/api/auth/auth.service';
 import { Utils } from '@services/utils/utils.service';
 import useLocalStorage from '@hooks/useLocalStorage';
@@ -63,6 +64,14 @@ const Register = () => {
           {errorMessage}
         </div>
       )}
+      <div className="oauth-section">
+        <OAuthButton provider="google" />
+        <OAuthButton provider="github" />
+        <OAuthButton provider="facebook" />
+      </div>
+      <div className="divider">
+        <span>OR</span>
+      </div>
       <form className="auth-form" onSubmit={registerUser}>
         <div className="form-input-container">
           <Input

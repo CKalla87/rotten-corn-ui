@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import './Input.sass';
 
 interface InputProps {
@@ -10,9 +11,12 @@ interface InputProps {
   placeholder?: string;
   style?: React.CSSProperties;
   handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
-const Input = ({ 
+const Input = forwardRef<HTMLInputElement, InputProps>(({ 
   id,
   name, 
   type, 
@@ -21,8 +25,11 @@ const Input = ({
   labelText, 
   placeholder, 
   style,
-  handleChange 
-}: InputProps) => {
+  handleChange,
+  onClick,
+  onFocus,
+  onBlur
+}, ref) => {
   return (
     <div className="form-row">
       {labelText && (
@@ -31,6 +38,7 @@ const Input = ({
         </label>
       )}
       <input
+        ref={ref}
         id={id}
         name={name}
         type={type}
@@ -38,13 +46,18 @@ const Input = ({
         checked={typeof value === 'boolean' ? value : undefined}
         onChange={handleChange}
         placeholder={placeholder}
+        onClick={onClick}
+        onFocus={onFocus}
+        onBlur={onBlur}
         className={`form-input ${className || ''}`}
         style={style}
         autoComplete="false"
       />
     </div>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 export default Input;
 

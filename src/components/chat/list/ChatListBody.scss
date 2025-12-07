@@ -1,0 +1,21 @@
+.conversation-message {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  .icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .not-read {
+    color: var(--gray-1);
+  }
+
+  .read {
+    width: 16px;
+    height: 16px;
+  }
+}
+

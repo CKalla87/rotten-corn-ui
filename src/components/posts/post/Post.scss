@@ -1,0 +1,187 @@
+.post-body {
+  padding: 15px;
+  margin-top: 15px;
+  margin-bottom: 25px;
+  background-color: #1a1a1a;
+  height: auto;
+  border-radius: 16px;
+  box-shadow: rgb(145 158 171 / 20%) 0 0 2px 0, rgb(145 158 171 / 12%) 0 12px 24px -4px;
+
+  .user-post-data {
+    .user-post-data-wrap {
+      //background-color: #2a2a2a;
+      flex-wrap: wrap;
+      display: flex;
+      width: 100%;
+
+      .view-comments {
+        width: 100%;
+        margin-bottom: -25px;
+        color: var(--primary-1);
+        cursor: pointer;
+        text-align: right;
+      }
+
+      .user-post-image {
+        .post-rounded-circle {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+        }
+      }
+
+      .user-post-info {
+        color: var(--gray-3);
+        flex: 1;
+        margin: auto;
+        margin-left: 10px;
+        min-height: 45px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+
+        .inline-title-display {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-bottom: 4px;
+          padding-right: 80px;
+
+          h5 {
+            margin: 0;
+            padding: 0;
+            display: inline-block;
+            font-size: 16px;
+            font-family: Poppins, sans-serif;
+            font-weight: 700;
+            line-height: 1.5;
+            color: var(--gray-7);
+          }
+
+          .inline-display {
+            margin: 0;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            height: auto;
+            font-weight: 400;
+            color: var(--gray-11);
+            font-size: 14px;
+            gap: 4px;
+
+            .feeling-icon {
+              object-fit: cover;
+              height: 18px;
+              width: 18px;
+              vertical-align: middle;
+            }
+
+            div {
+              display: inline;
+              font-weight: bolder;
+            }
+          }
+        }
+
+        .post-icons {
+          position: absolute;
+          top: 0;
+          right: 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+
+          .trash {
+            color: var(--red-1);
+            cursor: pointer;
+            font-size: 16px;
+          }
+
+          .pencil {
+            color: var(--primary-1);
+            cursor: pointer;
+            font-size: 16px;
+          }
+        }
+
+        .time-text-display {
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          color: var(--gray-11);
+          margin-top: 2px;
+
+          .globe {
+            margin-top: 2px;
+            margin-left: 4px;
+          }
+        }
+      }
+    }
+  }
+
+  .user-post {
+    width: 100%;
+    margin-top: 1rem;
+    border-bottom: 1px solid var(--white-4);
+
+    .post {
+      margin-top: 0;
+      color: var(--black-5);
+      text-align: left;
+      margin-bottom: 16px;
+      line-height: 25px;
+      font-size: 18px;
+
+      a {
+        color: var(--primary-1);
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    a {
+      color: var(--white-1);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    .image-display-flex {
+      display: flex;
+      height: 400px;
+      background-color: transparent;
+
+      .post-image {
+        border-radius: 5px;
+        width: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .user-post-with-bg {
+      width: 100%;
+      max-height: 400px;
+      height: 400px;
+      color: var(--white-1);
+      font-size: 45px;
+      font-weight: bolder;
+      text-align: center;
+      align-items: center;
+      justify-content: center;
+      padding: 25px;
+      overflow-y: scroll;
+      display: flex;
+      overflow-x: hidden;
+      word-break: break-all;
+    }
+  }
+}

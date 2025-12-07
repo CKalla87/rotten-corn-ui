@@ -1,2 +1,45 @@
-// Profile styles will be added here
+.profile-wrapper {
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--white-10);
 
+  .profile-wrapper-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+
+    .profile-header {
+      margin-bottom: 20px;
+    }
+
+    .profile-content {
+      width: 100%;
+      min-height: 400px;
+      background-color: var(--white-1);
+      border-radius: 16px;
+      padding: 20px;
+      overflow: visible;
+    }
+  }
+}
+
+.imageGrid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+}

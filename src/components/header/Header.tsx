@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, createSearchParams } from 'react-router-dom';
+import { sumBy } from 'lodash';
 import { FaRegBell, FaRegEnvelope, FaCaretDown, FaCaretUp } from 'react-icons/fa';
 import logo from '@assets/images/logo.svg';
 import Avatar from '@components/avatar/Avatar';
@@ -11,6 +12,9 @@ import { Utils } from '@services/utils/utils.service';
 import { userService } from '@services/api/user/user.service';
 import { notificationService } from '@services/api/notifications/notification.service';
 import { NotificationUtils } from '@services/utils/notification-utils.service';
+import { chatService } from '@services/api/chat/chat.service';
+import { ChatUtils } from '@services/utils/chat-utils.service';
+import { getConversationList } from '@redux/api/chat';
 import useDetectOutsideClick from '@hooks/useDetectOutsideClick';
 import useLocalStorage from '@hooks/useLocalStorage';
 import useSessionStorage from '@hooks/useSessionStorage';
@@ -27,14 +31,15 @@ interface SettingsItem {
 
 const Header = () => {
   const { profile } = useSelector((state: RootState) => state.user);
+  const { chatList } = useSelector((state: RootState) => state.chat);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [environment, setEnvironment] = useState('');
   const [settings, setSettings] = useState<SettingsItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
-  const [messageNotifications] = useState<Array<Record<string, unknown>>>([]);
-  const [messageCount] = useState(0);
+  const [messageNotifications, setMessageNotifications] = useState<Array<Record<string, unknown>>>([]);
+  const [messageCount, setMessageCount] = useState(0);
   const messageRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLUListElement>(null);
   const settingsRef = useRef<HTMLUListElement>(null);
@@ -44,7 +49,7 @@ const Header = () => {
   const [deleteStorageUsername] = useLocalStorage<string>('username', 'delete') as [() => void];
   const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
   const [deleteSessionPageReload] = useSessionStorage<boolean>('pageReload', 'delete') as [() => void];
-  const backgroundColor = `${environment === 'DEV' ? '#50b5ff' : environment === 'STG' ? '#e9710f' : ''}`;
+  const backgroundColor = `${environment === 'DEV' || environment === 'LOCAL' ? '#50b5ff' : environment === 'STG' ? '#e9710f' : ''}`;
 
   const getUserNotifications = async () => {
     try {
@@ -76,8 +81,23 @@ const Header = () => {
     }
   };
 
-  const openChatPage = () => {
-    navigate(`/app/social/chat/messages`);
+  const openChatPage = async (notification: Record<string, unknown>) => {
+    try {
+      const params = ChatUtils.chatUrlParams(notification, profile || {});
+      ChatUtils.joinRoomEvent(notification, profile || {});
+      ChatUtils.privateChatMessages = [];
+      const receiverId = notification?.receiverUsername !== profile?.username ? notification?.receiverId : notification?.senderId;
+      if (notification?.receiverUsername === profile?.username && !notification.isRead) {
+        await chatService.markMessagesAsRead(profile?._id || '', receiverId as string);
+      }
+      const userTwoName = notification?.receiverUsername !== profile?.username ? notification?.receiverUsername : notification?.senderUsername;
+      await chatService.addChatUsers({ userOne: profile?.username, userTwo: userTwoName });
+      navigate(`/app/social/chat/messages?${createSearchParams(params)}`);
+      setIsMessageActive(false);
+      dispatch(getConversationList());
+    } catch (error: any) {
+      Utils.dispatchNotification(error?.response?.data?.message || 'An error occurred', 'error', dispatch);
+    }
   };
 
   const onLogout = async () => {
@@ -106,10 +126,17 @@ const Header = () => {
   });
 
   useEffect(() => {
-    if (profile) {
-      NotificationUtils.socketIONotification(profile, notifications, setNotifications, 'header', setNotificationCount);
-    }
-  }, [profile, notifications]);
+    const count = sumBy(chatList, (notification: Record<string, unknown>) => {
+      return !notification.isRead && notification.receiverUsername === profile?.username ? 1 : 0;
+    });
+    setMessageCount(count);
+    setMessageNotifications(chatList as Array<Record<string, unknown>>);
+  }, [chatList, profile]);
+
+  useEffect(() => {
+    NotificationUtils.socketIONotification(profile, notifications, setNotifications, 'header', setNotificationCount);
+    NotificationUtils.socketIOMessageNotification(profile, messageNotifications, setMessageNotifications, setMessageCount, dispatch, window.location);
+  }, [profile, notifications, messageNotifications, dispatch]);
 
   if (!profile) {
     return <HeaderSkeleton />;
@@ -118,7 +145,7 @@ const Header = () => {
   return (
     <>
       {isMessageActive && (
-        <div ref={messageRef}>
+        <div ref={messageRef} onClick={(e) => e.stopPropagation()}>
           <MessageSidebar profile={profile} messageCount={messageCount} messageNotifications={messageNotifications} openChatPage={openChatPage} />
         </div>
       )}
@@ -128,12 +155,7 @@ const Header = () => {
             <img src={logo} className="img-fluid" alt="" />
           </div>
           <div className="app-name">
-            Chatty
-            {environment && (
-              <span className="environment" style={{ backgroundColor: `${backgroundColor}` }}>
-                {environment}
-              </span>
-            )}
+            Whisp
           </div>
           <div className="header-menu-toggle">
             <span className="bar"></span>
@@ -143,9 +165,10 @@ const Header = () => {
           <ul className="header-nav">
             <li
               className="header-nav-item active-item"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsMessageActive(false);
-                setIsNotificationActive(true);
+                setIsNotificationActive((prev) => !prev);
                 setIsSettingsActive(false);
               }}
             >
@@ -158,11 +181,11 @@ const Header = () => {
                 )}
               </span>
               {isNotificationActive && (
-                <ul className="dropdown-ul" ref={notificationRef}>
+                <ul className="dropdown-ul dropdown-ul-notifications" ref={notificationRef}>
                   <li className="dropdown-li">
                     <Dropdown
                       height={300}
-                      style={{ right: '250px', top: '20px' }}
+                      style={{ right: '0', top: '20px' }}
                       data={notifications}
                       notificationCount={notificationCount}
                       title="Notifications"
@@ -174,17 +197,27 @@ const Header = () => {
               )}
               &nbsp;
             </li>
-            <li className="header-nav-item active-item" onClick={() => setIsMessageActive(true)}>
+            <li
+              className="header-nav-item active-item"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMessageActive((prev) => !prev);
+                setIsNotificationActive(false);
+                setIsSettingsActive(false);
+              }}
+            >
               <span className="header-list-name">
                 <FaRegEnvelope className="header-list-icon" />
-                <span className="bg-danger-dots dots" data-testid="messages-dots"></span>
+                {messageCount > 0 && (
+                  <span className="bg-danger-dots dots" data-testid="messages-dots"></span>
+                )}
               </span>
             </li>
             &nbsp;
             <li
               className="header-nav-item"
               onClick={() => {
-                setIsSettingsActive(true);
+                setIsSettingsActive(!isSettingsActive);
                 setIsMessageActive(false);
                 setIsNotificationActive(false);
               }}
@@ -211,7 +244,7 @@ const Header = () => {
                   <li className="dropdown-li">
                     <Dropdown
                       height={300}
-                      style={{ right: '250px', top: '20px' }}
+                      style={{ right: '0', top: '20px' }}
                       data={settings}
                       title="Settings"
                       onLogout={onLogout}

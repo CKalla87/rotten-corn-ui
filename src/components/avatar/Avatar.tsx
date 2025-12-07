@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Utils } from '@services/utils/utils.service';
 import './Avatar.scss';
 
 interface AvatarProps {
@@ -12,18 +14,47 @@ interface AvatarProps {
 const Avatar = ({
   avatarSrc,
   name,
-  bgColor = '#f33e58',
-  textColor,
+  bgColor,
+  textColor = '#ffffff',
   size,
   round = true
 }: AvatarProps) => {
+  const [imageError, setImageError] = useState(false);
   const textSizeRatio = 1.7;
   const fontSize = Math.floor(size / textSizeRatio);
-  const firstNameCharacter = name?.charAt(0);
+  const defaultBgColor = bgColor || '#50b5ff';
+
+  // Extract first and last initials
+  const getInitials = (nameStr?: string): string => {
+    if (!nameStr) return '';
+    
+    const trimmedName = nameStr.trim();
+    if (!trimmedName) return '';
+    
+    const words = trimmedName.split(/\s+/).filter(word => word.length > 0);
+    
+    if (words.length === 0) return '';
+    
+    if (words.length === 1) {
+      // Single word (first name only): use just the first letter
+      const word = words[0];
+      return word.charAt(0).toUpperCase();
+    }
+    
+    // Multiple words: use first letter of first word and first letter of last word
+    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+  };
+
+  const initials = getInitials(name);
+  const showInitials = !avatarSrc || imageError;
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
   return (
     <>
-      {!avatarSrc && (
+      {showInitials && (
         <div
           data-testid="avatar-container"
           className="avatar-container"
@@ -31,11 +62,11 @@ const Avatar = ({
             width: `${size}px`,
             height: `${size}px`,
             borderRadius: `${round ? '50%' : ''}`,
-            backgroundColor: `${!avatarSrc ? bgColor : ''}`,
+            backgroundColor: defaultBgColor,
             display: 'flex'
           }}
         >
-          {name && (
+          {initials && (
             <div
               data-testid="avatar-name"
               style={{
@@ -46,21 +77,23 @@ const Avatar = ({
                 textTransform: 'uppercase'
               }}
             >
-              {firstNameCharacter}
+              {initials}
             </div>
           )}
         </div>
       )}
-      {avatarSrc && (
+      {avatarSrc && !imageError && (
         <img
-          src={avatarSrc}
+          src={Utils.fixCloudinaryUrl(avatarSrc)}
           alt={name || ''}
           className="avatar-content avatar-container"
           style={{
             width: `${size}px`,
             height: `${size}px`,
-            borderRadius: `${round ? '50%' : ''}`
+            borderRadius: `${round ? '50%' : ''}`,
+            display: 'block'
           }}
+          onError={handleImageError}
         />
       )}
     </>

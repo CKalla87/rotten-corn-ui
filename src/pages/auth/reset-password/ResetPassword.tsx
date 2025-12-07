@@ -42,7 +42,6 @@ const ResetPassword = () => {
       className="container-wrapper" 
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      <div className="environment">DEV</div>
       <div className="container-wrapper-auth">
         <div 
           className="tabs reset-password-tabs"

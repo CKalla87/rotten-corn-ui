@@ -1,23 +1,7 @@
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
 import './Streams.scss';
-import SuggestionsSkeletons from '@components/suggestions/SuggestionsSkeleton';
-
-const PostFormSkeleton = () => {
-  return (
-    <div style={{ marginBottom: '20px' }}>
-      <Skeleton baseColor="#EFF1F6" height={200} />
-    </div>
-  );
-};
-
-const PostSkeleton = () => {
-  return (
-    <div style={{ marginBottom: '20px' }}>
-      <Skeleton baseColor="#EFF1F6" height={300} />
-    </div>
-  );
-};
+import { PostFormSkeleton } from '@components/posts/post-form';
+import { PostSkeleton } from '@components/posts/post';
+import { SuggestionsSkeleton } from '@components/suggestions';
 
 const StreamsSkeleton = () => {
   return (
@@ -26,13 +10,11 @@ const StreamsSkeleton = () => {
         <div className="streams-post">
           <PostFormSkeleton />
           {[1, 2, 3, 4, 5, 6].map((index) => (
-            <div key={index}>
-              <PostSkeleton />
-            </div>
+            <PostSkeleton key={index} />
           ))}
         </div>
         <div className="streams-suggestions">
-          <SuggestionsSkeletons />
+          <SuggestionsSkeleton />
         </div>
       </div>
     </div>

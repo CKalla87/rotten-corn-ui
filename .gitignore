@@ -26,6 +26,16 @@ dist-ssr
 # Optional npm cache directory
 .npm
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraformrc
+terraform.rc
+# Note: .terraform.lock.hcl should be committed
+
 # dotenv environment variable files
 .env
 .env.development.local

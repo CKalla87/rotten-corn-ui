@@ -1,0 +1,56 @@
+.comment-area {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+
+  .like-icon {
+    display: flex;
+    align-items: center;
+  }
+
+  .likes-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    &-icons {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+  }
+
+  .reaction-display {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+
+    .reaction-img {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .reactions-container {
+    position: relative;
+  }
+
+  .comment-block {
+    cursor: pointer;
+
+    .comments-text {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--gray-8);
+
+      .comment-alt {
+        font-size: 18px;
+      }
+    }
+  }
+}
+
+

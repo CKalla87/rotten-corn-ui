@@ -6,6 +6,7 @@ import { FaArrowRight } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import Input from '@components/input/Input';
 import Button from '@components/button/Button';
+import { OAuthButton } from '@components/oauth-button';
 import { authService } from '@services/api/auth/auth.service';
 import useLocalStorage from '@hooks/useLocalStorage';
 import useSessionStorage from '@hooks/useSessionStorage';
@@ -48,7 +49,18 @@ const Login = () => {
       setLoading(false);
       setHasError(true);
       setAlertType('alert-error');
-      setErrorMessage(axiosError?.response?.data?.message || 'An error occurred during login');
+      
+      // Check for network errors
+      if (axiosError?.code === 'ERR_NETWORK' || axiosError?.message === 'Network Error') {
+        const env = import.meta.env.VITE_APP_ENVIRONMENT || import.meta.env.MODE || 'local';
+        if (env === 'development' || env === 'staging' || env === 'production') {
+          setErrorMessage('Unable to connect to the server. Please check your internet connection or ensure the backend server is running.');
+        } else {
+          setErrorMessage('Unable to connect to the server. Please ensure the backend server is running on http://localhost:5000');
+        }
+      } else {
+        setErrorMessage(axiosError?.response?.data?.message || 'An error occurred during login');
+      }
     }
   };
 
@@ -66,6 +78,14 @@ const Login = () => {
           {errorMessage}
         </div>
       )}
+      <div className="oauth-section">
+        <OAuthButton provider="google" />
+        <OAuthButton provider="github" />
+        <OAuthButton provider="facebook" />
+      </div>
+      <div className="divider">
+        <span>OR</span>
+      </div>
       <form className="auth-form" onSubmit={loginUser}>
         <div className="form-input-container">
           <Input
