@@ -33,7 +33,6 @@ interface RightMessageDisplayProps {
   togglReaction?: boolean;
   index?: number;
   activeElementIndex?: number;
-  activeElementRef?: React.RefObject<HTMLDivElement>;
   reactionRef?: React.RefObject<HTMLDivElement>;
   setToggleReaction?: (value: boolean) => void;
   handleReactionClick?: (body: unknown) => void;
@@ -54,7 +53,6 @@ const RightMessageDisplay = ({
   togglReaction,
   index,
   activeElementIndex,
-  activeElementRef,
   reactionRef,
   setToggleReaction,
   handleReactionClick,
