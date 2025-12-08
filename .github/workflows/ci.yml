@@ -552,7 +552,7 @@ jobs:
         continue-on-error: true
         uses: slackapi/slack-github-action@v1
         with:
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhookUrl: ${{ secrets.SLACK_WEBHOOK_URL }}
           payload: |
             {
               "text": "Deployment ${{ job.status }} for ${{ github.ref_name }} branch",
