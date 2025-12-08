@@ -448,7 +448,7 @@ jobs:
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if aws s3 cp dist/ s3://$BUCKET_NAME --recursive --delete; then
+            if aws s3 sync dist/ s3://$BUCKET_NAME --delete; then
               echo "Upload successful"
               break
             else
