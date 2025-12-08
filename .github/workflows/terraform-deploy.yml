@@ -10,7 +10,7 @@ on:
         options:
           - develop
           - staging
-          - main
+          - production
       confirm:
         description: 'Type "deploy" to confirm'
         required: true

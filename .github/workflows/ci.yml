@@ -136,7 +136,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-test
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
-    environment: ${{ github.ref_name }}
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -277,7 +277,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: terraform-validate
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
-    environment: ${{ github.ref_name }}
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -343,7 +343,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-app, terraform-plan-and-apply]
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
-    environment: ${{ github.ref_name }}
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -480,7 +480,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: upload-build-to-s3
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
-    environment: ${{ github.ref_name }}
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
