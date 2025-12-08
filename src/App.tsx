@@ -1,35 +1,47 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.sass'
+import { useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom';
+import { AppRouter } from '@root/routes';
+import { socketService } from '@services/socket/socket.service';
+import Toast from '@components/toast/Toast';
+import type { RootState } from '@redux/store';
+import type { NotificationItem } from '@redux/reducers/notifications/notificationSlice';
+import '@root/App.sass';
 
-function App() {
-  const [count, setCount] = useState(0)
+interface ToastItem {
+  id?: string;
+  description: string;
+  backgroundColor?: string;
+  icon?: string;
+  [key: string]: unknown;
+}
+
+const App = () => {
+  const notifications = useSelector((state: RootState) => state.notifications);
+
+  const toastList = useMemo<ToastItem[]>(() => {
+    return notifications.map((notification: NotificationItem) => ({
+      id: typeof notification.id === 'string' ? notification.id : notification.id?.toString(),
+      description: notification.description,
+      backgroundColor: notification.backgroundColor,
+      icon: notification.icon
+    }));
+  }, [notifications]);
+
+  useEffect(() => {
+    socketService.setupSocketConnection();
+  }, []);
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      {toastList && toastList.length > 0 && (
+        <Toast position="top-right" toastList={toastList} autoDelete={true} />
+      )}
+      <BrowserRouter>
+        <AppRouter />
+      </BrowserRouter>
     </>
-  )
-}
+  );
+};
 
-export default App
+export default App;

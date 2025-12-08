@@ -1,0 +1,32 @@
+.modal-box-selection {
+  padding: 10px 15px;
+
+  .post-form-list {
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    display: flex;
+    list-style: none;
+
+    .post-form-list-item {
+      display: flex;
+      color: var(--primary-1);
+      background: var(--white-7);
+      border-radius: 5px;
+      padding: 0.5rem;
+      margin-right: 1rem;
+      cursor: pointer;
+
+      img {
+        padding-right: 5px;
+      }
+    }
+
+    .image-select {
+      .file-input {
+        display: none;
+      }
+    }
+  }
+}
+

@@ -1,0 +1,569 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - main
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '20.x'
+
+jobs:
+  install-dependencies:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show current branch
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+  linting:
+    name: Run Linting
+    runs-on: ubuntu-latest
+    needs: install-dependencies
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Run linting
+        run: npm run lint
+
+  code-formatter-check:
+    name: Check Code Formatting
+    runs-on: ubuntu-latest
+    needs: install-dependencies
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Check code formatting
+        run: |
+          if npm run | grep -q "format:check"; then
+            npm run format:check || true
+          else
+            echo "format:check script not found, skipping..."
+          fi
+
+  unit-test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    needs: code-formatter-check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Run unit tests
+        run: npm run test -- --coverage --watchAll=false
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+  build-app:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: unit-test
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show current branch
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Debug AWS secrets (check if accessible)
+        run: |
+          echo "Checking if AWS secrets are accessible..."
+          ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          SECRET_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          if [ -n "$ACCESS_KEY" ]; then
+            echo "✓ AWS_ACCESS_KEY_ID is set (length: ${#ACCESS_KEY} chars)"
+          else
+            echo "✗ AWS_ACCESS_KEY_ID is empty or not accessible"
+            echo "Note: If using environment secrets, add 'environment:' to the job"
+            echo "Note: Forks cannot access repository secrets"
+          fi
+          if [ -n "$SECRET_KEY" ]; then
+            echo "✓ AWS_SECRET_ACCESS_KEY is set (length: ${#SECRET_KEY} chars)"
+          else
+            echo "✗ AWS_SECRET_ACCESS_KEY is empty or not accessible"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Remove existing .env file
+        run: rm -rf .env
+
+      - name: Sync environment files from S3
+        run: |
+          ENV_PATH=""
+          if [ "${{ github.ref_name }}" == "develop" ]; then
+            ENV_PATH="frontend/develop"
+          elif [ "${{ github.ref_name }}" == "staging" ]; then
+            ENV_PATH="frontend/staging"
+          else
+            ENV_PATH="frontend/production"
+          fi
+          
+          echo "Syncing environment files from: s3://chattapplication1-env-files/$ENV_PATH"
+          
+          if aws s3 sync s3://chattapplication1-env-files/$ENV_PATH .; then
+            echo "Environment files synced successfully"
+            
+            # Verify .env file exists
+            if [ ! -f ".env" ]; then
+              echo "Warning: .env file not found after sync"
+              echo "Listing files in current directory:"
+              ls -la
+            else
+              echo ".env file found"
+              # Don't print contents (contains secrets), just verify it exists
+            fi
+          else
+            echo "Error: Failed to sync environment files from S3"
+            exit 1
+          fi
+
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests with environment variables..."
+          npm run test -- --coverage --watchAll=false
+
+      - name: Build project
+        run: |
+          echo "Starting build process..."
+          npm run build
+          
+          # Verify build output exists
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found after build"
+            exit 1
+          fi
+          
+          # Check if index.html exists
+          if [ ! -f "dist/index.html" ]; then
+            echo "Error: index.html not found in dist directory"
+            exit 1
+          fi
+          
+          echo "Build successful - dist directory verified"
+          ls -la dist/ | head -20
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: dist/
+          retention-days: 1
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show current branch
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Terraform Validate & Format Check
+        working-directory: infrastructure
+        run: |
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check
+
+  terraform-plan-and-apply:
+    name: Terraform Plan and Apply
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show current branch
+        run: |
+          echo "Current branch: ${{ github.ref_name }}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Create temp folder
+        run: mkdir -p temp_folder
+
+      - name: Terraform Plan
+        working-directory: infrastructure
+        run: |
+          terraform init
+          terraform workspace select ${{ github.ref_name }} || terraform workspace new ${{ github.ref_name }}
+          terraform plan
+
+      - name: Terraform Apply
+        working-directory: infrastructure
+        run: |
+          terraform workspace select ${{ github.ref_name }}
+          
+          # Apply with error handling
+          if terraform apply -auto-approve; then
+            echo "Terraform apply successful"
+          else
+            echo "Terraform apply failed"
+            terraform show
+            exit 1
+          fi
+          
+          # Get CloudFront distribution ID
+          if terraform output -raw cloudfront_distribution_id > ../temp_folder/cloudfront_distribution_id.txt; then
+            echo "CloudFront distribution ID saved"
+            cat ../temp_folder/cloudfront_distribution_id.txt
+          else
+            echo "Warning: Could not get CloudFront distribution ID"
+            exit 1
+          fi
+
+      - name: Upload CloudFront distribution ID
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudfront-distribution-id
+          path: temp_folder/cloudfront_distribution_id.txt
+          retention-days: 1
+
+  upload-build-to-s3:
+    name: Upload Build to S3
+    runs-on: ubuntu-latest
+    needs: [build-app, terraform-plan-and-apply]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Remove existing .env file
+        run: rm -rf .env
+
+      - name: Sync environment files from S3
+        run: |
+          ENV_PATH=""
+          if [ "${{ github.ref_name }}" == "develop" ]; then
+            ENV_PATH="frontend/develop"
+          elif [ "${{ github.ref_name }}" == "staging" ]; then
+            ENV_PATH="frontend/staging"
+          else
+            ENV_PATH="frontend/production"
+          fi
+          
+          echo "Syncing environment files from: s3://chattapplication1-env-files/$ENV_PATH"
+          
+          if aws s3 sync s3://chattapplication1-env-files/$ENV_PATH .; then
+            echo "Environment files synced successfully"
+            
+            # Verify .env file exists
+            if [ ! -f ".env" ]; then
+              echo "Warning: .env file not found after sync"
+              echo "Listing files in current directory:"
+              ls -la
+            else
+              echo ".env file found"
+              # Don't print contents (contains secrets), just verify it exists
+            fi
+          else
+            echo "Error: Failed to sync environment files from S3"
+            exit 1
+          fi
+
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests with environment variables..."
+          npm run test -- --coverage --watchAll=false
+
+      - name: Build project
+        run: |
+          echo "Starting build process..."
+          npm run build
+          
+          # Verify build output exists
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found after build"
+            exit 1
+          fi
+          
+          # Check if index.html exists
+          if [ ! -f "dist/index.html" ]; then
+            echo "Error: index.html not found in dist directory"
+            exit 1
+          fi
+          
+          echo "Build successful - dist directory verified"
+          ls -la dist/ | head -20
+
+      - name: Verify S3 bucket exists
+        run: |
+          BUCKET_NAME="chatapp-client-${{ github.ref_name }}-app-602951639614"
+          echo "Verifying S3 bucket exists: $BUCKET_NAME"
+          if aws s3 ls "s3://$BUCKET_NAME" 2>&1 | grep -q 'NoSuchBucket'; then
+            echo "Warning: S3 bucket $BUCKET_NAME does not exist. Infrastructure may need to be deployed first."
+            echo "Note: Terraform apply must be run manually via the infrastructure deployment workflow."
+            exit 1
+          fi
+          echo "S3 bucket verified: $BUCKET_NAME"
+
+      - name: Upload to S3
+        run: |
+          BUCKET_NAME="chatapp-client-${{ github.ref_name }}-app-602951639614"
+          echo "Uploading to S3 bucket: $BUCKET_NAME"
+          
+          # Upload with retry logic
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if aws s3 sync dist/ s3://$BUCKET_NAME --delete; then
+              echo "Upload successful"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Upload failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+                sleep 5
+              else
+                echo "Upload failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
+          
+          # Verify upload
+          echo "Verifying upload..."
+          FILE_COUNT=$(aws s3 ls s3://$BUCKET_NAME --recursive | wc -l)
+          echo "Files uploaded: $FILE_COUNT"
+          
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "Error: No files found in S3 bucket after upload"
+            exit 1
+          fi
+          
+          echo "S3 upload verified successfully"
+
+  aws-cloudfront-distribution:
+    name: Invalidate CloudFront Distribution
+    runs-on: ubuntu-latest
+    needs: upload-build-to-s3
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download CloudFront distribution ID artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudfront-distribution-id
+          path: temp_folder
+
+      - name: Create temp folder if it doesn't exist
+        run: mkdir -p temp_folder
+
+      - name: Invalidate CloudFront distribution
+        run: |
+          if [ ! -f "temp_folder/cloudfront_distribution_id.txt" ]; then
+            echo "Error: CloudFront distribution ID file not found"
+            exit 1
+          fi
+          
+          CLOUDFRONT_DISTRIBUTION_ID=$(cat temp_folder/cloudfront_distribution_id.txt | sed 's/"//g' | tr -d '\n')
+          
+          if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+            echo "Error: CloudFront distribution ID is empty"
+            exit 1
+          fi
+          
+          echo "Invalidating CloudFront Distribution ID: $CLOUDFRONT_DISTRIBUTION_ID"
+          
+          # Create invalidation with retry logic
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if INVALIDATION_ID=$(aws cloudfront create-invalidation \
+              --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+              --paths "/*" \
+              --query 'Invalidation.Id' \
+              --output text 2>&1); then
+              echo "CloudFront invalidation created successfully: $INVALIDATION_ID"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Invalidation failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+                sleep 10
+              else
+                echo "Invalidation failed after $MAX_RETRIES attempts"
+                echo "Error output: $INVALIDATION_ID"
+                exit 1
+              fi
+            fi
+          done
+
+  notify-via-slack:
+    name: Notify via Slack
+    runs-on: ubuntu-latest
+    needs: aws-cloudfront-distribution
+    if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+    steps:
+      - name: Send Slack notification
+        continue-on-error: true
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhookUrl: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "Deployment ${{ job.status }} for ${{ github.ref_name }} branch",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Status:* ${{ job.status }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+

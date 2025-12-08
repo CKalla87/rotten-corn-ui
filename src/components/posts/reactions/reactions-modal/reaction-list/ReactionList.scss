@@ -1,0 +1,41 @@
+.modal-reactions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &-list {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: var(--white-2);
+    }
+
+    .img {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .reaction-icon {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid var(--white-1);
+      }
+    }
+
+    span {
+      font-weight: 500;
+      color: var(--gray-8);
+    }
+  }
+}
+
+

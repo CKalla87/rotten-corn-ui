@@ -1,0 +1,47 @@
+.giphy-search-container {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 352px;
+  max-height: 447px;
+  background: var(--white-1);
+  border: 1px solid var(--white-4);
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 1000;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  .giphy-search-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    .search {
+      color: var(--gray-1);
+    }
+  }
+
+  .search-results {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+
+    .gif-result {
+      cursor: pointer;
+      border-radius: 5px;
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+      }
+    }
+  }
+}
+
