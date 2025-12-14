@@ -5,6 +5,7 @@ import type { AppDispatch } from '@redux/store';
 import { addUser, clearUser } from '@redux/reducers/user/userSlice';
 import { addNotification, clearNotification } from '@redux/reducers/notifications/notificationSlice';
 import type { UserProfile } from '@redux/reducers/user/userSlice';
+import { getCloudName } from '@root/utils/env';
 
 export class Utils {
   static avatarColor(): string {
@@ -125,7 +126,7 @@ export class Utils {
     // Strip quotes if present (fixes issues with stringified values)
     const version = typeof imgVersion === 'string' ? imgVersion.replace(/['"]+/g, '') : imgVersion;
     const id = typeof imgId === 'string' ? imgId.replace(/['"]+/g, '') : imgId;
-    const cloudName = import.meta.env.VITE_CLOUD_NAME;
+    const cloudName = getCloudName();
     if (!cloudName) {
       return '';
     }
@@ -157,8 +158,12 @@ export class Utils {
   }
 
   static getVideo(videoId?: string, videoVersion?: string): string {
+    const cloudName = getCloudName();
+    if (!cloudName) {
+      return '';
+    }
     return videoId && videoVersion
-      ? `https://res.cloudinary.com/${import.meta.env.VITE_CLOUD_NAME}/video/upload/v${videoVersion}/${videoId}`
+      ? `https://res.cloudinary.com/${cloudName}/video/upload/v${videoVersion}/${videoId}`
       : '';
   }
 

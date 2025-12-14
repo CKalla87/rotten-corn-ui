@@ -66,8 +66,6 @@ const Register = () => {
       )}
       <div className="oauth-section">
         <OAuthButton provider="google" />
-        <OAuthButton provider="github" />
-        <OAuthButton provider="facebook" />
       </div>
       <div className="divider">
         <span>OR</span>
