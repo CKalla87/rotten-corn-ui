@@ -5,7 +5,6 @@
   bottom: 0;
   z-index: 1050;
   display: grid;
-  grid-template-columns: 1;
   grid-auto-rows: 1fr;
   grid-template-areas: 'modal';
 }
