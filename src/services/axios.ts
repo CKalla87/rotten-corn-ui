@@ -26,6 +26,15 @@ if (import.meta.env.VITE_BASE_ENDPOINT && APP_ENVIRONMENT !== 'local' && !import
 
 export { BASE_ENDPOINT };
 
+/**
+ * Get the base endpoint at runtime
+ * This function allows runtime detection of the base endpoint
+ * which is useful for OAuth flows that need to determine the API URL dynamically
+ */
+export function getBaseEndpoint(): string {
+  return BASE_ENDPOINT;
+}
+
 // If BASE_ENDPOINT is empty (local dev), use relative URL to leverage Vite proxy
 // Otherwise, construct the full URL
 const BASE_URL = BASE_ENDPOINT ? `${BASE_ENDPOINT}/api/v1` : '/api/v1';
