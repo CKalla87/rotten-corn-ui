@@ -2,12 +2,18 @@
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
   bottom: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1050;
   display: grid;
-  grid-template-columns: 1;
+  grid-template-columns: 1fr;
   grid-auto-rows: 1fr;
   grid-template-areas: "modal";
+  place-items: center;
+  justify-content: center;
+  align-content: center;
 }
 
 .modal-bg {

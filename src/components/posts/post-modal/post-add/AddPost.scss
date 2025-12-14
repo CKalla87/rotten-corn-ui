@@ -2,8 +2,9 @@
   grid-area: modal;
   align-self: center;
   justify-self: center;
-  position: absolute;
+  position: relative;
   width: 500px;
+  max-width: 90vw;
   overflow: hidden;
   box-sizing: border-box;
   z-index: 1;
@@ -17,7 +18,11 @@
     align-self: center;
     justify-self: center;
     position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 500px;
+    max-width: 90vw;
     overflow: hidden;
     box-sizing: border-box;
     z-index: 10;
@@ -338,8 +343,9 @@ hr {
   grid-area: modal;
   align-self: center;
   justify-self: center;
-  position: absolute;
+  position: relative;
   width: 500px;
+  max-width: 90vw;
   overflow: hidden;
   box-sizing: border-box;
   z-index: 1;

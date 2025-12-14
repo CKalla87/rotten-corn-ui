@@ -48,6 +48,19 @@ axiosInstance.interceptors.request.use(
     } catch (error) {
       console.error('Failed to get token from localStorage:', error);
     }
+    
+    // Ensure Content-Type is set correctly for file uploads
+    // If the data contains base64 image/video, keep application/json
+    // The backend should accept base64 strings in JSON format
+    if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+      // Check if this is a file upload request (contains image or video as base64)
+      const hasFileData = (config.data as Record<string, unknown>).image || (config.data as Record<string, unknown>).video;
+      if (hasFileData && config.headers) {
+        // Ensure Content-Type is application/json for base64 uploads
+        config.headers['Content-Type'] = 'application/json';
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -55,13 +68,33 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle 401 errors
+// Response interceptor to handle 401 errors and CORS errors
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    
+    // Handle CORS errors
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      // Check if this is a CORS error (no response object means CORS blocked the request)
+      if (!error.response) {
+        const isFileUpload = originalRequest?.url?.includes('/post/image') || 
+                           originalRequest?.url?.includes('/post/video') ||
+                           originalRequest?.url?.includes('/post/image/post') ||
+                           originalRequest?.url?.includes('/post/video/post');
+        
+        if (isFileUpload) {
+          console.error('CORS error during file upload. Please ensure the backend has CORS configured to allow requests from:', window.location.origin);
+          // Provide a more helpful error message
+          const corsError = new Error('CORS error: Unable to upload file. The server needs to allow requests from this origin.') as AxiosError;
+          corsError.config = error.config;
+          corsError.request = error.request;
+          return Promise.reject(corsError);
+        }
+      }
+    }
     
     // If we get a 401 and haven't already retried, clear token and redirect
     if (error.response?.status === 401 && !originalRequest._retry) {
