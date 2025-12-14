@@ -1,4 +1,4 @@
-import axios from '@services/axios';
+import axios, { getBaseEndpoint } from '@services/axios';
 
 interface SignUpBody {
   username: string;
@@ -43,32 +43,37 @@ class AuthService {
 
   /**
    * Initiate OAuth login flow
-   * Redirects user to OAuth provider's authorization page
+   * Redirects user to OAuth provider's authorization page via backend
    */
   async initiateOAuth(provider: OAuthProvider) {
-    // Get the base URL from environment or use current origin
-    // Handle import.meta which may not be available in test environment
-    let baseUrl = window.location.origin;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const metaEnv = (globalThis as any).import?.meta?.env;
-      if (metaEnv?.VITE_BASE_ENDPOINT) {
-        baseUrl = metaEnv.VITE_BASE_ENDPOINT;
-      }
-    } catch {
-      // In test environment, use window.location.origin
-      baseUrl = window.location.origin;
+      // Get BASE_ENDPOINT at runtime (not build time) to ensure hostname detection works
+      const apiBase = getBaseEndpoint();
+      
+      // The redirect_uri is where the user should land AFTER OAuth completes (frontend URL)
+      // This must match the callback route in the frontend and what's configured in OAuth provider
+      const redirectUri = `${window.location.origin}/auth/${provider}/callback`;
+      
+      // Construct the backend OAuth URL
+      // Always use full URL with apiBase (should never be empty in production)
+      const backendOAuthUrl = apiBase 
+        ? `${apiBase}/api/v1/auth/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`
+        : `/api/v1/auth/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`;
+      
+      // Log for debugging (remove in production if needed)
+      console.log('Initiating OAuth:', {
+        provider,
+        redirectUri,
+        backendOAuthUrl,
+        apiBase
+      });
+      
+      // Redirect to backend OAuth endpoint - backend will handle redirecting to Google
+      window.location.href = backendOAuthUrl;
+    } catch (error) {
+      console.error('Error initiating OAuth:', error);
+      throw error;
     }
-    const apiBase = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') 
-      ? '' 
-      : baseUrl.replace(/\/$/, '');
-    
-    // Construct callback URL for frontend
-    const callbackUrl = `${window.location.origin}/auth/${provider}/callback`;
-    
-    // Redirect to backend OAuth endpoint with callback URL
-    const redirectUrl = `${apiBase}/api/v1/auth/${provider}?redirect_uri=${encodeURIComponent(callbackUrl)}`;
-    window.location.href = redirectUrl;
   }
 
   /**
