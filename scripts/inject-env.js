@@ -15,15 +15,28 @@ const rootDir = join(__dirname, '..');
 const distDir = join(rootDir, 'dist');
 const indexPath = join(distDir, 'index.html');
 
-// Try multiple possible .env file locations/names
-// Priority: .env.develop, .env.staging, .env.production, .env (for local)
-const possibleEnvPaths = [
+// Determine which environment file to read based on what's available
+// Priority: environment-specific files first, then generic .env (for local only)
+// Check for environment-specific files first (these are for hosted environments)
+const envSpecificFiles = [
   join(rootDir, '.env.develop'),
   join(rootDir, '.env.staging'),
   join(rootDir, '.env.production'),
-  join(rootDir, '.env.development'),
-  join(rootDir, '.env') // Fallback for local development
+  join(rootDir, '.env.development')
 ];
+
+// Check which environment-specific files exist
+const existingEnvFiles = envSpecificFiles.filter(path => existsSync(path));
+console.log('🔍 Checking for environment files...');
+console.log('   Environment-specific files found:', existingEnvFiles.length > 0 ? existingEnvFiles.map(p => p.split('/').pop()).join(', ') : 'none');
+console.log('   Generic .env exists:', existsSync(join(rootDir, '.env')));
+
+// Build list of possible paths - prioritize env-specific files if they exist
+const possibleEnvPaths = existingEnvFiles.length > 0
+  ? existingEnvFiles  // Only check env-specific files if they exist
+  : [join(rootDir, '.env')]; // Fallback to .env only if no env-specific files found
+
+console.log('📂 Will check files in order:', possibleEnvPaths.map(p => p.split('/').pop()).join(' → '));
 
 // Simple .env parser (since we can't easily use dotenv in ESM)
 function parseEnv(content) {
