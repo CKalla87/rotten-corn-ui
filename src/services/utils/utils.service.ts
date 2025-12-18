@@ -145,6 +145,15 @@ export class Utils {
       if (!(window as { __cloudNameWarningShown?: boolean }).__cloudNameWarningShown) {
         console.warn('⚠️ VITE_CLOUD_NAME not set, image URL generation may fail. Using fallback.');
         console.warn('⚠️ Please ensure VITE_CLOUD_NAME is set in your environment or injected via window.__ENV__.VITE_CLOUD_NAME');
+        // Log diagnostic information
+        if (typeof window !== 'undefined') {
+          console.warn('⚠️ Diagnostic info:', {
+            hasWindowEnv: !!window.__ENV__,
+            envKeys: window.__ENV__ ? Object.keys(window.__ENV__) : [],
+            buildTimeEnv: import.meta.env.VITE_CLOUD_NAME,
+            runtimeEnv: window.__ENV__?.VITE_CLOUD_NAME
+          });
+        }
         (window as { __cloudNameWarningShown?: boolean }).__cloudNameWarningShown = true;
       }
       // Return empty string so calling code can fall back to full URL if available
