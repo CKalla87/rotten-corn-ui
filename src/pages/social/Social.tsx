@@ -217,7 +217,7 @@ const Social = () => {
             (dropdown as HTMLElement).style.setProperty('max-width', '350px', 'important');
             (dropdown as HTMLElement).style.setProperty('margin-right', '0', 'important');
             (dropdown as HTMLElement).style.setProperty('position', 'fixed', 'important');
-            (dropdown as HTMLElement).style.setProperty('top', '70px', 'important');
+            (dropdown as HTMLElement).style.setProperty('top', '5px', 'important');
             (dropdown as HTMLElement).style.setProperty('left', '50%', 'important');
             (dropdown as HTMLElement).style.setProperty('right', 'auto', 'important');
             (dropdown as HTMLElement).style.setProperty('transform', 'translate(-50%)', 'important');
