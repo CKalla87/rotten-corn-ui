@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -25,8 +25,54 @@ const ChatWindow = () => {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
   const [rendered, setRendered] = useState(false);
+  const isSendingMessageRef = useRef(false);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  
+  // Function to scroll chat to bottom
+  const scrollToBottom = useCallback(() => {
+    const scrollContainer = document.querySelector('.chat-window-message') as HTMLElement;
+    if (scrollContainer) {
+      // Wait for DOM to update, then scroll
+      setTimeout(() => {
+        const scrollHeight = scrollContainer.scrollHeight;
+        const clientHeight = scrollContainer.clientHeight;
+        const maxScroll = scrollHeight - clientHeight;
+        
+        console.log('📜 Attempting to scroll:', {
+          scrollHeight,
+          clientHeight,
+          maxScroll,
+          currentScrollTop: scrollContainer.scrollTop
+        });
+        
+        // Scroll to bottom
+        scrollContainer.scrollTo({
+          top: scrollHeight,
+          behavior: 'smooth'
+        });
+        
+        // Verify scroll happened after a delay
+        setTimeout(() => {
+          const newScrollTop = scrollContainer.scrollTop;
+          const distanceFromBottom = scrollHeight - newScrollTop - clientHeight;
+          console.log('📜 Scroll result:', {
+            newScrollTop,
+            distanceFromBottom,
+            atBottom: distanceFromBottom < 20
+          });
+          
+          // If not at bottom, try again with instant scroll
+          if (distanceFromBottom > 20) {
+            console.log('📜 Retrying with instant scroll');
+            scrollContainer.scrollTop = scrollHeight;
+          }
+        }, 300);
+      }, 250);
+    } else {
+      console.warn('⚠️ Could not find .chat-window-message element');
+    }
+  }, []);
 
   const getChatMessages = useCallback(
     async (receiverId: string) => {
@@ -45,8 +91,36 @@ const ChatWindow = () => {
             });
           }
         });
-        ChatUtils.privateChatMessages = [...response.data.messages];
-        setChatMessages([...ChatUtils.privateChatMessages]);
+        
+        // Preserve optimistic messages when fetching (unless we're not sending)
+        if (!isSendingMessageRef.current) {
+          // Update ChatUtils with server messages
+          ChatUtils.privateChatMessages = [...response.data.messages];
+          setChatMessages([...ChatUtils.privateChatMessages]);
+        } else {
+          // If sending, preserve optimistic messages
+          setChatMessages((prevMessages) => {
+            // Find any optimistic (temp) messages
+            const optimisticMessages = prevMessages.filter((msg) => {
+              const msgId = msg._id as string;
+              return msgId?.startsWith('temp-');
+            });
+            
+            // Update ChatUtils with server messages
+            ChatUtils.privateChatMessages = [...response.data.messages];
+            
+            // Merge server messages with optimistic messages, removing duplicates
+            const serverMessageIds = new Set(response.data.messages.map((msg: Record<string, unknown>) => msg._id));
+            const uniqueOptimisticMessages = optimisticMessages.filter((msg) => {
+              const msgId = msg._id as string;
+              return !serverMessageIds.has(msgId);
+            });
+            
+            // Combine server messages with remaining optimistic messages
+            const mergedMessages = [...response.data.messages, ...uniqueOptimisticMessages];
+            return mergedMessages;
+          });
+        }
       } catch (error: unknown) {
         const axiosError = error as { response?: { data?: { message?: string } } };
         Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
@@ -58,7 +132,7 @@ const ChatWindow = () => {
   const getNewUserMessages = useCallback(() => {
     if (searchParams.get('id') && searchParams.get('username')) {
       setConversationId('');
-      setChatMessages([]);
+      // Don't clear messages here - let getChatMessages handle merging
       getChatMessages(searchParams.get('id') || '');
     }
   }, [getChatMessages, searchParams]);
@@ -86,6 +160,9 @@ const ChatWindow = () => {
     if (!message.trim() && !gifUrl && !selectedImage) {
       return;
     }
+
+    // Set flag to prevent message clearing during send
+    isSendingMessageRef.current = true;
 
     try {
       const checkUserOne = some(
@@ -115,8 +192,125 @@ const ChatWindow = () => {
       }
       
       console.log('📤 Sending chat message:', JSON.stringify(messageData, null, 2));
+      
+      // Create optimistic message to add immediately to UI
+      const tempMessageId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const optimisticMessage: Record<string, unknown> = {
+        _id: tempMessageId,
+        body: messageData.body,
+        senderId: profile?._id || '',
+        senderUsername: profile?.username || '',
+        receiverId: messageData.receiverId,
+        receiverUsername: messageData.receiverUsername || receiver?.username || '',
+        conversationId: messageData.conversationId || conversationId,
+        isRead: messageData.isRead || false,
+        createdAt: new Date().toISOString(),
+        deleteForMe: false,
+        deleteForEveryone: false
+      };
+      
+      console.log('🔍 Optimistic message details:', {
+        senderId: optimisticMessage.senderId,
+        senderUsername: optimisticMessage.senderUsername,
+        receiverId: optimisticMessage.receiverId,
+        receiverUsername: optimisticMessage.receiverUsername,
+        profileId: profile?._id,
+        profileUsername: profile?.username,
+        receiverIdFromData: messageData.receiverId,
+        receiverUsernameFromData: messageData.receiverUsername
+      });
+      
+      // Ensure senderId and receiverId are different
+      if (optimisticMessage.senderId === optimisticMessage.receiverId) {
+        console.error('❌ ERROR: senderId and receiverId are the same!', {
+          senderId: optimisticMessage.senderId,
+          receiverId: optimisticMessage.receiverId,
+          profile: profile,
+          receiver: receiver
+        });
+      }
+      
+      // Add image or GIF data if present
+      if (gifUrl) {
+        optimisticMessage.gifUrl = gifUrl;
+      }
+      if (selectedImage) {
+        optimisticMessage.selectedImage = selectedImage;
+      }
+      
+      // Immediately add the message to local state for instant UI update
+      // Create a new array to ensure React detects the change
+      const updatedMessages = [...chatMessages];
+      updatedMessages.push(optimisticMessage);
+      
+      // Update ChatUtils first
+      ChatUtils.privateChatMessages = [...ChatUtils.privateChatMessages, optimisticMessage];
+      
+      console.log('✨ Optimistic message added:', optimisticMessage);
+      console.log('📋 Updated messages count:', updatedMessages.length);
+      console.log('📋 Previous messages count:', chatMessages.length);
+      console.log('📋 Current chatMessages state:', chatMessages);
+      console.log('📋 Updated messages array:', updatedMessages);
+      
+      // Update state - React should detect the new array reference
+      setChatMessages(updatedMessages);
+      
+      // Verify the message will be displayed
+      const willDisplay = (optimisticMessage.receiverUsername === profile?.username || optimisticMessage.senderUsername === profile?.username);
+      console.log('👁️ Will message display?', willDisplay, {
+        receiverUsername: optimisticMessage.receiverUsername,
+        senderUsername: optimisticMessage.senderUsername,
+        profileUsername: profile?.username
+      });
+      
+      if (!willDisplay) {
+        console.error('❌ Optimistic message will NOT be displayed due to username mismatch!');
+      }
+      
+      // Scroll to bottom after adding optimistic message
+      scrollToBottom();
+      
+      // Send to API
       const response = await chatService.saveChatMessage(messageData);
       console.log('✅ Chat message sent successfully:', response);
+      console.log('📦 Response data:', response?.data);
+      console.log('📦 Response data.message:', response?.data?.message);
+      
+      // Replace the temporary message with the real one from the server if available
+      // The server might return the message in response.data.message or response.data
+      const serverMessage = (response?.data?.message || response?.data) as Record<string, unknown>;
+      if (serverMessage && serverMessage._id) {
+        console.log('🔄 Replacing temp message with server message:', serverMessage);
+        setChatMessages((prevMessages) => {
+          const messageIndex = prevMessages.findIndex((msg) => (msg._id as string) === tempMessageId);
+          if (messageIndex > -1) {
+            const finalMessages = [...prevMessages];
+            finalMessages[messageIndex] = serverMessage;
+            console.log('✅ Replaced temp message at index:', messageIndex);
+            // Update ChatUtils.privateChatMessages
+            const utilsIndex = ChatUtils.privateChatMessages.findIndex((msg) => (msg._id as string) === tempMessageId);
+            if (utilsIndex > -1) {
+              ChatUtils.privateChatMessages[utilsIndex] = serverMessage;
+            }
+            // Scroll to bottom after replacing with server message
+            scrollToBottom();
+            return finalMessages;
+          } else {
+            console.log('⚠️ Temp message not found, adding server message');
+            // If temp message not found, just add the server message
+            ChatUtils.privateChatMessages.push(serverMessage);
+            const newMessages = [...prevMessages, serverMessage];
+            // Scroll to bottom after adding server message
+            scrollToBottom();
+            return newMessages;
+          }
+        });
+      } else {
+        console.log('ℹ️ Server response does not include message object, keeping optimistic message. Socket will update it.');
+      }
+      
+      // Clear flag after successful send
+      isSendingMessageRef.current = false;
     } catch (error: unknown) {
       const axiosError = error as { 
         response?: { 
@@ -129,6 +323,18 @@ const ChatWindow = () => {
         };
         message?: string;
       };
+      
+      // Remove the optimistic message on error
+      setChatMessages((prevMessages) => {
+        const tempMessageId = prevMessages.find((msg) => (msg._id as string)?.startsWith('temp-'))?._id;
+        if (tempMessageId) {
+          ChatUtils.privateChatMessages = ChatUtils.privateChatMessages.filter(
+            (msg) => (msg._id as string) !== tempMessageId
+          );
+          return prevMessages.filter((msg) => (msg._id as string) !== tempMessageId);
+        }
+        return prevMessages;
+      });
       
       // Log full error details - expand errorData for debugging
       const errorResponse = axiosError?.response?.data;
@@ -145,6 +351,9 @@ const ChatWindow = () => {
                           axiosError?.message || 
                           'An error occurred while sending message';
       Utils.dispatchNotification(errorMessage, 'error', dispatch);
+      
+      // Clear flag on error
+      isSendingMessageRef.current = false;
     }
   };
 
@@ -190,6 +399,24 @@ const ChatWindow = () => {
     ChatUtils.usersOnChatPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, rendered]);
+  
+  // Debug: Log when chatMessages state changes and scroll to bottom
+  useEffect(() => {
+    console.log('🔄 chatMessages state changed, new length:', chatMessages.length);
+    console.log('🔄 Last message:', chatMessages[chatMessages.length - 1]);
+    
+    // Scroll to bottom when messages change (including new messages from socket)
+    // Only scroll if it's a new message (not initial load)
+    if (chatMessages.length > 0) {
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      const isNewMessage = (lastMessage._id as string)?.startsWith('temp-') || 
+                          (lastMessage.createdAt && new Date(lastMessage.createdAt as string).getTime() > Date.now() - 5000);
+      
+      if (isNewMessage) {
+        scrollToBottom();
+      }
+    }
+  }, [chatMessages, scrollToBottom]);
 
   useEffect(() => {
     ChatUtils.socketIOMessageReaction(chatMessages, searchParams.get('username') || '', setConversationId, setChatMessages);

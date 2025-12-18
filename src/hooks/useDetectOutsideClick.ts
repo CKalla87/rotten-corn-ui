@@ -9,7 +9,7 @@ const useDetectOutsideClick = <T extends HTMLElement>(
   const [isActive, setIsActive] = useState(initialState);
 
   useEffect(() => {
-    const onClick = (event: MouseEvent) => {
+    const onClick = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
       
       // Don't close if clicking inside the menu
@@ -27,14 +27,17 @@ const useDetectOutsideClick = <T extends HTMLElement>(
     };
 
     if (isActive) {
-      // Use a small delay to prevent the click that opened the menu from immediately closing it
+      // Use a delay to prevent the click that opened the menu from immediately closing it
+      // This allows the onClick handler to toggle the state first
       const timeoutId = setTimeout(() => {
-        window.addEventListener('mousedown', onClick);
-      }, 10);
+        document.addEventListener('mousedown', onClick as EventListener);
+        document.addEventListener('touchstart', onClick as EventListener);
+      }, 150);
 
       return () => {
         clearTimeout(timeoutId);
-        window.removeEventListener('mousedown', onClick);
+        document.removeEventListener('mousedown', onClick as EventListener);
+        document.removeEventListener('touchstart', onClick as EventListener);
       };
     }
   }, [isActive, ref, excludeRef]);

@@ -3,8 +3,8 @@ import useDetectOutsideClick from '@hooks/useDetectOutsideClick';
 import { renderHook } from '@root/test.utils';
 import { act } from 'react';
 
-const windowAddEventListenerSpy = jest.spyOn(window, 'addEventListener');
-const windowRemoveEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+const documentAddEventListenerSpy = jest.spyOn(document, 'addEventListener');
+const documentRemoveEventListenerSpy = jest.spyOn(document, 'removeEventListener');
 
 const ref = { current: document.createElement('div') };
 
@@ -36,13 +36,14 @@ describe('useDetectOutsideClick', () => {
 
   it('should set value to false if true', async () => {
     const { result } = renderHook(() => useDetectOutsideClick(ref, true));
-    // Wait for the setTimeout delay (10ms) before checking
+    // Wait for the setTimeout delay (150ms) before checking
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 15));
+      await new Promise(resolve => setTimeout(resolve, 160));
     });
     const [isActive] = result.current;
     expect(isActive).toBeTruthy(); // Still true because no outside click happened
-    expect(windowAddEventListenerSpy).toHaveBeenCalledTimes(1);
+    // Hook adds both 'mousedown' and 'touchstart' listeners, so expect 2 calls
+    expect(documentAddEventListenerSpy).toHaveBeenCalledTimes(2);
   });
 
   it('should remove listener when unmounted', async () => {
@@ -52,15 +53,16 @@ describe('useDetectOutsideClick', () => {
       const [, setActive] = result.current;
       setActive(true);
     });
-    // Wait for the setTimeout delay
+    // Wait for the setTimeout delay (150ms)
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 15));
+      await new Promise(resolve => setTimeout(resolve, 160));
     });
     // Now unmount should remove the listener
     unmount();
     // The cleanup function runs on unmount, so removeEventListener is called
-    expect(windowAddEventListenerSpy).toHaveBeenCalledTimes(1);
-    expect(windowRemoveEventListenerSpy).toHaveBeenCalledTimes(1);
+    // Hook adds both 'mousedown' and 'touchstart' listeners, so expect 2 calls for each
+    expect(documentAddEventListenerSpy).toHaveBeenCalledTimes(2);
+    expect(documentRemoveEventListenerSpy).toHaveBeenCalledTimes(2);
   });
 });
 

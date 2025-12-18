@@ -41,10 +41,20 @@ const MOBILE_STYLES = `
       overflow: visible !important; 
       width: 100% !important; 
       max-width: 100% !important; 
+      padding: 0 !important; 
+      margin: 0 !important; 
+      box-sizing: border-box !important; 
     }
     .post-body {
-      width: 100% !important;
-      max-width: 100% !important;
+      width: calc(100% - 24px) !important;
+      max-width: calc(100% - 24px) !important;
+      margin-left: 12px !important;
+      margin-right: 12px !important;
+      margin-bottom: 12px !important;
+      padding: 12px !important;
+      border-radius: 8px !important;
+      background-color: var(--white-2) !important;
+      border: none !important;
     }
     .image-display-flex {
       width: 100% !important;
@@ -134,6 +144,9 @@ const Social = () => {
           (streamsContent as HTMLElement).style.setProperty('overflow', 'visible', 'important');
           (streamsContent as HTMLElement).style.setProperty('width', '100%', 'important');
           (streamsContent as HTMLElement).style.setProperty('max-width', '100%', 'important');
+          (streamsContent as HTMLElement).style.setProperty('padding', '0', 'important');
+          (streamsContent as HTMLElement).style.setProperty('margin', '0', 'important');
+          (streamsContent as HTMLElement).style.setProperty('display', 'block', 'important');
         }
         if (streamsPost) {
           (streamsPost as HTMLElement).style.setProperty('overflow', 'visible', 'important');
@@ -141,6 +154,30 @@ const Social = () => {
           (streamsPost as HTMLElement).style.setProperty('max-width', '100%', 'important');
           (streamsPost as HTMLElement).style.setProperty('height', 'auto', 'important');
         }
+        // Apply styles to all posts-container elements (in case there are multiple)
+        const postsContainers = document.querySelectorAll('.posts-container');
+        postsContainers.forEach((container) => {
+          (container as HTMLElement).style.setProperty('overflow', 'visible', 'important');
+          (container as HTMLElement).style.setProperty('width', '100%', 'important');
+          (container as HTMLElement).style.setProperty('max-width', '100%', 'important');
+          (container as HTMLElement).style.setProperty('padding', '0', 'important');
+          (container as HTMLElement).style.setProperty('margin', '0', 'important');
+          (container as HTMLElement).style.setProperty('box-sizing', 'border-box', 'important');
+        });
+        
+        // Apply card styles to all post-body elements
+        const postBodies = document.querySelectorAll('.post-body');
+        postBodies.forEach((postBody) => {
+          (postBody as HTMLElement).style.setProperty('width', 'calc(100% - 24px)', 'important');
+          (postBody as HTMLElement).style.setProperty('max-width', 'calc(100% - 24px)', 'important');
+          (postBody as HTMLElement).style.setProperty('margin-left', '12px', 'important');
+          (postBody as HTMLElement).style.setProperty('margin-right', '12px', 'important');
+          (postBody as HTMLElement).style.setProperty('margin-bottom', '12px', 'important');
+          (postBody as HTMLElement).style.setProperty('padding', '12px', 'important');
+          (postBody as HTMLElement).style.setProperty('border-radius', '8px', 'important');
+          (postBody as HTMLElement).style.setProperty('background-color', '#2a2a2a', 'important');
+          (postBody as HTMLElement).style.setProperty('border', 'none', 'important');
+        });
       }
     };
 

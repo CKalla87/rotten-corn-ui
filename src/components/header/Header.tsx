@@ -48,10 +48,12 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
   const messageRef = useRef<HTMLDivElement>(null);
   const messageButtonRef = useRef<HTMLLIElement>(null);
   const notificationRef = useRef<HTMLUListElement>(null);
+  const notificationButtonRef = useRef<HTMLLIElement>(null);
   const settingsRef = useRef<HTMLUListElement>(null);
+  const settingsButtonRef = useRef<HTMLLIElement>(null);
   const [isMessageActive, setIsMessageActive] = useDetectOutsideClick(messageRef as React.RefObject<HTMLElement>, false, messageButtonRef as React.RefObject<HTMLElement>);
-  const [isNotificationActive, setIsNotificationActive] = useDetectOutsideClick(notificationRef as React.RefObject<HTMLElement>, false);
-  const [isSettingsActive, setIsSettingsActive] = useDetectOutsideClick(settingsRef as React.RefObject<HTMLElement>, false);
+  const [isNotificationActive, setIsNotificationActive] = useDetectOutsideClick(notificationRef as React.RefObject<HTMLElement>, false, notificationButtonRef as React.RefObject<HTMLElement>);
+  const [isSettingsActive, setIsSettingsActive] = useDetectOutsideClick(settingsRef as React.RefObject<HTMLElement>, false, settingsButtonRef as React.RefObject<HTMLElement>);
   const [deleteStorageUsername] = useLocalStorage<string>('username', 'delete') as [() => void];
   const [setLoggedIn] = useLocalStorage<boolean>('keepLoggedIn', 'set') as [(value: boolean) => void];
   const [deleteSessionPageReload] = useSessionStorage<boolean>('pageReload', 'delete') as [() => void];
@@ -180,6 +182,23 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
     return cleanup;
   }, [profile, dispatch, setNotifications, setNotificationCount, setMessageNotifications, setMessageCount]);
 
+  // Close all dropdowns when sidebar closes on mobile (unless we're intentionally opening one)
+  const isIntentionallyTogglingRef = useRef(false);
+  
+  useEffect(() => {
+    if (!isSidebarOpen && !isIntentionallyTogglingRef.current) {
+      setIsNotificationActive(false);
+      setIsSettingsActive(false);
+      setIsMessageActive(false);
+    }
+    // Reset the flag after sidebar state has settled
+    if (!isSidebarOpen) {
+      setTimeout(() => {
+        isIntentionallyTogglingRef.current = false;
+      }, 100);
+    }
+  }, [isSidebarOpen, setIsMessageActive, setIsNotificationActive, setIsSettingsActive]);
+
   if (!profile) {
     return <HeaderSkeleton />;
   }
@@ -208,12 +227,26 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
           </div>
           <ul className="header-nav">
             <li
+              ref={notificationButtonRef}
               className="header-nav-item active-item"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsMessageActive(false);
-                setIsNotificationActive((prev) => !prev);
-                setIsSettingsActive(false);
+                // Close sidebar if open when clicking notifications
+                if (isSidebarOpen && onMenuToggle) {
+                  isIntentionallyTogglingRef.current = true;
+                  onMenuToggle();
+                  // Delay the dropdown toggle until after sidebar closes
+                  setTimeout(() => {
+                    setIsMessageActive(false);
+                    setIsNotificationActive((prev) => !prev);
+                    setIsSettingsActive(false);
+                  }, 300);
+                } else {
+                  // Toggle notification dropdown (closes if already open, opens if closed)
+                  setIsMessageActive(false);
+                  setIsNotificationActive((prev) => !prev);
+                  setIsSettingsActive(false);
+                }
               }}
             >
               <span className="header-list-name">
@@ -246,12 +279,29 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
               className="header-nav-item active-item"
               onClick={(e) => {
                 e.stopPropagation();
-                if (isMessageActive) {
-                  setIsMessageActive(false);
+                // Close sidebar if open when clicking messages
+                if (isSidebarOpen && onMenuToggle) {
+                  isIntentionallyTogglingRef.current = true;
+                  onMenuToggle();
+                  // Delay the dropdown toggle until after sidebar closes
+                  setTimeout(() => {
+                    if (isMessageActive) {
+                      setIsMessageActive(false);
+                    } else {
+                      setIsMessageActive(true);
+                      setIsNotificationActive(false);
+                      setIsSettingsActive(false);
+                    }
+                  }, 300);
                 } else {
-                  setIsMessageActive(true);
-                  setIsNotificationActive(false);
-                  setIsSettingsActive(false);
+                  // Toggle message sidebar (closes if already open, opens if closed)
+                  if (isMessageActive) {
+                    setIsMessageActive(false);
+                  } else {
+                    setIsMessageActive(true);
+                    setIsNotificationActive(false);
+                    setIsSettingsActive(false);
+                  }
                 }
               }}
               onMouseDown={(e) => {
@@ -268,11 +318,26 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
             </li>
             &nbsp;
             <li
+              ref={settingsButtonRef}
               className="header-nav-item"
-              onClick={() => {
-                  setIsSettingsActive(!isSettingsActive);
-                  setIsMessageActive(false);
-                  setIsNotificationActive(false);
+              onClick={(e) => {
+                  e.stopPropagation();
+                  // Close sidebar if open when clicking profile
+                  if (isSidebarOpen && onMenuToggle) {
+                    isIntentionallyTogglingRef.current = true;
+                    onMenuToggle();
+                    // Delay the dropdown toggle until after sidebar closes
+                    setTimeout(() => {
+                      setIsSettingsActive((prev) => !prev);
+                      setIsMessageActive(false);
+                      setIsNotificationActive(false);
+                    }, 300);
+                  } else {
+                    // Toggle settings dropdown (closes if already open, opens if closed)
+                    setIsSettingsActive((prev) => !prev);
+                    setIsMessageActive(false);
+                    setIsNotificationActive(false);
+                  }
               }}
             >
               <span className="header-list-name profile-image">

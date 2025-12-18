@@ -242,10 +242,33 @@ export class ChatUtils {
         );
         
         if (!messageExists) {
+          // Check if there's a temporary optimistic message that should be replaced
+          // Match by sender, receiver, body, and timestamp (within 5 seconds)
+          const tempMessageIndex = ChatUtils.privateChatMessages.findIndex((msg) => {
+            const msgId = msg._id as string;
+            if (!msgId?.startsWith('temp-')) return false;
+            
+            const senderMatch = (msg.senderId as string) === (data.senderId as string) ||
+                               (msg.senderUsername as string) === (data.senderUsername as string);
+            const receiverMatch = (msg.receiverId as string) === (data.receiverId as string) ||
+                                 (msg.receiverUsername as string) === (data.receiverUsername as string);
+            const bodyMatch = (msg.body as string) === (data.body as string);
+            
+            return senderMatch && receiverMatch && bodyMatch;
+          });
+          
+          if (tempMessageIndex > -1) {
+            // Replace the temporary message with the real one
+            ChatUtils.privateChatMessages[tempMessageIndex] = data;
+          } else {
+            // Add new message
+            ChatUtils.privateChatMessages.push(data);
+          }
+          
           setConversationId(data.conversationId || '');
-          ChatUtils.privateChatMessages.push(data);
-          const updatedChatMessages = [...ChatUtils.privateChatMessages];
-          setChatMessages(updatedChatMessages);
+          // Update messages with latest from ChatUtils
+          const updatedMessages = [...ChatUtils.privateChatMessages];
+          setChatMessages(updatedMessages);
         }
       }
     });
