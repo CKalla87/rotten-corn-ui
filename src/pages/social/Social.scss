@@ -11,14 +11,26 @@
 
   @media (max-width: 768px) {
     height: auto !important;
-    min-height: calc(100vh - 75px);
+    min-height: calc(100vh - 75px) !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
 
     &.dashboard-no-header-on-chat {
       height: 100vh;
       height: 100dvh;
       min-height: 100vh;
       min-height: 100dvh;
+    }
+  }
+
+  // Additional mobile-specific override with higher specificity
+  @media screen and (max-width: 768px) {
+    &[class*="dashboard"] {
+      overflow: visible !important;
+      overflow-x: visible !important;
+      overflow-y: visible !important;
+      height: auto !important;
     }
   }
 
@@ -86,6 +98,29 @@
         display: block;
       }
     }
+  }
+}
+
+// Global mobile overrides with maximum specificity - must be at end of file
+@media screen and (max-width: 768px) {
+  .dashboard {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  .dashboard-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  .dashboard .dashboard-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
 }
 

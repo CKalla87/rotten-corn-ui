@@ -3,17 +3,31 @@
   min-height: 100%;
   background-color: var(--white-10);
   margin-top: 0;
+  overflow: visible;
 
   @media (max-width: 768px) {
     margin-top: 0 !important;
     width: 100% !important;
-    min-height: 100vh;
+    min-height: 100vh !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  @media screen and (max-width: 768px) {
+    &[data-testid="streams"] {
+      overflow: visible !important;
+      overflow-x: visible !important;
+      overflow-y: visible !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
   }
 
   @media (max-width: 480px) {
-    margin-top: 0;
-    width: 100%;
+    margin-top: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
   }
 
   &-content {
@@ -40,13 +54,25 @@
     }
 
     @media (max-width: 768px) {
-      padding: 10px;
-      box-sizing: border-box;
-      column-gap: 0;
-      row-gap: 15px;
+      padding: 10px !important;
+      box-sizing: border-box !important;
+      column-gap: 0 !important;
+      row-gap: 15px !important;
       width: 100% !important;
       max-width: 100% !important;
       overflow: visible !important;
+      overflow-x: visible !important;
+      overflow-y: visible !important;
+    }
+
+    @media screen and (max-width: 768px) {
+      &[class*="streams-content"] {
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
     }
 
     @media (max-width: 480px) {
@@ -73,15 +99,28 @@
       }
 
       @media (max-width: 768px) {
-        box-sizing: border-box;
+        box-sizing: border-box !important;
         width: 100% !important;
         max-width: 100% !important;
         height: auto !important;
         min-height: auto !important;
         overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
         background-color: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
+      }
+
+      @media screen and (max-width: 768px) {
+        &[class*="streams-post"] {
+          overflow: visible !important;
+          overflow-x: visible !important;
+          overflow-y: visible !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+        }
       }
 
       @media (max-width: 480px) {
@@ -133,5 +172,39 @@
         border-radius: 10px;
       }
     }
+  }
+}
+
+// Global mobile overrides with maximum specificity
+@media screen and (max-width: 768px) {
+  .dashboard .dashboard-content .streams .streams-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .dashboard .dashboard-content .streams .streams-content .streams-post {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .dashboard {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  .dashboard-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
   }
 }
