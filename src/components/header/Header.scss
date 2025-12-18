@@ -16,6 +16,7 @@
   box-shadow: 0 0 20px 0 rgb(0 0 0 / 50%);
   padding: 0 20px;
   border-bottom: 1px solid var(--white-3);
+  overflow: visible;
 
   .header-navbar {
     display: flex;
@@ -225,6 +226,14 @@
   display: block;
   position: relative;
   transition: 0.5s;
+  overflow: visible;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  
+  @media (max-width: 768px) {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
 }
 
 ul .dropdown-ul {
@@ -309,15 +318,17 @@ ul .dropdown-ul {
     padding: 0 10px !important;
     width: 100%;
     box-sizing: border-box;
+    overflow: visible !important;
 
-    .header-navbar {
-      display: flex !important;
-      justify-content: flex-start;
-      align-items: center;
-      padding: 0 10px !important;
-      position: relative;
-      gap: 8px;
-      width: 100%;
+      .header-navbar {
+        display: flex !important;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 0 10px !important;
+        position: relative;
+        gap: 8px;
+        width: 100%;
+        overflow: visible !important;
 
       .header-logo-container {
         flex: 0 1 auto;
@@ -402,6 +413,7 @@ ul .dropdown-ul {
         flex: 0 0 auto;
         flex-wrap: nowrap;
         min-width: 0;
+        overflow: visible !important;
 
         .header-nav-item {
           justify-content: center;

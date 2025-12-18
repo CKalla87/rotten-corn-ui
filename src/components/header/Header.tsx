@@ -186,16 +186,23 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
   const isIntentionallyTogglingRef = useRef(false);
   
   useEffect(() => {
+    // Only close dropdowns if sidebar was just closed (transitioning from open to closed)
+    // and we're not intentionally toggling a dropdown
     if (!isSidebarOpen && !isIntentionallyTogglingRef.current) {
-      setIsNotificationActive(false);
-      setIsSettingsActive(false);
-      setIsMessageActive(false);
+      // Use a small delay to ensure this doesn't interfere with dropdown opening
+      const timeoutId = setTimeout(() => {
+        setIsNotificationActive(false);
+        setIsSettingsActive(false);
+        setIsMessageActive(false);
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
     }
     // Reset the flag after sidebar state has settled
     if (!isSidebarOpen) {
       setTimeout(() => {
         isIntentionallyTogglingRef.current = false;
-      }, 100);
+      }, 400);
     }
   }, [isSidebarOpen, setIsMessageActive, setIsNotificationActive, setIsSettingsActive]);
 

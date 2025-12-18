@@ -53,8 +53,21 @@ const MOBILE_STYLES = `
       margin-bottom: 12px !important;
       padding: 12px !important;
       border-radius: 8px !important;
-      background-color: var(--white-2) !important;
+      background-color: #1a1a1a !important;
       border: none !important;
+    }
+    .post-form {
+      width: calc(100% - 24px) !important;
+      max-width: calc(100% - 24px) !important;
+      margin-top: 12px !important;
+      margin-left: 12px !important;
+      margin-right: 12px !important;
+      margin-bottom: 12px !important;
+      border-radius: 8px !important;
+      height: auto !important;
+      min-height: auto !important;
+      max-height: none !important;
+      box-sizing: border-box !important;
     }
     .image-display-flex {
       width: 100% !important;
@@ -175,9 +188,71 @@ const Social = () => {
           (postBody as HTMLElement).style.setProperty('margin-bottom', '12px', 'important');
           (postBody as HTMLElement).style.setProperty('padding', '12px', 'important');
           (postBody as HTMLElement).style.setProperty('border-radius', '8px', 'important');
-          (postBody as HTMLElement).style.setProperty('background-color', '#2a2a2a', 'important');
+          (postBody as HTMLElement).style.setProperty('background-color', '#1a1a1a', 'important');
           (postBody as HTMLElement).style.setProperty('border', 'none', 'important');
         });
+        
+        // Apply matching width and height styles to post-form elements
+        const postForms = document.querySelectorAll('.post-form');
+        postForms.forEach((postForm) => {
+          (postForm as HTMLElement).style.setProperty('width', 'calc(100% - 24px)', 'important');
+          (postForm as HTMLElement).style.setProperty('max-width', 'calc(100% - 24px)', 'important');
+          (postForm as HTMLElement).style.setProperty('margin-top', '12px', 'important');
+          (postForm as HTMLElement).style.setProperty('margin-left', '12px', 'important');
+          (postForm as HTMLElement).style.setProperty('margin-right', '12px', 'important');
+          (postForm as HTMLElement).style.setProperty('margin-bottom', '12px', 'important');
+          (postForm as HTMLElement).style.setProperty('border-radius', '8px', 'important');
+          (postForm as HTMLElement).style.setProperty('height', 'auto', 'important');
+          (postForm as HTMLElement).style.setProperty('min-height', 'auto', 'important');
+          (postForm as HTMLElement).style.setProperty('max-height', 'none', 'important');
+          (postForm as HTMLElement).style.setProperty('box-sizing', 'border-box', 'important');
+        });
+        
+        // Apply dropdown positioning to ensure it works in develop environment
+        const applyDropdownStyles = () => {
+          const dropdowns = document.querySelectorAll('.dropdown-ul.dropdown-ul-notifications, .dropdown-ul.dropdown-ul-settings');
+          dropdowns.forEach((dropdown) => {
+            (dropdown as HTMLElement).style.setProperty('z-index', '1000', 'important');
+            (dropdown as HTMLElement).style.setProperty('width', 'calc(100vw - 40px)', 'important');
+            (dropdown as HTMLElement).style.setProperty('max-width', '350px', 'important');
+            (dropdown as HTMLElement).style.setProperty('margin-right', '0', 'important');
+            (dropdown as HTMLElement).style.setProperty('position', 'fixed', 'important');
+            (dropdown as HTMLElement).style.setProperty('top', '70px', 'important');
+            (dropdown as HTMLElement).style.setProperty('left', '50%', 'important');
+            (dropdown as HTMLElement).style.setProperty('right', 'auto', 'important');
+            (dropdown as HTMLElement).style.setProperty('transform', 'translate(-50%)', 'important');
+          });
+          
+          const socialDropdowns = document.querySelectorAll('.social-dropdown');
+          socialDropdowns.forEach((dropdown) => {
+            (dropdown as HTMLElement).style.setProperty('width', 'calc(100vw - 40px)', 'important');
+            (dropdown as HTMLElement).style.setProperty('max-width', '350px', 'important');
+            (dropdown as HTMLElement).style.setProperty('max-height', 'calc(100vh - 100px)', 'important');
+            (dropdown as HTMLElement).style.setProperty('margin-top', '0', 'important');
+            (dropdown as HTMLElement).style.setProperty('position', 'fixed', 'important');
+            (dropdown as HTMLElement).style.setProperty('top', '70px', 'important');
+            (dropdown as HTMLElement).style.setProperty('left', '50%', 'important');
+            (dropdown as HTMLElement).style.setProperty('transform', 'translate(-50%)', 'important');
+          });
+        };
+        
+        // Apply dropdown styles immediately
+        applyDropdownStyles();
+        
+        // Watch for new dropdowns being added to the DOM
+        const dropdownObserver = new MutationObserver(() => {
+          applyDropdownStyles();
+        });
+        
+        dropdownObserver.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+        
+        // Store observer for cleanup
+        const windowWithObserver = window as Window & { __dropdownObserver?: MutationObserver };
+        windowWithObserver.__dropdownObserver = dropdownObserver;
+        
       }
     };
 
@@ -194,6 +269,11 @@ const Social = () => {
     return () => {
       window.removeEventListener('resize', applyMobileStyles);
       observer.disconnect();
+      // Cleanup dropdown observer if it exists
+      const windowWithObserver = window as Window & { __dropdownObserver?: MutationObserver };
+      if (windowWithObserver.__dropdownObserver) {
+        windowWithObserver.__dropdownObserver.disconnect();
+      }
     };
   }, []);
 
