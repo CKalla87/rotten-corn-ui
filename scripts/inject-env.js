@@ -156,9 +156,11 @@ if (!existsSync(indexPath)) {
 let html = readFileSync(indexPath, 'utf-8');
 
 // Create the environment injection script
+// This script MUST run before React loads, so it's placed in <head>
 const envScript = `
     <script>
       // Runtime environment variables injected at build time
+      // This script runs immediately when the page loads, before React
       (function() {
         if (typeof window !== 'undefined') {
           window.__ENV__ = window.__ENV__ || {};
@@ -168,6 +170,15 @@ const envScript = `
             const escapedValue = JSON.stringify(value);
             return `window.__ENV__['${key}'] = ${escapedValue};`;
           }).join('\n          ')}
+          // Debug: Log what was injected (only in development)
+          if (window.location.hostname.includes('dev.') || window.location.hostname.includes('localhost')) {
+            console.log('🔧 Injected environment variables:', Object.keys(window.__ENV__));
+            if (window.__ENV__.VITE_CLOUD_NAME) {
+              console.log('✓ VITE_CLOUD_NAME:', window.__ENV__.VITE_CLOUD_NAME.substring(0, 10) + '...');
+            } else {
+              console.warn('⚠️ VITE_CLOUD_NAME not found in window.__ENV__');
+            }
+          }
         }
       })();
     </script>`;

@@ -67,6 +67,33 @@ jobs:
             ls -la | grep -E "\.env"
           fi
 
+      - name: Verify environment file
+        run: |
+          echo "Verifying environment file before build..."
+          if [ -f ".env.develop" ]; then
+            echo "✓ .env.develop file found"
+            echo "File size: $(wc -c < .env.develop) bytes"
+            echo "Checking for VITE_CLOUD_NAME..."
+            if grep -q "VITE_CLOUD_NAME" .env.develop; then
+              CLOUD_NAME_VALUE=$(grep "^VITE_CLOUD_NAME=" .env.develop | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+              if [[ "$CLOUD_NAME_VALUE" == *"your-"* ]] || [[ "$CLOUD_NAME_VALUE" == "" ]]; then
+                echo "⚠️ WARNING: VITE_CLOUD_NAME appears to have a placeholder value: $CLOUD_NAME_VALUE"
+                echo "⚠️ This value will be filtered out during injection!"
+                echo "⚠️ Please update the .env file in S3 with your actual Cloudinary cloud name"
+              else
+                echo "✓ VITE_CLOUD_NAME found with value: ${CLOUD_NAME_VALUE:0:10}..."
+              fi
+            else
+              echo "❌ ERROR: VITE_CLOUD_NAME not found in .env.develop"
+              exit 1
+            fi
+          else
+            echo "❌ ERROR: .env.develop file not found!"
+            echo "Listing .env files:"
+            ls -la .env* 2>/dev/null || echo "No .env files found"
+            exit 1
+          fi
+
       - name: Build project (compile SCSS)
         run: |
           echo "Building project to compile SCSS changes..."
@@ -77,6 +104,22 @@ jobs:
             exit 1
           fi
           echo "✓ Build complete"
+          
+          # Verify injection worked
+          echo "Verifying environment variable injection..."
+          if grep -q "window.__ENV__" dist/index.html; then
+            echo "✓ window.__ENV__ script found in index.html"
+            if grep -q "VITE_CLOUD_NAME" dist/index.html; then
+              echo "✓ VITE_CLOUD_NAME found in injected script"
+            else
+              echo "⚠️ WARNING: VITE_CLOUD_NAME not found in injected script"
+              echo "This may mean the value was filtered out as a placeholder"
+            fi
+          else
+            echo "❌ ERROR: window.__ENV__ script not found in index.html!"
+            echo "The injection script may have failed"
+            exit 1
+          fi
 
       - name: Upload build files to S3
         run: |
