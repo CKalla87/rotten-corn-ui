@@ -270,9 +270,9 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
             <li
               className="header-nav-item"
               onClick={() => {
-                setIsSettingsActive(!isSettingsActive);
-                setIsMessageActive(false);
-                setIsNotificationActive(false);
+                  setIsSettingsActive(!isSettingsActive);
+                  setIsMessageActive(false);
+                  setIsNotificationActive(false);
               }}
             >
               <span className="header-list-name profile-image">

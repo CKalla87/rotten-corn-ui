@@ -37,6 +37,7 @@ const People = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const bodyRef = useRef<HTMLDivElement>(null);
   const bottomLineRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -144,6 +145,15 @@ const People = () => {
     };
   }, [following, users]);
 
+  // Handle window resize for responsive avatar size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="card-container" ref={bodyRef}>
       <div className="people">People</div>
@@ -166,7 +176,7 @@ const People = () => {
                     name={data?.username}
                     bgColor={data?.avatarColor}
                     textColor="#ffffff"
-                    size={120}
+                    size={isMobile ? 80 : 120}
                     avatarSrc={data?.profilePicture}
                   />
                 </div>

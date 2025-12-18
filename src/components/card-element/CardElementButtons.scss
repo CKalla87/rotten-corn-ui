@@ -2,6 +2,11 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
+
+  @media (max-width: 768px) {
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
 }
 
 .card-element-buttons-btn {
@@ -11,6 +16,11 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
+
+  @media (max-width: 768px) {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+  }
 }
 
 

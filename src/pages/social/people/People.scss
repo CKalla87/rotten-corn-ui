@@ -1,20 +1,95 @@
 // People page styles
+.card-container {
+  @media (max-width: 768px) {
+    padding: 0 10px;
+  }
+}
+
 .card-element-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+
+  @media (max-width: 768px) {
+    padding: 15px 0;
+  }
+
+  .card-element-header-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background-color: var(--white-2);
+    border-radius: 16px 16px 0 0;
+
+    @media (max-width: 768px) {
+      height: 60px;
+      border-radius: 12px 12px 0 0;
+    }
+  }
+
   div[style*="cursor: pointer"] {
+    position: relative;
+    z-index: 1;
     transition: opacity 0.2s ease, transform 0.2s ease;
     
     &:hover {
       opacity: 0.8;
       transform: scale(1.05);
     }
+
+    @media (max-width: 768px) {
+      &:active {
+        opacity: 0.7;
+        transform: scale(1.02);
+      }
+    }
+  }
+
+}
+
+.card-element-header-text {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  text-align: center;
+
+  @media (max-width: 768px) {
+    margin-top: 8px;
   }
 }
 
 .card-element-header-name {
   transition: color 0.2s ease;
+  font-size: 16px;
+  font-weight: 600;
+  display: block;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
   
   &:hover {
     color: var(--primary-1);
+  }
+}
+
+.card-element-item-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+
+  @media (max-width: 768px) {
+    top: 8px;
+    right: 8px;
+
+    .online-indicator {
+      font-size: 8px;
+    }
   }
 }
 

@@ -32,6 +32,7 @@ const Followers = () => {
   const [followers, setFollowers] = useState<UserData[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
 
   const getUserFollowers = useCallback(async () => {
@@ -90,6 +91,15 @@ const Followers = () => {
     };
   }, [profile, token, dispatch]);
 
+  // Handle window resize for responsive avatar size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="card-container">
       <div className="followers">Followers</div>
@@ -107,7 +117,7 @@ const Followers = () => {
                     name={data?.username}
                     bgColor={data?.avatarColor}
                     textColor="#ffffff"
-                    size={120}
+                    size={isMobile ? 80 : 120}
                     avatarSrc={data?.profilePicture}
                   />
                 </div>

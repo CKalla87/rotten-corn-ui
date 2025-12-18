@@ -51,8 +51,20 @@ export class Utils {
     // Only generate from ID/version if they exist, otherwise preserve existing URL
     if (userProfile.profileImageId && userProfile.profileImageVersion) {
       avatarImageUrl = this.getImage(userProfile.profileImageId as string, userProfile.profileImageVersion as string);
+      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+      if (!avatarImageUrl) {
+        avatarImageUrl = (userProfile.profilePicture as string) ||
+                        (userProfile.avatarImage as string) ||
+                        '';
+      }
     } else if (userProfile.avatarImageId && userProfile.avatarImageVersion) {
       avatarImageUrl = this.getImage(userProfile.avatarImageId as string, userProfile.avatarImageVersion as string);
+      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+      if (!avatarImageUrl) {
+        avatarImageUrl = (userProfile.profilePicture as string) ||
+                        (userProfile.avatarImage as string) ||
+                        '';
+      }
     } else {
       // Fallback to existing URL fields if they exist
       avatarImageUrl = (userProfile.profilePicture as string) ||
@@ -60,8 +72,9 @@ export class Utils {
                       '';
     }
     
-    // Only update if we have a valid URL
+    // Fix Cloudinary URL if it's a full URL
     if (avatarImageUrl) {
+      avatarImageUrl = this.fixCloudinaryUrl(avatarImageUrl);
       userProfile.avatarImage = avatarImageUrl;
       userProfile.profilePicture = avatarImageUrl;
     }
@@ -128,6 +141,10 @@ export class Utils {
     const id = typeof imgId === 'string' ? imgId.replace(/['"]+/g, '') : imgId;
     const cloudName = getCloudName();
     if (!cloudName) {
+      // Fallback: Try to construct URL with a default cloud name or return empty
+      // This allows the backend to provide full URLs as fallback
+      console.warn('⚠️ VITE_CLOUD_NAME not set, image URL generation may fail. Using fallback.');
+      // Return empty string so calling code can fall back to full URL if available
       return '';
     }
     // Use the standard Cloudinary URL format
@@ -136,7 +153,13 @@ export class Utils {
   }
 
   static getImage(imageId?: string, imageVersion?: string): string {
-    return imageId && imageVersion ? this.appImageUrl(imageVersion, imageId) : '';
+    if (!imageId || !imageVersion) {
+      return '';
+    }
+    const url = this.appImageUrl(imageVersion, imageId);
+    // If appImageUrl returns empty (e.g., cloud name missing), return empty
+    // Callers should have fallback to full URL from backend
+    return url;
   }
 
   static fixCloudinaryUrl(url: string | undefined | null): string {

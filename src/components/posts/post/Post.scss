@@ -7,6 +7,13 @@
   border-radius: 16px;
   box-shadow: rgb(145 158 171 / 20%) 0 0 2px 0, rgb(145 158 171 / 12%) 0 12px 24px -4px;
 
+  @media (max-width: 768px) {
+    padding: 12px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+  }
+
   .user-post-data {
     .user-post-data-wrap {
       //background-color: #2a2a2a;
@@ -20,9 +27,27 @@
         color: var(--primary-1);
         cursor: pointer;
         text-align: right;
+
+        @media (max-width: 768px) {
+          margin-bottom: -20px;
+          font-size: 14px;
+        }
       }
 
       .user-post-image {
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+
+        &:hover {
+          opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+          &:active {
+            opacity: 0.7;
+          }
+        }
+
         .post-rounded-circle {
           width: 40px;
           height: 40px;
@@ -49,6 +74,11 @@
           margin-bottom: 4px;
           padding-right: 80px;
 
+          @media (max-width: 768px) {
+            padding-right: 60px;
+            gap: 3px;
+          }
+
           h5 {
             margin: 0;
             padding: 0;
@@ -58,6 +88,15 @@
             font-weight: 700;
             line-height: 1.5;
             color: var(--gray-7);
+            transition: color 0.2s ease;
+
+            &:hover {
+              color: var(--primary-1);
+            }
+
+            @media (max-width: 768px) {
+              font-size: 14px;
+            }
           }
 
           .inline-display {
@@ -71,11 +110,21 @@
             font-size: 14px;
             gap: 4px;
 
+            @media (max-width: 768px) {
+              font-size: 12px;
+              gap: 2px;
+            }
+
             .feeling-icon {
               object-fit: cover;
               height: 18px;
               width: 18px;
               vertical-align: middle;
+
+              @media (max-width: 768px) {
+                height: 14px;
+                width: 14px;
+              }
             }
 
             div {
@@ -94,16 +143,28 @@
           gap: 10px;
           cursor: pointer;
 
+          @media (max-width: 768px) {
+            gap: 8px;
+          }
+
           .trash {
             color: var(--red-1);
             cursor: pointer;
             font-size: 16px;
+
+            @media (max-width: 768px) {
+              font-size: 14px;
+            }
           }
 
           .pencil {
             color: var(--primary-1);
             cursor: pointer;
             font-size: 16px;
+
+            @media (max-width: 768px) {
+              font-size: 14px;
+            }
           }
         }
 
@@ -114,9 +175,17 @@
           color: var(--gray-11);
           margin-top: 2px;
 
+          @media (max-width: 768px) {
+            font-size: 12px;
+          }
+
           .globe {
             margin-top: 2px;
             margin-left: 4px;
+
+            @media (max-width: 768px) {
+              margin-left: 3px;
+            }
           }
         }
       }
@@ -135,6 +204,12 @@
       margin-bottom: 16px;
       line-height: 25px;
       font-size: 18px;
+
+      @media (max-width: 768px) {
+        font-size: 16px;
+        line-height: 22px;
+        margin-bottom: 12px;
+      }
 
       a {
         color: var(--primary-1);
@@ -160,6 +235,10 @@
       height: 400px;
       background-color: transparent;
 
+      @media (max-width: 768px) {
+        height: 250px;
+      }
+
       .post-image {
         border-radius: 5px;
         width: 100%;
@@ -182,6 +261,13 @@
       display: flex;
       overflow-x: hidden;
       word-break: break-all;
+
+      @media (max-width: 768px) {
+        max-height: 250px;
+        height: 250px;
+        font-size: 28px;
+        padding: 15px;
+      }
     }
   }
 }
