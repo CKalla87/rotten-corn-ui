@@ -31,6 +31,7 @@ const Following = () => {
   const [following, setFollowing] = useState<UserData[]>([]);
   const [onlineUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
 
   const getUserFollowing = useCallback(async () => {
@@ -95,6 +96,15 @@ const Following = () => {
     };
   }, [following]);
 
+  // Handle window resize for responsive avatar size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="card-container">
       <div className="following">Following</div>
@@ -117,7 +127,7 @@ const Following = () => {
                     name={data?.username}
                     bgColor={data?.avatarColor}
                     textColor="#ffffff"
-                    size={120}
+                    size={isMobile ? 80 : 120}
                     avatarSrc={data?.profilePicture}
                   />
                 </div>

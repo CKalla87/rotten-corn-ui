@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { find } from 'lodash';
 import { FaPencilAlt, FaRegTrashAlt } from 'react-icons/fa';
 import Avatar from '@components/avatar/Avatar';
@@ -12,6 +13,7 @@ import CommentInputBox from '@components/posts/comments/comment-input/CommentInp
 import { postService } from '@services/api/post/post.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
 import { Utils } from '@services/utils/utils.service';
+import { ProfileUtils } from '@services/utils/profile-utils.service';
 import { timeAgo } from '@services/utils/timeago.utils';
 import { feelingsList, privacyList } from '@services/utils/static.data';
 import { openModal, toggleDeleteDialog } from '@redux/reducers/modal/modalSlice';
@@ -24,6 +26,9 @@ import './Post.scss';
 
 interface PostData {
   username?: string;
+  userId?: string;
+  uId?: string;
+  _id?: string;
   avatarColor?: string;
   profilePicture?: string;
   feelings?: string;
@@ -49,6 +54,7 @@ interface PostProps {
 
 const Post = ({ post, showIcons = false }: PostProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { reactionModalIsOpen, commentsModalIsOpen, deleteDialogIsOpen } = useSelector((state: RootState) => state.modal);
   const { post: postFromRedux } = useSelector((state: RootState) => state.post);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -88,6 +94,13 @@ const Post = ({ post, showIcons = false }: PostProps) => {
     let imageUrl = '';
     if (post.imgId && !post.gifUrl) {
       imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
+      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+      if (!imageUrl && post.image) {
+        imageUrl = post.image as string;
+      }
+      if (imageUrl) {
+        imageUrl = Utils.fixCloudinaryUrl(imageUrl);
+      }
     } else if (post.gifUrl) {
       imageUrl = post.gifUrl;
     }
@@ -149,7 +162,19 @@ const Post = ({ post, showIcons = false }: PostProps) => {
       <div className="post-body" data-testid="post">
       <div className="user-post-data">
         <div className="user-post-data-wrap">
-          <div className="user-post-image">
+          <div 
+            className="user-post-image"
+            onClick={() => {
+              if (post?.username) {
+                ProfileUtils.navigateToProfile({ 
+                  username: post.username, 
+                  _id: post.userId as string,
+                  uId: post.uId as string
+                }, navigate);
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
             <Avatar
               name={post?.username}
               bgColor={post?.avatarColor}
@@ -160,7 +185,21 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           </div>
           <div className="user-post-info">
             <div className="inline-title-display">
-              <h5 data-testid="username">{post?.username}</h5>
+              <h5 
+                data-testid="username"
+                onClick={() => {
+                  if (post?.username) {
+                    ProfileUtils.navigateToProfile({ 
+                      username: post.username, 
+                      _id: post.userId as string,
+                      uId: post.uId as string
+                    }, navigate);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                {post?.username}
+              </h5>
               {post?.feelings && (
                 <div className="inline-display" data-testid="inline-display">
                   is feeling <img className="feeling-icon" src={`${getFeeling(post?.feelings)}`} alt="" />{' '}
@@ -200,14 +239,31 @@ const Post = ({ post, showIcons = false }: PostProps) => {
             className="image-display-flex"
             data-testid="post-image"
             onClick={() => {
-              const imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
+              let imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
+              // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+              if (!imageUrl && post.image) {
+                imageUrl = post.image as string;
+              }
+              if (imageUrl) {
+                imageUrl = Utils.fixCloudinaryUrl(imageUrl);
+              }
               setImageUrl(imageUrl);
               setShowImageModal(!showImageModal);
             }}
           >
             <img 
               className="post-image" 
-              src={Utils.getImage(post.imgId as string, post.imgVersion as string)} 
+              src={(() => {
+                let imgSrc = Utils.getImage(post.imgId as string, post.imgVersion as string);
+                // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+                if (!imgSrc && post.image) {
+                  imgSrc = post.image as string;
+                }
+                if (imgSrc) {
+                  imgSrc = Utils.fixCloudinaryUrl(imgSrc);
+                }
+                return imgSrc;
+              })()} 
               alt="" 
               style={{ objectFit: 'contain' }}
               onError={() => {

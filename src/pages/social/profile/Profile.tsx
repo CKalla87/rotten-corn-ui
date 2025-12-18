@@ -69,7 +69,16 @@ const Profile = () => {
         const userData = response.data.user;
         setUser(userData);
         setUserProfileData(response.data);
-        setBgUrl(Utils.getImage(userData?.bgImageId, userData?.bgImageVersion));
+        // Generate background image URL with fallback
+        let bgImageUrl = Utils.getImage(userData?.bgImageId, userData?.bgImageVersion);
+        // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+        if (!bgImageUrl && userData?.bgImage) {
+          bgImageUrl = userData.bgImage as string;
+        }
+        if (bgImageUrl) {
+          bgImageUrl = Utils.fixCloudinaryUrl(bgImageUrl);
+        }
+        setBgUrl(bgImageUrl);
         
         // Generate profile picture URL - try all possible field combinations
         let profilePicUrl = '';
@@ -77,10 +86,20 @@ const Profile = () => {
         // First try: Generate from profileImageId/profileImageVersion (like background image)
         if (userData?.profileImageId && userData?.profileImageVersion) {
           profilePicUrl = Utils.getImage(userData.profileImageId, userData.profileImageVersion);
+          // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+          if (!profilePicUrl && userData?.profilePicture) {
+            profilePicUrl = userData.profilePicture as string;
+          }
         }
         // Second try: Generate from avatarImageId/avatarImageVersion
         else if (userData?.avatarImageId && userData?.avatarImageVersion) {
           profilePicUrl = Utils.getImage(userData.avatarImageId, userData.avatarImageVersion);
+          // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+          if (!profilePicUrl && userData?.profilePicture) {
+            profilePicUrl = userData.profilePicture as string;
+          } else if (!profilePicUrl && userData?.avatarImage) {
+            profilePicUrl = userData.avatarImage as string;
+          }
         }
         // Third try: Use direct URL fields
         else if (userData?.profilePicture) {
@@ -88,6 +107,11 @@ const Profile = () => {
         }
         else if (userData?.avatarImage) {
           profilePicUrl = userData.avatarImage as string;
+        }
+        
+        // Fix Cloudinary URL if it's a full URL
+        if (profilePicUrl) {
+          profilePicUrl = Utils.fixCloudinaryUrl(profilePicUrl);
         }
         
         setProfilePictureUrl(profilePicUrl);
@@ -189,10 +213,10 @@ const Profile = () => {
       if (!hasFetchedImagesRef.current || userIdChanged) {
         hasFetchedImagesRef.current = true;
         lastUserIdRef.current = userId;
-        // Use setTimeout to avoid synchronous setState in effect
-        setTimeout(() => {
-          void getUserImages();
-        }, 0);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        void getUserImages();
+      }, 0);
       }
     }
   }, [user, rendered, getUserImages]);

@@ -111,46 +111,46 @@ const Dropdown = ({
                 const profilePicture = userFrom?.profilePicture || item?.profilePicture;
                 
                 return (
-                  <div className="social-sub-card" key={Utils.generateString(10)}>
-                    <div className="content-avatar">
-                      {title === 'Notifications' ? (
-                        <Avatar
+                <div className="social-sub-card" key={Utils.generateString(10)}>
+                  <div className="content-avatar">
+                    {title === 'Notifications' ? (
+                      <Avatar
                           name={username}
                           bgColor={avatarColor}
-                          textColor="#ffffff"
-                          size={40}
+                        textColor="#ffffff"
+                        size={40}
                           avatarSrc={profilePicture ? Utils.fixCloudinaryUrl(profilePicture as string) : undefined}
-                        />
-                      ) : (
-                        <FaUserAlt className="userIcon" />
-                      )}
-                    </div>
-                    <div
-                      className="content-body"
-                      onClick={() => {
-                        if (title === 'Notifications') {
-                          onMarkAsRead?.(item);
-                        } else {
-                          onNavigate?.();
-                        }
-                      }}
-                    >
-                      <h6 className="title">{title === 'Notifications' ? formatNotificationMessage(item) : item?.topText}</h6>
-                      <div className="subtitle-body">
-                        {title === 'Notifications' && !item?.read && <FaCircle className="icon unread-indicator" />}
-                        <p className="subtext">{item?.createdAt && title === 'Notifications' ? timeAgo.transform(item.createdAt) : item?.subText}</p>
-                      </div>
-                    </div>
-                    {title === 'Notifications' && (
-                      <div className="content-icons">
-                        <FaTrashAlt 
-                          className="trash" 
-                          onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(item?._id || ''); }} 
-                        />
-                        {!item?.read && <FaCircle className="icon unread-indicator-right" />}
-                      </div>
+                      />
+                    ) : (
+                      <FaUserAlt className="userIcon" />
                     )}
                   </div>
+                  <div
+                    className="content-body"
+                    onClick={() => {
+                      if (title === 'Notifications') {
+                        onMarkAsRead?.(item);
+                      } else {
+                        onNavigate?.();
+                      }
+                    }}
+                  >
+                    <h6 className="title">{title === 'Notifications' ? formatNotificationMessage(item) : item?.topText}</h6>
+                      <div className="subtitle-body">
+                        {title === 'Notifications' && !item?.read && <FaCircle className="icon unread-indicator" />}
+                    <p className="subtext">{item?.createdAt && title === 'Notifications' ? timeAgo.transform(item.createdAt) : item?.subText}</p>
+                      </div>
+                  </div>
+                  {title === 'Notifications' && (
+                    <div className="content-icons">
+                      <FaTrashAlt 
+                        className="trash" 
+                        onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(item?._id || ''); }} 
+                      />
+                        {!item?.read && <FaCircle className="icon unread-indicator-right" />}
+                    </div>
+                  )}
+                </div>
                 );
               })}
             </div>

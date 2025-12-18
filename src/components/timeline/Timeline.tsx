@@ -145,7 +145,7 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
           savedInputsRef.current.location === currentLocation;
         
         if (!editableInputsInitializedRef.current || (introDataChanged && editableInputsInitializedRef.current && !savedMatchesCurrent)) {
-          setEditableInputs({
+        setEditableInputs({
             quote: currentQuote,
             work: currentWork,
             school: currentSchool,

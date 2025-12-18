@@ -216,7 +216,14 @@ const EditPost = () => {
         videoId: '',
         videoVersion: ''
       }));
-      const imageUrl = Utils.getImage(postStateWithExtras.imgId || '', postStateWithExtras.imgVersion || '');
+      let imageUrl = Utils.getImage(postStateWithExtras.imgId || '', postStateWithExtras.imgVersion || '');
+      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+      if (!imageUrl && postState.image) {
+        imageUrl = postState.image as string;
+      }
+      if (imageUrl) {
+        imageUrl = Utils.fixCloudinaryUrl(imageUrl);
+      }
       setPostImage(imageUrl);
       setHasVideo(false);
       postInputData();

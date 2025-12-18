@@ -60,7 +60,7 @@ export class NotificationUtils {
       const imgId = notification?.imgId as string | undefined;
       const gifUrl = notification?.gifUrl as string | undefined;
       const imgUrl = notification?.imgUrl as string | undefined;
-      const userFrom = notification?.userFrom as { username?: string; avatarColor?: string; profilePicture?: string; profileImageId?: string; profileImageVersion?: string; avatarImageId?: string; avatarImageVersion?: string } | undefined;
+      const userFrom = notification?.userFrom as { username?: string; avatarColor?: string; profilePicture?: string; profileImageId?: string; profileImageVersion?: string; avatarImageId?: string; avatarImageVersion?: string; avatarImage?: string } | undefined;
       
       // Generate profile picture URL if available - using same logic as notifications page
       let profilePicUrl = '';
@@ -68,10 +68,22 @@ export class NotificationUtils {
         // Generate URL from image ID/version if available (same as notifications page)
         if (userFrom.profileImageId && userFrom.profileImageVersion) {
           profilePicUrl = Utils.getImage(userFrom.profileImageId, userFrom.profileImageVersion);
+          // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+          if (!profilePicUrl && userFrom.profilePicture) {
+            profilePicUrl = userFrom.profilePicture as string;
+          }
         } else if (userFrom.avatarImageId && userFrom.avatarImageVersion) {
           profilePicUrl = Utils.getImage(userFrom.avatarImageId, userFrom.avatarImageVersion);
+          // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+          if (!profilePicUrl && userFrom.profilePicture) {
+            profilePicUrl = userFrom.profilePicture as string;
+          } else if (!profilePicUrl && userFrom.avatarImage) {
+            profilePicUrl = userFrom.avatarImage as string;
+          }
         } else if (userFrom.profilePicture) {
           profilePicUrl = userFrom.profilePicture as string;
+        } else if (userFrom.avatarImage) {
+          profilePicUrl = userFrom.avatarImage as string;
         }
         
         if (profilePicUrl) {

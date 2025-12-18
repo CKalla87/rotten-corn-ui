@@ -109,10 +109,27 @@ const Notifications = () => {
             // Generate URL from image ID/version if available
             if (userFrom.profileImageId && userFrom.profileImageVersion) {
               profilePicUrl = Utils.getImage(userFrom.profileImageId, userFrom.profileImageVersion);
+              // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+              if (!profilePicUrl && userFrom.profilePicture) {
+                profilePicUrl = userFrom.profilePicture as string;
+              }
             } else if (userFrom.avatarImageId && userFrom.avatarImageVersion) {
               profilePicUrl = Utils.getImage(userFrom.avatarImageId, userFrom.avatarImageVersion);
+              // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+              if (!profilePicUrl && userFrom.profilePicture) {
+                profilePicUrl = userFrom.profilePicture as string;
+              } else if (!profilePicUrl && userFrom.avatarImage) {
+                profilePicUrl = userFrom.avatarImage as string;
+              }
             } else if (userFrom.profilePicture) {
               profilePicUrl = userFrom.profilePicture as string;
+            } else if (userFrom.avatarImage) {
+              profilePicUrl = userFrom.avatarImage as string;
+            }
+            
+            // Fix Cloudinary URL if it's a full URL
+            if (profilePicUrl) {
+              profilePicUrl = Utils.fixCloudinaryUrl(profilePicUrl);
             }
             
             if (profilePicUrl) {
@@ -244,15 +261,15 @@ const Notifications = () => {
               className="notification-box"
               onClick={() => markAsRead(notification)}
             >
-              <div className="notification-box-sub-card-media">
-                <div className="notification-box-sub-card-media-image-icon">
-                  <Avatar
-                    name={notification?.userFrom?.username || notification?.senderName}
-                    bgColor={notification?.userFrom?.avatarColor}
-                    textColor="#ffffff"
-                    size={40}
-                    avatarSrc={notification?.userFrom?.profilePicture ? Utils.fixCloudinaryUrl(notification.userFrom.profilePicture) : undefined}
-                  />
+                <div className="notification-box-sub-card-media">
+                  <div className="notification-box-sub-card-media-image-icon">
+                    <Avatar
+                      name={notification?.userFrom?.username || notification?.senderName}
+                      bgColor={notification?.userFrom?.avatarColor}
+                      textColor="#ffffff"
+                      size={40}
+                      avatarSrc={notification?.userFrom?.profilePicture ? Utils.fixCloudinaryUrl(notification.userFrom.profilePicture) : undefined}
+                    />
                 </div>
                 <div className="notification-box-sub-card-media-body">
                   <h6 className="title">
