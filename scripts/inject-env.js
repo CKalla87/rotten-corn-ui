@@ -76,11 +76,17 @@ for (const envPath of possibleEnvPaths) {
       envPathUsed = envPath;
       console.log('✓ Loaded environment variables from file');
       console.log('   Total variables parsed:', Object.keys(envVars).length);
+      // Log ALL keys found (for debugging)
+      console.log('   All variable keys:', Object.keys(envVars).join(', '));
       // Log what was found (mask sensitive values)
       const foundKeys = Object.keys(envVars).filter(k => k.startsWith('VITE_'));
       if (foundKeys.length > 0) {
         console.log('📋 Found VITE_ variables:', foundKeys.join(', '));
-        // Check specifically for VITE_CLOUD_NAME
+        // Check specifically for VITE_CLOUD_NAME (case-insensitive check)
+        const cloudNameKey = Object.keys(envVars).find(k => k.toUpperCase() === 'VITE_CLOUD_NAME');
+        if (cloudNameKey) {
+          console.log('   ℹ️  Found VITE_CLOUD_NAME with key name:', cloudNameKey, '(exact match:', cloudNameKey === 'VITE_CLOUD_NAME', ')');
+        }
         if (envVars.VITE_CLOUD_NAME !== undefined) {
           const cloudNameValue = envVars.VITE_CLOUD_NAME;
           if (cloudNameValue && cloudNameValue !== 'your-cloudinary-cloud-name' && !cloudNameValue.includes('your-') && cloudNameValue.trim() !== '') {
@@ -93,6 +99,21 @@ for (const envPath of possibleEnvPaths) {
         } else {
           console.warn('   ⚠️ VITE_CLOUD_NAME not found in file');
           console.warn('   ⚠️ Please add VITE_CLOUD_NAME=your-actual-cloud-name to the .env file');
+          // Show first few lines of file for debugging
+          try {
+            const fileLines = envContent.split('\n').slice(0, 10);
+            console.log('   📄 First 10 lines of file:');
+            fileLines.forEach((line, idx) => {
+              if (line.trim() && !line.trim().startsWith('#')) {
+                const maskedLine = line.includes('=') 
+                  ? line.split('=')[0] + '=' + (line.split('=')[1] ? '***' : '')
+                  : line;
+                console.log(`      ${idx + 1}: ${maskedLine}`);
+              }
+            });
+          } catch (e) {
+            // Ignore errors in debug output
+          }
         }
       } else {
         console.warn('   ⚠️ No VITE_ prefixed variables found in file');
