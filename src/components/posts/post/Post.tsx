@@ -93,11 +93,12 @@ const Post = ({ post, showIcons = false }: PostProps) => {
   const getBackgroundImageColor = useCallback(async (post: PostData) => {
     let imageUrl = '';
     if (post.imgId && !post.gifUrl) {
-      imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
-      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
-      if (!imageUrl && post.image) {
-        imageUrl = post.image as string;
-      }
+      // Use improved getImage with automatic fallback to post.image
+      imageUrl = Utils.getImage(
+        post.imgId as string, 
+        post.imgVersion as string, 
+        post.image as string
+      );
       if (imageUrl) {
         imageUrl = Utils.fixCloudinaryUrl(imageUrl);
       }
@@ -239,11 +240,12 @@ const Post = ({ post, showIcons = false }: PostProps) => {
             className="image-display-flex"
             data-testid="post-image"
             onClick={() => {
-              let imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
-              // If getImage returns empty (e.g., cloud name missing), fall back to full URL
-              if (!imageUrl && post.image) {
-                imageUrl = post.image as string;
-              }
+              // Use improved getImage with automatic fallback to post.image
+              let imageUrl = Utils.getImage(
+                post.imgId as string, 
+                post.imgVersion as string, 
+                post.image as string
+              );
               if (imageUrl) {
                 imageUrl = Utils.fixCloudinaryUrl(imageUrl);
               }
@@ -254,11 +256,12 @@ const Post = ({ post, showIcons = false }: PostProps) => {
             <img 
               className="post-image" 
               src={(() => {
-                let imgSrc = Utils.getImage(post.imgId as string, post.imgVersion as string);
-                // If getImage returns empty (e.g., cloud name missing), fall back to full URL
-                if (!imgSrc && post.image) {
-                  imgSrc = post.image as string;
-                }
+                // Use improved getImage with automatic fallback to post.image
+                let imgSrc = Utils.getImage(
+                  post.imgId as string, 
+                  post.imgVersion as string, 
+                  post.image as string
+                );
                 if (imgSrc) {
                   imgSrc = Utils.fixCloudinaryUrl(imgSrc);
                 }
@@ -266,10 +269,24 @@ const Post = ({ post, showIcons = false }: PostProps) => {
               })()} 
               alt="" 
               style={{ objectFit: 'contain' }}
-              onError={() => {
-                // 401 errors indicate images are not set to public in Cloudinary
-                // Backend needs to upload with access_mode: 'public'
-                console.error('Image failed to load. If you see 401, backend needs to set access_mode: "public" when uploading to Cloudinary.');
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                console.error('🖼️ Image failed to load:', {
+                  src: target.src,
+                  imgId: post.imgId,
+                  imgVersion: post.imgVersion,
+                  fallbackImage: post.image,
+                  possibleCauses: [
+                    'Cloud name not configured (VITE_CLOUD_NAME missing)',
+                    'Image not set to public in Cloudinary (401 error)',
+                    'Invalid image ID or version',
+                    'Network/CORS issue'
+                  ]
+                });
+                // Try to use fallback image if available
+                if (post.image && target.src !== post.image) {
+                  target.src = Utils.fixCloudinaryUrl(post.image as string);
+                }
               }}
             />
           </div>

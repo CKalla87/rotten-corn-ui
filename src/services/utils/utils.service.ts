@@ -141,9 +141,12 @@ export class Utils {
     const id = typeof imgId === 'string' ? imgId.replace(/['"]+/g, '') : imgId;
     const cloudName = getCloudName();
     if (!cloudName) {
-      // Fallback: Try to construct URL with a default cloud name or return empty
-      // This allows the backend to provide full URLs as fallback
-      console.warn('⚠️ VITE_CLOUD_NAME not set, image URL generation may fail. Using fallback.');
+      // Log warning only once per session to avoid console spam
+      if (!(window as { __cloudNameWarningShown?: boolean }).__cloudNameWarningShown) {
+        console.warn('⚠️ VITE_CLOUD_NAME not set, image URL generation may fail. Using fallback.');
+        console.warn('⚠️ Please ensure VITE_CLOUD_NAME is set in your environment or injected via window.__ENV__.VITE_CLOUD_NAME');
+        (window as { __cloudNameWarningShown?: boolean }).__cloudNameWarningShown = true;
+      }
       // Return empty string so calling code can fall back to full URL if available
       return '';
     }
@@ -152,12 +155,19 @@ export class Utils {
     return `https://res.cloudinary.com/${cloudName}/image/upload/v${version}/${id}`;
   }
 
-  static getImage(imageId?: string, imageVersion?: string): string {
+  static getImage(imageId?: string, imageVersion?: string, fallbackUrl?: string): string {
     if (!imageId || !imageVersion) {
+      // If no ID/version but we have a fallback URL, use it
+      if (fallbackUrl) {
+        return this.fixCloudinaryUrl(fallbackUrl);
+      }
       return '';
     }
     const url = this.appImageUrl(imageVersion, imageId);
-    // If appImageUrl returns empty (e.g., cloud name missing), return empty
+    // If appImageUrl returns empty (e.g., cloud name missing), try fallback URL
+    if (!url && fallbackUrl) {
+      return this.fixCloudinaryUrl(fallbackUrl);
+    }
     // Callers should have fallback to full URL from backend
     return url;
   }
