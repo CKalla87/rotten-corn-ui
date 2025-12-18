@@ -49,12 +49,22 @@ jobs:
 
       - name: Sync environment files from S3
         run: |
-          rm -rf .env
+          rm -rf .env .env.develop .env.staging .env.production
           ENV_PATH="frontend/develop"
           echo "Syncing environment files from: s3://chattapplication1-env-files/$ENV_PATH"
           aws s3 sync "s3://chattapplication1-env-files/$ENV_PATH" . --region ${{ env.AWS_REGION }} || exit 1
-          if [ ! -f ".env" ]; then
-            echo "Warning: .env file not found after sync"
+          
+          # Rename .env to .env.develop if it exists (for develop environment)
+          if [ -f ".env" ]; then
+            echo "Renaming .env to .env.develop for develop environment"
+            mv .env .env.develop
+            echo "✓ Environment file ready as .env.develop"
+          elif [ -f ".env.develop" ]; then
+            echo "✓ .env.develop file found"
+          else
+            echo "Warning: No .env or .env.develop file found after sync"
+            echo "Listing files in current directory:"
+            ls -la | grep -E "\.env"
           fi
 
       - name: Build project (compile SCSS)

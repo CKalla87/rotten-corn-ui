@@ -14,7 +14,16 @@ const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 const distDir = join(rootDir, 'dist');
 const indexPath = join(distDir, 'index.html');
-const envPath = join(rootDir, '.env');
+
+// Try multiple possible .env file locations/names
+// Priority: .env.develop, .env.staging, .env.production, .env (for local)
+const possibleEnvPaths = [
+  join(rootDir, '.env.develop'),
+  join(rootDir, '.env.staging'),
+  join(rootDir, '.env.production'),
+  join(rootDir, '.env.development'),
+  join(rootDir, '.env') // Fallback for local development
+];
 
 // Simple .env parser (since we can't easily use dotenv in ESM)
 function parseEnv(content) {
@@ -41,23 +50,36 @@ function parseEnv(content) {
 
 // Read environment variables
 let envVars = {};
-try {
+let envPathUsed = null;
+
+// Try to find and read an .env file
+for (const envPath of possibleEnvPaths) {
   if (existsSync(envPath)) {
-    const envContent = readFileSync(envPath, 'utf-8');
-    envVars = parseEnv(envContent);
-    console.log('✓ Loaded environment variables from .env file');
-  } else {
-    console.warn('⚠️ .env file not found, using process.env');
-    // Fall back to process.env for variables that start with VITE_
-    Object.keys(process.env).forEach(key => {
-      if (key.startsWith('VITE_')) {
-        envVars[key] = process.env[key];
+    try {
+      const envContent = readFileSync(envPath, 'utf-8');
+      console.log('📄 Reading environment file from:', envPath);
+      envVars = parseEnv(envContent);
+      envPathUsed = envPath;
+      console.log('✓ Loaded environment variables from file');
+      // Log what was found (mask sensitive values)
+      const foundKeys = Object.keys(envVars).filter(k => k.startsWith('VITE_'));
+      if (foundKeys.length > 0) {
+        console.log('📋 Found VITE_ variables:', foundKeys.join(', '));
       }
-    });
+      break;
+    } catch (error) {
+      console.warn(`⚠️ Error reading ${envPath}:`, error.message);
+      continue;
+    }
   }
-} catch (error) {
-  console.warn('⚠️ Could not read .env file, using process.env:', error.message);
-  // Fall back to process.env
+}
+
+// If no .env file found, fall back to process.env
+if (!envPathUsed) {
+  console.warn('⚠️ No .env file found in any of the expected locations');
+  console.warn('⚠️ Expected locations:', possibleEnvPaths.join(', '));
+  console.warn('⚠️ Falling back to process.env');
+  // Fall back to process.env for variables that start with VITE_
   Object.keys(process.env).forEach(key => {
     if (key.startsWith('VITE_')) {
       envVars[key] = process.env[key];
@@ -65,11 +87,21 @@ try {
   });
 }
 
-// Filter to only include VITE_ prefixed variables
+// Filter to only include VITE_ prefixed variables and filter out placeholder values
 const viteEnvVars = {};
 Object.keys(envVars).forEach(key => {
   if (key.startsWith('VITE_')) {
-    viteEnvVars[key] = envVars[key];
+    const value = envVars[key];
+    // Skip placeholder values
+    if (value && 
+        value !== 'your-cloudinary-cloud-name' && 
+        value !== 'your-cloud-name' &&
+        !value.includes('your-') &&
+        value.trim() !== '') {
+      viteEnvVars[key] = value;
+    } else {
+      console.warn(`⚠️ Skipping ${key} - contains placeholder value: ${value}`);
+    }
   }
 });
 
