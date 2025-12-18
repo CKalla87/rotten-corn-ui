@@ -20,6 +20,7 @@
     border-radius: 12px;
     width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
   }
 
   @media (max-width: 480px) {
@@ -27,6 +28,9 @@
     margin-top: 8px;
     margin-bottom: 12px;
     border-radius: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .user-post-data {
@@ -225,6 +229,26 @@
     border-bottom: 1px solid var(--white-4);
     box-sizing: border-box;
     overflow: visible;
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+
+    @media (max-width: 768px) {
+      width: 100%;
+      max-width: 100%;
+      padding: 0;
+      margin-left: 0;
+      margin-right: 0;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 480px) {
+      width: 100%;
+      max-width: 100%;
+      padding: 0;
+      margin-left: 0;
+      margin-right: 0;
+    }
 
     .post {
       margin-top: 0;
@@ -267,15 +291,21 @@
       max-width: 100%;
       box-sizing: border-box;
       overflow: hidden;
+      margin: 0;
+      padding: 0;
 
       @media (max-width: 768px) {
         height: 250px;
         width: 100%;
         max-width: 100%;
+        margin: 0;
+        padding: 0;
       }
 
       @media (max-width: 480px) {
         height: 200px;
+        margin: 0;
+        padding: 0;
       }
 
       .post-image {
@@ -283,8 +313,28 @@
         width: 100%;
         max-width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
+        object-position: center;
         box-sizing: border-box;
+        display: block;
+        margin: 0 auto;
+        padding: 0;
+
+        @media (max-width: 768px) {
+          object-fit: contain;
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          max-height: 100%;
+        }
+
+        @media (max-width: 480px) {
+          object-fit: contain;
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          max-height: 100%;
+        }
       }
     }
 

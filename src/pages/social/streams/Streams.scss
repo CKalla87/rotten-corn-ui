@@ -90,11 +90,16 @@
         min-height: auto;
         overflow: visible;
         background-color: transparent !important;
-        padding: 0 10px;
+        padding: 0 5px;
+        margin: 0;
       }
 
       @media (max-width: 480px) {
-        padding: 0 8px;
+        padding: 0 4px;
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
       }
     }
 
