@@ -137,8 +137,13 @@ describe('Notification', () => {
       expect(notificationService.getUserNotifications).toHaveBeenCalled();
       await new Promise(resolve => setTimeout(resolve, 100));
     });
-    const subtitleElement = await screen.findAllByTestId('subtitle', {}, { timeout: 3000 });
-    await user.click(subtitleElement[0]);
+    // Find the trash icon by class name within the notification box
+    const notificationBox = await screen.findByTestId('notification-box', {}, { timeout: 3000 });
+    const trashIcon = notificationBox.querySelector('.trash');
+    expect(trashIcon).toBeInTheDocument();
+    if (trashIcon) {
+      await user.click(trashIcon);
+    }
     await waitFor(() => {
       expect(deleteNotificationSpy).toHaveBeenCalledWith('12345');
     }, { timeout: 3000 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaUserPlus } from 'react-icons/fa';
 import Avatar from '@components/avatar/Avatar';
 import Button from '@components/button/Button';
@@ -8,6 +8,7 @@ import { followerService } from '@services/api/followers/follower.service';
 import { userService } from '@services/api/user/user.service';
 import { socketService } from '@services/socket/socket.service';
 import { FollowersUtils } from '@services/utils/followers-utils.service';
+import { ProfileUtils } from '@services/utils/profile-utils.service';
 import { Utils } from '@services/utils/utils.service';
 import useEffectOnce from '@hooks/useEffectOnce';
 import { useEffect } from 'react';
@@ -36,6 +37,7 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
   const [searchParams] = useSearchParams();
   const { username } = useParams<{ username: string }>();
   const { profile, token } = useSelector((state: RootState) => state.user);
+  const navigate = useNavigate();
 
   const getUserFollowers = async () => {
     try {
@@ -119,7 +121,11 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
           {followers.map((data) => (
             <div className="follower-card-container-elements" key={data?._id} data-testid="card-element-item">
               <div className="follower-card-container-elements-content">
-                <div className="card-avatar">
+                <div 
+                  className="card-avatar"
+                  onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <Avatar
                     name={data?.username}
                     bgColor={data?.avatarColor}
@@ -129,7 +135,13 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
                   />
                 </div>
                 <div className="card-user">
-                  <span className="name">{data?.username}</span>
+                  <span 
+                    className="name"
+                    onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {data?.username}
+                  </span>
                   <p className="count">
                     <FaUserPlus className="heart" />{' '}
                     <span data-testid="count">{Utils.shortenLargeNumbers(data?.followingCount)}</span>

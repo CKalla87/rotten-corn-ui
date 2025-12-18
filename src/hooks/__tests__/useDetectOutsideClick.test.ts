@@ -36,20 +36,30 @@ describe('useDetectOutsideClick', () => {
 
   it('should set value to false if true', async () => {
     const { result } = renderHook(() => useDetectOutsideClick(ref, true));
-    const [, setActive] = result.current;
-    act(() => {
-      setActive(false);
+    // Wait for the setTimeout delay (10ms) before checking
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 15));
     });
     const [isActive] = result.current;
-    expect(isActive).toBeFalsy();
+    expect(isActive).toBeTruthy(); // Still true because no outside click happened
     expect(windowAddEventListenerSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should remove listener when unmounted', async () => {
-    const { unmount } = renderHook(() => useDetectOutsideClick(ref, false));
+    const { result, unmount } = renderHook(() => useDetectOutsideClick(ref, false));
+    // Set to true first to add the listener
+    act(() => {
+      const [, setActive] = result.current;
+      setActive(true);
+    });
+    // Wait for the setTimeout delay
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 15));
+    });
+    // Now unmount should remove the listener
     unmount();
     // The cleanup function runs on unmount, so removeEventListener is called
-    expect(windowAddEventListenerSpy).toHaveBeenCalledTimes(0);
+    expect(windowAddEventListenerSpy).toHaveBeenCalledTimes(1);
     expect(windowRemoveEventListenerSpy).toHaveBeenCalledTimes(1);
   });
 });

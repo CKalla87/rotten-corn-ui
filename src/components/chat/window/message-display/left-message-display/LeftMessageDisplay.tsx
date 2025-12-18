@@ -3,6 +3,7 @@ import Avatar from '@components/avatar/Avatar';
 import Reactions from '@components/posts/reactions/Reactions';
 import { reactionsMap } from '@services/utils/static.data';
 import { timeAgo } from '@services/utils/timeago.utils';
+import { Utils } from '@services/utils/utils.service';
 import './LeftMessageDisplay.scss';
 
 interface LeftMessageDisplayProps {
@@ -119,31 +120,88 @@ const LeftMessageDisplay = ({
 
               {!chat?.deleteForMe && (
                 <>
-                  {chat?.body !== 'Sent a GIF' && chat?.body !== 'Sent an Image' && (
+                  {chat?.body !== 'Sent a GIF' && chat?.body !== 'Sent an Image' && chat?.body && (
                     <div className="message-bubble left-message-bubble">{chat?.body}</div>
                   )}
-                  {chat?.selectedImage && (
-                    <div
-                      className="message-image"
-                      style={{
-                        marginTop: `${chat?.body && chat?.body !== 'Sent an Image' ? '5px' : ''}`
-                      }}
-                    >
-                      <img
-                        src={chat?.selectedImage}
-                        onClick={() => {
-                          setImageUrl?.(chat?.selectedImage || '');
-                          setShowImageModal?.(!showImageModal);
+                  {chat?.selectedImage && (() => {
+                    // Handle both base64 data URLs and Cloudinary URLs
+                    const imageUrl = chat.selectedImage as string;
+                    let fixedImageUrl = '';
+                    if (imageUrl.startsWith('data:')) {
+                      // If it's a base64 data URL, use it directly (shouldn't happen from backend, but handle it)
+                      fixedImageUrl = imageUrl;
+                    } else {
+                      // Fix Cloudinary URL typos and malformations
+                      fixedImageUrl = Utils.fixCloudinaryUrl(imageUrl);
+                    }
+                    return fixedImageUrl ? (
+                      <div
+                        className="message-image"
+                        style={{
+                          marginTop: `${chat?.body && chat?.body !== 'Sent an Image' ? '5px' : ''}`
                         }}
-                        alt=""
-                      />
-                    </div>
-                  )}
-                  {chat?.gifUrl && (
-                    <div className="message-gif">
-                      <img src={chat?.gifUrl} alt="" />
-                    </div>
-                  )}
+                      >
+                        <img
+                          src={fixedImageUrl}
+                          onError={(e) => {
+                            const fullUrl = e.currentTarget.src;
+                            console.error('❌ Failed to load chat image');
+                            console.error('   Attempted URL:', fullUrl);
+                            console.error('   URL length:', fullUrl.length);
+                            if (chat?.selectedImage && chat.selectedImage !== fullUrl) {
+                              console.error('   Original URL:', chat.selectedImage);
+                              console.error('   Original URL length:', chat.selectedImage.length);
+                            }
+                            if (fullUrl.length < 100 || fullUrl.includes('…')) {
+                              console.error('   ⚠️ URL appears to be truncated or incomplete');
+                            }
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          onClick={() => {
+                            setImageUrl?.(fixedImageUrl);
+                            setShowImageModal?.(!showImageModal);
+                          }}
+                          alt=""
+                        />
+                      </div>
+                    ) : null;
+                  })()}
+                  {chat?.gifUrl && (() => {
+                    // Handle both base64 data URLs and Cloudinary URLs
+                    const gifUrl = chat.gifUrl as string;
+                    let fixedGifUrl = '';
+                    if (gifUrl.startsWith('data:')) {
+                      fixedGifUrl = gifUrl;
+                    } else {
+                      fixedGifUrl = Utils.fixCloudinaryUrl(gifUrl);
+                    }
+                    return fixedGifUrl ? (
+                      <div className="message-gif">
+                        <img 
+                          src={fixedGifUrl} 
+                          onError={(e) => {
+                            const fullUrl = e.currentTarget.src;
+                            console.error('❌ Failed to load chat GIF');
+                            console.error('   Attempted URL:', fullUrl);
+                            console.error('   URL length:', fullUrl.length);
+                            if (chat?.gifUrl && chat.gifUrl !== fullUrl) {
+                              console.error('   Original URL:', chat.gifUrl);
+                              console.error('   Original URL length:', chat.gifUrl.length);
+                            }
+                            if (fullUrl.length < 100 || fullUrl.includes('…')) {
+                              console.error('   ⚠️ URL appears to be truncated or incomplete');
+                            }
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          onClick={() => {
+                            setImageUrl?.(fixedGifUrl);
+                            setShowImageModal?.(!showImageModal);
+                          }}
+                          alt="" 
+                        />
+                      </div>
+                    ) : null;
+                  })()}
                 </>
               )}
             </div>

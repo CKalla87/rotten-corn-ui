@@ -99,16 +99,27 @@ const Followers = () => {
             <div className="card-element-item" key={index} data-testid="card-element-item">
               <div className="card-element-header">
                 <div className="card-element-header-bg"></div>
-                <Avatar
-                  name={data?.username}
-                  bgColor={data?.avatarColor}
-                  textColor="#ffffff"
-                  size={120}
-                  avatarSrc={data?.profilePicture}
-                />
+                <div 
+                  onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Avatar
+                    name={data?.username}
+                    bgColor={data?.avatarColor}
+                    textColor="#ffffff"
+                    size={120}
+                    avatarSrc={data?.profilePicture}
+                  />
+                </div>
               </div>
               <div className="card-element-body">
-                <span className="card-element-body-name">{data?.username}</span>
+                <span 
+                  className="card-element-body-name"
+                  onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {data?.username}
+                </span>
               </div>
               <CardElementStats
                 followersCount={data?.followersCount}

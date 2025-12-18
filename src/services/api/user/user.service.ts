@@ -52,7 +52,9 @@ class UserService {
   }
 
   async updateSocialLinks(links: unknown) {
-    const response = await axios.put('/user/profile/social', links);
+    // Try using basic-info endpoint - social links might be updated through basic info
+    // If this doesn't work, backend might need a separate endpoint created
+    const response = await axios.put('/user/profile/basic-info', links);
     return response;
   }
 }

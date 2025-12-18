@@ -1,2 +1,20 @@
-// People styles will be added here
+// People page styles
+.card-element-header {
+  div[style*="cursor: pointer"] {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    
+    &:hover {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+}
+
+.card-element-header-name {
+  transition: color 0.2s ease;
+  
+  &:hover {
+    color: var(--primary-1);
+  }
+}
 

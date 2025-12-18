@@ -22,18 +22,113 @@
     border-bottom: 1px solid var(--white-4);
     padding: 10px 15px;
     align-items: center;
+    justify-items: start;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 30px 32px 1fr;
+      gap: 8px;
+      height: 50px;
+      padding: 8px 12px;
+    }
+
+    @media (max-width: 480px) {
+      grid-template-columns: 28px 28px 1fr;
+      gap: 6px;
+      height: 45px;
+      padding: 6px 10px;
+    }
+
+    .chat-back-button {
+      display: none;
+
+      @media (max-width: 768px) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--black-1);
+        cursor: pointer;
+        padding: 0;
+        font-size: 20px;
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        min-height: 30px;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        grid-column: 1;
+        align-self: center;
+
+        &:hover {
+          background-color: var(--white-2);
+          border-radius: 50%;
+        }
+
+        &:active {
+          background-color: var(--white-3);
+          border-radius: 50%;
+        }
+
+        &:focus {
+          background-color: var(--white-2);
+          outline: none;
+          border-radius: 50%;
+        }
+
+        svg {
+          pointer-events: none;
+        }
+      }
+
+      @media (max-width: 480px) {
+        font-size: 18px;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        min-height: 28px;
+      }
+    }
 
     &-avatar {
       height: 40px;
       width: 40px;
       border-radius: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+
+      @media (max-width: 768px) {
+        height: 32px;
+        width: 32px;
+        grid-column: 2;
+        flex-shrink: 0;
+      }
+
+      @media (max-width: 480px) {
+        height: 28px;
+        width: 28px;
+        grid-column: 2;
+        flex-shrink: 0;
+      }
     }
 
     &-items {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding-left: 10px;
+      padding-left: 6px;
+
+      @media (max-width: 768px) {
+        grid-column: 3;
+        padding-left: 8px;
+      }
+
+      @media (max-width: 480px) {
+        grid-column: 3;
+        padding-left: 6px;
+      }
     }
   }
 
@@ -87,3 +182,96 @@
   }
 }
 
+
+
+  .chat-back-button {
+    display: none;
+
+    @media (max-width: 768px) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--black-1);
+      cursor: pointer;
+      padding: 0;
+      font-size: 20px;
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      min-height: 30px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      grid-column: 1;
+      align-self: center;
+    }
+  }
+
+    .chat-back-button {
+      @media (max-width: 768px) {
+        &:hover {
+          background-color: var(--white-2);
+          border-radius: 50%;
+        }
+
+        &:active {
+          background-color: var(--white-3);
+          border-radius: 50%;
+        }
+
+        &:focus {
+          background-color: var(--white-2);
+          outline: none;
+          border-radius: 50%;
+        }
+
+        svg {
+          pointer-events: none;
+        }
+      }
+    }
+
+
+// Auto-added missing styles
+
+
+.private-chat-wrapper-content-side.hide-on-mobile {
+    display: none!important;
+}
+
+.private-chat-wrapper-content-side.full-screen-mobile {
+    z-index: 1000;
+    background-color: var(--white-1);
+    border-radius: 0;
+    position: fixed;
+    inset: 0;
+    height: 100vh!important;
+    min-height: 100vh!important;
+    max-height: 100vh!important;
+}
+
+
+// Auto-added missing styles
+
+
+.private-chat-wrapper-content-conversation.hide-on-mobile {
+    display: none!important;
+}
+
+.private-chat-wrapper-content-conversation.full-screen-mobile {
+    z-index: 1000;
+    background-color: var(--white-1);
+    border-radius: 0;
+    flex-direction: column;
+    display: flex;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    height: 100vh!important;
+    height: 100dvh!important;
+    max-height: 100vh!important;
+    min-height: 100vh!important;
+    max-height: 100dvh!important;
+    min-height: 100dvh!important;
+}

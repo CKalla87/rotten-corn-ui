@@ -1,21 +1,89 @@
+.header-hidden-on-chat {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
+
 .dashboard {
-  display: flex;
   height: calc(100vh - 75px);
+  display: flex;
   overflow: hidden;
 
+  @media (max-width: 768px) {
+    height: auto;
+    min-height: calc(100vh - 75px);
+    overflow: visible;
+
+    &.dashboard-no-header-on-chat {
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+
   &-sidebar {
-    flex: 2;
-    max-width: 15%;
-    //background-color: red;
+    flex-shrink: 0;
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+    transition: transform 0.3s ease-in-out;
     overflow-y: auto;
+
+    @media (max-width: 768px) {
+      z-index: 100;
+      width: 280px;
+      min-width: auto;
+      max-width: 80%;
+      height: calc(100vh - 75px);
+      position: fixed;
+      top: 75px;
+      left: 0;
+      transform: translate(-100%);
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+
+      &.sidebar-open {
+        transform: translate(0);
+      }
+    }
   }
 
   &-content {
+    background-color: var(--white-10);
     flex: 6;
     height: 100%;
-    background-color: var(--white-10);
-    overflow-y: auto;
-    overflow-x: hidden;
+    transition: margin-left 0.3s ease-in-out;
+    overflow: hidden auto;
+
+    @media (max-width: 768px) {
+      flex: 1;
+      width: 100%;
+      height: auto;
+      min-height: calc(100vh - 75px);
+      margin-left: 0;
+      padding-bottom: 20px;
+      overflow: hidden visible;
+    }
+  }
+
+  &-overlay {
+    display: none;
+
+    @media (max-width: 768px) {
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      background-color: rgba(0, 0, 0, 0.5);
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+      position: fixed;
+      inset: 75px 0 0;
+
+      &.overlay-open {
+        opacity: 1;
+        visibility: visible;
+        display: block;
+      }
+    }
   }
 }
 

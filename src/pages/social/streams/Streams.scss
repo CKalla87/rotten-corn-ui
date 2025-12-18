@@ -13,49 +13,52 @@
   }
 
   &-content {
-    display: grid;
-    grid-template-areas: "post suggestions";
-    grid-template-columns: 1fr 330px;
-    grid-template-rows: 1fr;
+    grid-template: "post suggestions" 1fr / 1fr 330px;
     column-gap: 20px;
     margin-top: 20px;
-    overflow-x: hidden;
-    overflow-y: scroll;
+    display: grid;
+    overflow: hidden scroll;
 
     @media (max-width: 1024px) {
       grid-template-columns: 1fr;
       grid-template-areas: "post" "suggestions";
       
       .streams-suggestions {
-        margin-top: 20px;
         max-height: none;
+        margin-top: 20px;
       }
     }
 
     @media (max-width: 768px) {
-      margin-top: 10px;
+      box-sizing: border-box;
       column-gap: 0;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 10px;
+      overflow: visible;
     }
 
     .streams-post {
-      grid-area: post;
-      overflow-y: scroll;
-      overflow-x: hidden;
-      height: 100vh;
       scroll-behavior: smooth;
+      grid-area: post;
+      height: 100vh;
+      overflow: hidden scroll;
       background-color: var(--white-10) !important;
 
       @media (max-width: 768px) {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
         height: auto;
-        overflow-y: visible;
+        overflow: visible;
       }
     }
 
     .streams-suggestions {
-      grid-area: suggestions;
       background-color: var(--white-1);
-      max-height: 600px;
       border-radius: 16px;
+      grid-area: suggestions;
+      max-height: 600px;
 
       @media (max-width: 1024px) {
         max-height: none;

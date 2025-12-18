@@ -4,6 +4,7 @@ import InfoDisplay from '@components/timeline/InfoDisplay';
 import BasicInfoSkeleton from '@components/timeline/BasicInfoSkeleton';
 import { userService } from '@services/api/user/user.service';
 import { Utils } from '@services/utils/utils.service';
+import { updateUserProfile } from '@redux/reducers/user/userSlice';
 import type { AppDispatch } from '@redux/store';
 import '@components/timeline/Timeline.scss';
 
@@ -27,6 +28,7 @@ interface BasicInfoProps {
   loading?: boolean;
   setEditableInputs?: (inputs: Record<string, unknown>) => void;
   setEditableSocialInputs?: (inputs: Record<string, unknown>) => void;
+  onUpdateSuccess?: () => void;
 }
 
 const BasicInfo = ({
@@ -36,7 +38,8 @@ const BasicInfo = ({
   profile,
   loading,
   setEditableInputs,
-  setEditableSocialInputs
+  setEditableSocialInputs,
+  onUpdateSuccess
 }: BasicInfoProps) => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -70,8 +73,49 @@ const BasicInfo = ({
 
   const updateBasicInfo = async () => {
     try {
-      const response = await userService.updateBasicInfo(editableInputs);
+      // Ensure we're sending clean data (the editableInputs should already be clean from user input)
+      const cleanData = {
+        quote: editableInputs?.quote || '',
+        work: editableInputs?.work || '',
+        school: editableInputs?.school || '',
+        location: editableInputs?.location || ''
+      };
+      
+      const response = await userService.updateBasicInfo(cleanData);
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
+      
+      // Update the local state with saved values after a brief delay
+      // This ensures the disabled state is set first, allowing ContentEditable to update
+      if (setEditableInputs) {
+        // Use requestAnimationFrame to ensure the disabled state change has been processed
+        requestAnimationFrame(() => {
+          // Create a new object to ensure React sees it as a state change
+          const newInputs = {
+            quote: String(cleanData.quote || ''),
+            work: String(cleanData.work || ''),
+            school: String(cleanData.school || ''),
+            location: String(cleanData.location || '')
+          };
+          setEditableInputs(newInputs);
+        });
+      }
+      
+      // Update Redux store with the saved data
+      if (profile) {
+        const updatedProfile = {
+          ...profile,
+          quote: cleanData.quote,
+          work: cleanData.work,
+          school: cleanData.school,
+          location: cleanData.location
+        };
+        dispatch(updateUserProfile(updatedProfile));
+      }
+      
+      // Call callback to refresh profile data if provided (for consistency with backend)
+      if (onUpdateSuccess) {
+        await onUpdateSuccess();
+      }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);

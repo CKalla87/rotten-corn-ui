@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { filter } from 'lodash';
@@ -41,11 +41,19 @@ const Profile = () => {
   const { username } = useParams<{ username: string }>();
   const [searchParams] = useSearchParams();
 
+  const profileRef = useRef(profile);
+  
+  // Keep profileRef in sync with profile
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
+
   const getUserProfileByUsername = useCallback(
     async () => {
       try {
         // If no username in URL but we have profile in Redux, use that username
-        const usernameToUse = username || profile?.username || '';
+        const currentProfile = profileRef.current;
+        const usernameToUse = username || currentProfile?.username || '';
         if (!usernameToUse) {
           setHasError(true);
           setLoading(false);
@@ -54,8 +62,8 @@ const Profile = () => {
         
         const response = await userService.getUserProfileByUsername(
           usernameToUse,
-          searchParams.get('id') || profile?._id as string || '',
-          searchParams.get('uId') || profile?.uId as string || ''
+          searchParams.get('id') || currentProfile?._id as string || '',
+          searchParams.get('uId') || currentProfile?.uId as string || ''
         );
         
         const userData = response.data.user;
@@ -93,7 +101,7 @@ const Profile = () => {
         
         // Update Redux store with generated avatarImage URL if viewing own profile
         // Use case-insensitive comparison to handle any case differences
-        const usernameMatches = usernameToUse?.toLowerCase() === profile?.username?.toLowerCase();
+        const usernameMatches = usernameToUse?.toLowerCase() === currentProfile?.username?.toLowerCase();
         if (usernameMatches && userData) {
           const updatedUserData = { ...userData };
           if (profilePicUrl) {
@@ -120,7 +128,7 @@ const Profile = () => {
         Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
     },
-    [dispatch, searchParams, username, profile, navigate]
+    [dispatch, searchParams, username, navigate]
   );
 
   const getUserImages = useCallback(
@@ -140,27 +148,52 @@ const Profile = () => {
     [searchParams, user]
   );
 
+  const hasFetchedRef = useRef(false);
+  const lastUsernameRef = useRef<string | undefined>(undefined);
+  const lastSearchParamsRef = useRef<string>('');
+
   useEffect(() => {
-    if (rendered) {
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => {
-        void getUserProfileByUsername();
-      }, 0);
-    }
     if (!rendered) {
       // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => {
         setRendered(true);
       }, 0);
+      return;
     }
-  }, [rendered, getUserProfileByUsername]);
+    
+    const currentSearchParams = searchParams.toString();
+    const usernameChanged = lastUsernameRef.current !== username;
+    const searchParamsChanged = lastSearchParamsRef.current !== currentSearchParams;
+    
+    // Only fetch if username or searchParams actually changed, or if we haven't fetched yet
+    if (!hasFetchedRef.current || usernameChanged || searchParamsChanged) {
+      hasFetchedRef.current = true;
+      lastUsernameRef.current = username;
+      lastSearchParamsRef.current = currentSearchParams;
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        void getUserProfileByUsername();
+      }, 0);
+    }
+  }, [rendered, username, searchParams, getUserProfileByUsername]);
+
+  const hasFetchedImagesRef = useRef(false);
+  const lastUserIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (user && rendered) {
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => {
-        void getUserImages();
-      }, 0);
+      const userId = (user as { _id?: string })?._id;
+      const userIdChanged = lastUserIdRef.current !== userId;
+      
+      // Only fetch if userId changed or we haven't fetched yet
+      if (!hasFetchedImagesRef.current || userIdChanged) {
+        hasFetchedImagesRef.current = true;
+        lastUserIdRef.current = userId;
+        // Use setTimeout to avoid synchronous setState in effect
+        setTimeout(() => {
+          void getUserImages();
+        }, 0);
+      }
     }
   }, [user, rendered, getUserImages]);
 
@@ -348,7 +381,29 @@ const Profile = () => {
             />
           </div>
           <div className="profile-content">
-            {displayContent === 'timeline' && <Timeline userProfileData={userProfileData || undefined} loading={loading} />}
+            {displayContent === 'timeline' && (
+              <Timeline 
+                userProfileData={userProfileData || undefined} 
+                loading={loading}
+                onIntroUpdateSuccess={async () => {
+                  // Refresh profile data after intro update to get the saved values
+                  try {
+                    const currentProfile = profileRef.current;
+                    const usernameToUse = username || currentProfile?.username || '';
+                    if (usernameToUse) {
+                      const response = await userService.getUserProfileByUsername(
+                        usernameToUse,
+                        searchParams.get('id') || currentProfile?._id as string || '',
+                        searchParams.get('uId') || currentProfile?.uId as string || ''
+                      );
+                      setUserProfileData(response.data);
+                    }
+                  } catch (error) {
+                    console.warn('Failed to refresh profile after update:', error);
+                  }
+                }}
+              />
+            )}
             {displayContent === 'followers' && <FollowerCard userData={user || undefined} />}
             {displayContent === 'gallery' && (
               <>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { FaArrowLeft } from 'react-icons/fa';
 import { some } from 'lodash';
 import Avatar from '@components/avatar/Avatar';
 import { MessageInput } from '@components/chat/window';
@@ -9,6 +10,7 @@ import { chatService } from '@services/api/chat/chat.service';
 import { userService } from '@services/api/user/user.service';
 import { ChatUtils } from '@services/utils/chat-utils.service';
 import { Utils } from '@services/utils/utils.service';
+import { setSelectedChatUser } from '@redux/reducers/chat/chatSlice';
 import useEffectOnce from '@hooks/useEffectOnce';
 import type { RootState, AppDispatch } from '@redux/store';
 import type { UserProfile } from '@redux/reducers/user/userSlice';
@@ -24,12 +26,25 @@ const ChatWindow = () => {
   const [searchParams] = useSearchParams();
   const [rendered, setRendered] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const getChatMessages = useCallback(
     async (receiverId: string) => {
       try {
         const response = await chatService.getChatMessages(receiverId);
-        console.log(response.data.messages);
+        console.log('💬 Chat messages received:', response.data.messages);
+        // Log message images for debugging
+        response.data.messages?.forEach((msg: Record<string, unknown>, idx: number) => {
+          if (msg.selectedImage || msg.gifUrl) {
+            console.log(`📷 Message ${idx} image data:`, {
+              selectedImage: msg.selectedImage,
+              gifUrl: msg.gifUrl,
+              body: msg.body,
+              receiverId: msg.receiverId,
+              senderId: msg.senderId
+            });
+          }
+        });
         ChatUtils.privateChatMessages = [...response.data.messages];
         setChatMessages([...ChatUtils.privateChatMessages]);
       } catch (error: unknown) {
@@ -63,6 +78,15 @@ const ChatWindow = () => {
   );
 
   const sendChatMessage = async (message: string, gifUrl: string, selectedImage: string) => {
+    if (!receiver || !receiver._id) {
+      Utils.dispatchNotification('Cannot send message: receiver not selected', 'error', dispatch);
+      return;
+    }
+
+    if (!message.trim() && !gifUrl && !selectedImage) {
+      return;
+    }
+
     try {
       const checkUserOne = some(
         ChatUtils.chatUsers,
@@ -82,11 +106,45 @@ const ChatWindow = () => {
         selectedImage,
         isRead: checkUserOne && checkUserTwo
       });
-      console.log(messageData);
-      await chatService.saveChatMessage(messageData);
+      
+      // Validate required fields before sending
+      if (!messageData.receiverId || messageData.receiverId.trim() === '') {
+        Utils.dispatchNotification('Cannot send message: receiver ID is missing', 'error', dispatch);
+        console.error('❌ Missing receiverId. Receiver:', receiver, 'MessageData:', messageData);
+        return;
+      }
+      
+      console.log('📤 Sending chat message:', JSON.stringify(messageData, null, 2));
+      const response = await chatService.saveChatMessage(messageData);
+      console.log('✅ Chat message sent successfully:', response);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { 
+        response?: { 
+          status?: number;
+          data?: { 
+            message?: string;
+            error?: string;
+            [key: string]: unknown;
+          };
+        };
+        message?: string;
+      };
+      
+      // Log full error details - expand errorData for debugging
+      const errorResponse = axiosError?.response?.data;
+      console.error('❌ Error sending chat message:', {
+        status: axiosError?.response?.status,
+        errorMessage: errorResponse?.message || errorResponse?.error || 'Unknown error',
+        errorData: JSON.stringify(errorResponse, null, 2),
+        fullErrorResponse: errorResponse,
+        message: axiosError?.message
+      });
+      
+      const errorMessage = axiosError?.response?.data?.message || 
+                          axiosError?.response?.data?.error || 
+                          axiosError?.message || 
+                          'An error occurred while sending message';
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
     }
   };
 
@@ -144,27 +202,39 @@ const ChatWindow = () => {
       ) : (
         <div data-testid="chatWindow">
           <div className="chat-title" data-testid="chat-title">
+            <button
+              className="chat-back-button"
+              onClick={() => {
+                dispatch(setSelectedChatUser({ isLoading: false, user: null }));
+                navigate('/app/social/chat/messages');
+              }}
+              aria-label="Back to chat list"
+            >
+              <FaArrowLeft />
+            </button>
             {receiver && (
               <div className="chat-title-avatar">
                 <Avatar
                   name={receiver?.username}
                   bgColor={receiver?.avatarColor}
                   textColor="#ffffff"
-                  size={40}
-                  avatarSrc={receiver?.profilePicture}
+                  size={32}
+                  avatarSrc={receiver?.profilePicture || receiver?.avatarImage}
                 />
               </div>
             )}
-            <div className="chat-title-items">
-              <div
-                className={`chat-name ${Utils.checkIfUserIsOnline(receiver?.username || '', onlineUsers) ? '' : 'user-not-online'}`}
-              >
-                {receiver?.username}
+            {receiver && (
+              <div className="chat-title-items">
+                <div
+                  className={`chat-name ${Utils.checkIfUserIsOnline(receiver?.username || '', onlineUsers) ? '' : 'user-not-online'}`}
+                >
+                  {receiver?.username || ''}
+                </div>
+                {Utils.checkIfUserIsOnline(receiver?.username || '', onlineUsers) && (
+                  <span className="chat-active">Online</span>
+                )}
               </div>
-              {Utils.checkIfUserIsOnline(receiver?.username || '', onlineUsers) && (
-                <span className="chat-active">Online</span>
-              )}
-            </div>
+            )}
           </div>
           <div className="chat-window">
             <div className="chat-window-message">

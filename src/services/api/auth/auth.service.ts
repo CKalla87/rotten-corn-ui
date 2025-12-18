@@ -17,12 +17,33 @@ export type OAuthProvider = 'google' | 'github' | 'facebook';
 
 class AuthService {
   async signUp(body: SignUpBody) {
-    const response = await axios.post('/signup', body);
+    // Ensure username and email are properly trimmed and formatted
+    const normalizedBody = {
+      username: body.username.trim(),
+      email: body.email.trim(),
+      password: body.password,
+      avatarColor: body.avatarColor,
+      avatarImage: body.avatarImage
+    };
+    console.log('📤 Sending signup request:', {
+      original: { ...body, password: '***', avatarImage: body.avatarImage?.substring(0, 50) + '...' },
+      normalized: { ...normalizedBody, password: '***', avatarImage: normalizedBody.avatarImage?.substring(0, 50) + '...' }
+    });
+    const response = await axios.post('/signup', normalizedBody);
     return response;
   }
 
   async signIn(body: SignInBody) {
-    const response = await axios.post('/signin', body);
+    // Ensure username is properly trimmed and formatted
+    const normalizedBody = {
+      username: body.username.trim(),
+      password: body.password
+    };
+    console.log('📤 Sending signin request:', {
+      original: body,
+      normalized: { ...normalizedBody, password: '***' }
+    });
+    const response = await axios.post('/signin', normalizedBody);
     return response;
   }
 
