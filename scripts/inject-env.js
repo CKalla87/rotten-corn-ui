@@ -71,19 +71,40 @@ for (const envPath of possibleEnvPaths) {
     try {
       const envContent = readFileSync(envPath, 'utf-8');
       console.log('📄 Reading environment file from:', envPath);
+      console.log('   File size:', envContent.length, 'bytes');
       envVars = parseEnv(envContent);
       envPathUsed = envPath;
       console.log('✓ Loaded environment variables from file');
+      console.log('   Total variables parsed:', Object.keys(envVars).length);
       // Log what was found (mask sensitive values)
       const foundKeys = Object.keys(envVars).filter(k => k.startsWith('VITE_'));
       if (foundKeys.length > 0) {
         console.log('📋 Found VITE_ variables:', foundKeys.join(', '));
+        // Check specifically for VITE_CLOUD_NAME
+        if (envVars.VITE_CLOUD_NAME !== undefined) {
+          const cloudNameValue = envVars.VITE_CLOUD_NAME;
+          if (cloudNameValue && cloudNameValue !== 'your-cloudinary-cloud-name' && !cloudNameValue.includes('your-') && cloudNameValue.trim() !== '') {
+            console.log('   ✓ VITE_CLOUD_NAME found with valid value:', cloudNameValue.substring(0, 15) + (cloudNameValue.length > 15 ? '...' : ''));
+          } else {
+            console.error('   ❌ VITE_CLOUD_NAME has placeholder or empty value:', cloudNameValue || '(empty)');
+            console.error('   ❌ This value will be filtered out and NOT injected!');
+            console.error('   ❌ Please update the .env file in S3 with your actual Cloudinary cloud name.');
+          }
+        } else {
+          console.warn('   ⚠️ VITE_CLOUD_NAME not found in file');
+          console.warn('   ⚠️ Please add VITE_CLOUD_NAME=your-actual-cloud-name to the .env file');
+        }
+      } else {
+        console.warn('   ⚠️ No VITE_ prefixed variables found in file');
+        console.log('   All keys in file:', Object.keys(envVars).slice(0, 10).join(', '), Object.keys(envVars).length > 10 ? '...' : '');
       }
       break;
     } catch (error) {
       console.warn(`⚠️ Error reading ${envPath}:`, error.message);
       continue;
     }
+  } else {
+    console.log('   ⏭️  Skipping (not found):', envPath);
   }
 }
 
@@ -113,10 +134,18 @@ Object.keys(envVars).forEach(key => {
         value.trim() !== '') {
       viteEnvVars[key] = value;
     } else {
-      console.warn(`⚠️ Skipping ${key} - contains placeholder value: ${value}`);
+      console.warn(`⚠️ Skipping ${key} - contains placeholder or empty value: "${value}"`);
     }
   }
 });
+
+console.log('📊 After filtering:');
+console.log('   VITE_ variables to inject:', Object.keys(viteEnvVars).length);
+if (viteEnvVars.VITE_CLOUD_NAME) {
+  console.log('   ✓ VITE_CLOUD_NAME will be injected');
+} else {
+  console.error('   ❌ VITE_CLOUD_NAME will NOT be injected!');
+}
 
 // Read index.html
 if (!existsSync(indexPath)) {
@@ -145,25 +174,60 @@ const envScript = `
 
 // Find the existing __ENV__ initialization script and replace it
 // Match the script tag that initializes window.__ENV__
-const envInitPattern = /<script>\s*\/\/.*Runtime environment variables.*?window\.__ENV__.*?<\/script>/s;
-if (envInitPattern.test(html)) {
-  html = html.replace(envInitPattern, envScript.trim());
-  console.log('✓ Replaced existing environment variable script');
-} else {
-  // Try to find any script with __ENV__
-  const anyEnvPattern = /<script>[\s\S]*?window\.__ENV__[\s\S]*?<\/script>/;
-  if (anyEnvPattern.test(html)) {
-    html = html.replace(anyEnvPattern, envScript.trim());
-    console.log('✓ Replaced existing __ENV__ script');
-  } else {
-    // If no existing script, inject before the closing </head> tag
+let replaced = false;
+
+// Try multiple patterns to find and replace the existing script
+const patterns = [
+  /<script>\s*\/\/.*Runtime environment variables.*?window\.__ENV__.*?<\/script>/s,
+  /<script>[\s\S]*?window\.__ENV__[\s\S]*?<\/script>/,
+  /<script>\s*if \(typeof window !== 'undefined'\) \{[\s\S]*?window\.__ENV__[\s\S]*?\}[\s\S]*?<\/script>/
+];
+
+for (const pattern of patterns) {
+  if (pattern.test(html)) {
+    html = html.replace(pattern, envScript.trim());
+    console.log('✓ Replaced existing environment variable script (pattern matched)');
+    replaced = true;
+    break;
+  }
+}
+
+if (!replaced) {
+  // If no existing script found, inject before the closing </head> tag
+  if (html.includes('</head>')) {
     html = html.replace('</head>', `  ${envScript}\n  </head>`);
-    console.log('✓ Injected environment variable script');
+    console.log('✓ Injected environment variable script before </head>');
+  } else {
+    // Fallback: inject before </body> or at the end of <head>
+    if (html.includes('</body>')) {
+      html = html.replace('</body>', `  ${envScript}\n  </body>`);
+      console.log('✓ Injected environment variable script before </body>');
+    } else {
+      // Last resort: append to the end
+      html += envScript;
+      console.log('✓ Appended environment variable script to HTML');
+    }
   }
 }
 
 // Write the modified HTML
 writeFileSync(indexPath, html, 'utf-8');
+console.log('✓ Wrote modified index.html to:', indexPath);
+
+// Verify injection by reading back the file
+const verifyHtml = readFileSync(indexPath, 'utf-8');
+const hasEnvScript = verifyHtml.includes('window.__ENV__') && verifyHtml.includes('VITE_');
+if (hasEnvScript) {
+  console.log('✓ Verified: Environment script found in index.html');
+  // Check if VITE_CLOUD_NAME is in the injected script
+  if (viteEnvVars.VITE_CLOUD_NAME && verifyHtml.includes('VITE_CLOUD_NAME')) {
+    console.log('✓ Verified: VITE_CLOUD_NAME found in injected script');
+  } else if (viteEnvVars.VITE_CLOUD_NAME) {
+    console.error('❌ ERROR: VITE_CLOUD_NAME was supposed to be injected but not found in HTML!');
+  }
+} else {
+  console.error('❌ ERROR: Environment script not found in index.html after injection!');
+}
 
 // Log what was injected
 const injectedVars = Object.keys(viteEnvVars);
@@ -180,6 +244,24 @@ if (injectedVars.length > 0) {
 } else {
   console.warn('⚠️ No VITE_ prefixed environment variables found to inject');
   console.warn('⚠️ Images may not work if VITE_CLOUD_NAME is not set');
+  console.warn('⚠️ This could mean:');
+  console.warn('   1. The .env file doesn\'t contain VITE_CLOUD_NAME');
+  console.warn('   2. VITE_CLOUD_NAME has a placeholder value');
+  console.warn('   3. The .env file wasn\'t found or couldn\'t be read');
+}
+
+// Final check: If we're in a CI environment and VITE_CLOUD_NAME is missing, warn but don't fail
+// (The build should still succeed, but images won't work)
+if (process.env.CI && !viteEnvVars.VITE_CLOUD_NAME) {
+  console.error('');
+  console.error('❌ CRITICAL WARNING: VITE_CLOUD_NAME is not set in CI build!');
+  console.error('   Images and videos will not work in the deployed application.');
+  console.error('   Please ensure .env.develop (or .env.staging/.env.production) contains:');
+  console.error('   VITE_CLOUD_NAME=your-actual-cloudinary-cloud-name');
+  console.error('   (Replace "your-actual-cloudinary-cloud-name" with your real Cloudinary cloud name)');
+  console.error('');
+  // Don't exit with error - let the build complete so we can see other issues
+  // But log it prominently
 }
 
 console.log('✓ Environment variable injection complete');
