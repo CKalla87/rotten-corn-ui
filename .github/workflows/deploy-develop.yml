@@ -77,14 +77,18 @@ jobs:
             if grep -q "VITE_CLOUD_NAME" .env.develop; then
               CLOUD_NAME_VALUE=$(grep "^VITE_CLOUD_NAME=" .env.develop | cut -d'=' -f2 | tr -d '"' | tr -d "'")
               if [[ "$CLOUD_NAME_VALUE" == *"your-"* ]] || [[ "$CLOUD_NAME_VALUE" == "" ]]; then
-                echo "⚠️ WARNING: VITE_CLOUD_NAME appears to have a placeholder value: $CLOUD_NAME_VALUE"
-                echo "⚠️ This value will be filtered out during injection!"
-                echo "⚠️ Please update the .env file in S3 with your actual Cloudinary cloud name"
+                echo "❌ ERROR: VITE_CLOUD_NAME has a placeholder value: $CLOUD_NAME_VALUE"
+                echo "❌ This value will be filtered out during injection and images will not work!"
+                echo "❌ Please update the .env file in S3 with your actual Cloudinary cloud name"
+                echo "❌ File location: s3://chattapplication1-env-files/frontend/develop/.env"
+                exit 1
               else
                 echo "✓ VITE_CLOUD_NAME found with value: ${CLOUD_NAME_VALUE:0:10}..."
               fi
             else
               echo "❌ ERROR: VITE_CLOUD_NAME not found in .env.develop"
+              echo "❌ Please add VITE_CLOUD_NAME=your-actual-cloud-name to the .env file in S3"
+              echo "❌ File location: s3://chattapplication1-env-files/frontend/develop/.env"
               exit 1
             fi
           else

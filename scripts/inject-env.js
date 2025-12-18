@@ -108,6 +108,31 @@ for (const envPath of possibleEnvPaths) {
   }
 }
 
+// If VITE_CLOUD_NAME is missing and we read from an env-specific file, try .env as fallback
+if (!envVars.VITE_CLOUD_NAME && envPathUsed && envPathUsed !== join(rootDir, '.env')) {
+  const fallbackEnvPath = join(rootDir, '.env');
+  if (existsSync(fallbackEnvPath)) {
+    try {
+      console.log('🔍 VITE_CLOUD_NAME missing from', envPathUsed.split('/').pop() + ', checking .env as fallback...');
+      const fallbackContent = readFileSync(fallbackEnvPath, 'utf-8');
+      const fallbackVars = parseEnv(fallbackContent);
+      if (fallbackVars.VITE_CLOUD_NAME) {
+        const cloudNameValue = fallbackVars.VITE_CLOUD_NAME;
+        if (cloudNameValue && cloudNameValue !== 'your-cloudinary-cloud-name' && !cloudNameValue.includes('your-') && cloudNameValue.trim() !== '') {
+          console.log('   ✓ Found VITE_CLOUD_NAME in .env, merging into env vars');
+          envVars.VITE_CLOUD_NAME = cloudNameValue;
+        } else {
+          console.warn('   ⚠️ VITE_CLOUD_NAME in .env has placeholder value, skipping');
+        }
+      } else {
+        console.warn('   ⚠️ VITE_CLOUD_NAME also not found in .env');
+      }
+    } catch (error) {
+      console.warn(`⚠️ Error reading fallback .env:`, error.message);
+    }
+  }
+}
+
 // If no .env file found, fall back to process.env
 if (!envPathUsed) {
   console.warn('⚠️ No .env file found in any of the expected locations');
@@ -123,6 +148,7 @@ if (!envPathUsed) {
 
 // Filter to only include VITE_ prefixed variables and filter out placeholder values
 const viteEnvVars = {};
+const skippedVars = [];
 Object.keys(envVars).forEach(key => {
   if (key.startsWith('VITE_')) {
     const value = envVars[key];
@@ -134,6 +160,7 @@ Object.keys(envVars).forEach(key => {
         value.trim() !== '') {
       viteEnvVars[key] = value;
     } else {
+      skippedVars.push(key);
       console.warn(`⚠️ Skipping ${key} - contains placeholder or empty value: "${value}"`);
     }
   }
@@ -141,10 +168,31 @@ Object.keys(envVars).forEach(key => {
 
 console.log('📊 After filtering:');
 console.log('   VITE_ variables to inject:', Object.keys(viteEnvVars).length);
+console.log('   VITE_ variables skipped:', skippedVars.length > 0 ? skippedVars.join(', ') : 'none');
 if (viteEnvVars.VITE_CLOUD_NAME) {
   console.log('   ✓ VITE_CLOUD_NAME will be injected');
 } else {
   console.error('   ❌ VITE_CLOUD_NAME will NOT be injected!');
+  if (envVars.VITE_CLOUD_NAME !== undefined) {
+    console.error(`   ❌ Reason: VITE_CLOUD_NAME found in file but filtered out (value: "${envVars.VITE_CLOUD_NAME}")`);
+    console.error('   ❌ This usually means the value is a placeholder like "your-cloudinary-cloud-name"');
+    console.error('   ❌ Please update the .env file in S3 with your actual Cloudinary cloud name.');
+  } else {
+    console.error('   ❌ Reason: VITE_CLOUD_NAME not found in the .env file');
+    console.error(`   ❌ File read from: ${envPathUsed || 'none'}`);
+    console.error('   ❌ Please add VITE_CLOUD_NAME=your-actual-cloud-name to the .env file in S3.');
+  }
+  // In CI/CD, fail the build if VITE_CLOUD_NAME is missing
+  if (process.env.CI || process.env.GITHUB_ACTIONS) {
+    console.error('');
+    console.error('❌ BUILD FAILED: VITE_CLOUD_NAME is required for image/video functionality');
+    console.error('❌ This is a critical error. The build cannot proceed without VITE_CLOUD_NAME.');
+    process.exit(1);
+  } else {
+    console.warn('');
+    console.warn('⚠️ WARNING: VITE_CLOUD_NAME is missing. Image/video uploads will not work.');
+    console.warn('⚠️ This is a critical warning. Please add VITE_CLOUD_NAME to your .env file.');
+  }
 }
 
 // Read index.html
