@@ -12,8 +12,8 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, _options) => {
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
             // Log proxied requests in development
             console.log('🟢 Proxy Request to backend:', {
               method: req.method,
@@ -25,7 +25,7 @@ export default defineConfig({
               }
             });
           });
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
+          proxy.on('proxyRes', (proxyRes, req) => {
             // Log backend responses
             console.log('🟡 Proxy Response from backend:', {
               statusCode: proxyRes.statusCode,
@@ -33,7 +33,7 @@ export default defineConfig({
               url: req.url
             });
           });
-          proxy.on('error', (err, _req, _res) => {
+          proxy.on('error', (err) => {
             console.error('❌ Proxy Error:', err);
           });
         },

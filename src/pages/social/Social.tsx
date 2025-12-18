@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from '@components/header/Header';
@@ -15,9 +15,9 @@ const Social = () => {
     setIsSidebarOpen((prev) => !prev);
   };
 
-  const closeSidebar = () => {
+  const closeSidebar = useCallback(() => {
     setIsSidebarOpen(false);
-  };
+  }, []);
 
   // Close sidebar when window is resized to desktop size
   useEffect(() => {
@@ -34,7 +34,10 @@ const Social = () => {
   // Close sidebar when route changes (mobile)
   useEffect(() => {
     if (window.innerWidth <= 768) {
-      closeSidebar();
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        setIsSidebarOpen(false);
+      }, 0);
     }
   }, [location.pathname]);
 

@@ -74,10 +74,11 @@ const Notifications = () => {
     switch (notificationType) {
       case 'follows':
         return `${username} is now following you.`;
-      case 'comments':
+      case 'comments': {
         const comment = notification?.comment as string | undefined;
         return comment ? `${username} commented: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"` : `${username} commented on your post`;
-      case 'reactions':
+      }
+      case 'reactions': {
         const reaction = notification?.reaction as string | undefined;
         const reactionEmoji: Record<string, string> = {
           love: '❤️',
@@ -89,6 +90,7 @@ const Notifications = () => {
         };
         const reactionText = reaction ? (reactionEmoji[reaction] || reaction) : 'reacted';
         return `${username} ${reactionText} your post`;
+      }
       default:
         return `${username} interacted with you`;
     }
@@ -207,7 +209,7 @@ const Notifications = () => {
     
     // Cleanup socket listeners on unmount or when profile/loading changes
     return cleanup;
-  }, [loading, profile?._id, setNotifications]);
+  }, [loading, profile, setNotifications]);
 
   return (
     <>

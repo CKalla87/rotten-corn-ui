@@ -276,9 +276,11 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     }
     // Also check when selectedPostItem, selectedVideo, selectedImage, or selectedPostVideo changes
     // Allow posting if there's text OR an image/gif/video
-    const hasContent = (postData.post || '').length > 0 || postImage || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
-    setDisable(!hasContent);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Use setTimeout to avoid calling setState synchronously in effect
+    setTimeout(() => {
+      const hasContent = (postData.post || '').length > 0 || postImage || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
+      setDisable(!hasContent);
+    }, 0);
   }, [gifUrl, image, video, postData, postImage, selectedPostItem, selectedVideo, selectedImage, selectedPostVideo]);
 
   return (

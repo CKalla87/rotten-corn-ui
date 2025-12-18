@@ -134,8 +134,7 @@ const Profile = () => {
   const getUserImages = useCallback(
     async () => {
       try {
-        const currentUser = userRef.current;
-        const userId = searchParams.get('id') || (currentUser as { _id?: string })?._id || '';
+        const userId = searchParams.get('id') || (user as { _id?: string })?._id || '';
         if (userId) {
           const imagesResponse = await imageService.getUserImages(userId);
           setGalleryImages(imagesResponse.data.images || []);
@@ -146,7 +145,7 @@ const Profile = () => {
         setGalleryImages([]);
       }
     },
-    [searchParams]
+    [searchParams, user]
   );
 
   const hasFetchedRef = useRef(false);
@@ -171,18 +170,15 @@ const Profile = () => {
       hasFetchedRef.current = true;
       lastUsernameRef.current = username;
       lastSearchParamsRef.current = currentSearchParams;
-      void getUserProfileByUsername();
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        void getUserProfileByUsername();
+      }, 0);
     }
   }, [rendered, username, searchParams, getUserProfileByUsername]);
 
-  const userRef = useRef(user);
   const hasFetchedImagesRef = useRef(false);
   const lastUserIdRef = useRef<string | undefined>(undefined);
-  
-  // Keep userRef in sync with user
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
 
   useEffect(() => {
     if (user && rendered) {
@@ -199,7 +195,7 @@ const Profile = () => {
         }, 0);
       }
     }
-  }, [user?._id, rendered, getUserImages]);
+  }, [user, rendered, getUserImages]);
 
   const changeTabContent = (data?: string) => {
     setDisplayContent(data || 'timeline');

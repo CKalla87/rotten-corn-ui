@@ -62,10 +62,11 @@ const Dropdown = ({
     switch (notificationType) {
       case 'follows':
         return `${username} is now following you.`;
-      case 'comments':
+      case 'comments': {
         const comment = item?.comment as string | undefined;
         return comment ? `${username} commented: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"` : `${username} commented on your post`;
-      case 'reactions':
+      }
+      case 'reactions': {
         const reaction = item?.reaction as string | undefined;
         const reactionEmoji: Record<string, string> = {
           love: '❤️',
@@ -77,6 +78,7 @@ const Dropdown = ({
         };
         const reactionText = reaction ? (reactionEmoji[reaction] || reaction) : 'reacted';
         return `${username} ${reactionText} your post`;
+      }
       default:
         return `${username} interacted with you`;
     }

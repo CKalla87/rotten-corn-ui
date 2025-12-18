@@ -362,7 +362,7 @@ const EditPost = () => {
       const hasContent = postData.post.length > 0 || postImage || postData.gifUrl || postData.image || postData.video || selectedPostImage || selectedVideo;
       setDisable(!hasContent);
     }, 0);
-  }, [loading, dispatch, apiResponse, postData, postImage]);
+  }, [loading, dispatch, apiResponse, postData, postImage, selectedPostImage, selectedVideo]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -405,7 +405,7 @@ const EditPost = () => {
     setTimeout(() => {
       editableFields();
     }, 0);
-  }, [editableFields, postState]);
+  }, [editableFields, postState, postData]);
 
   return (
     <>

@@ -145,7 +145,7 @@ const ContentEditable = ({
       }
       lastHtmlRef.current = html;
     }
-  }, []);
+  }, [html]);
 
   // Ensure contentEditable attribute is properly set when disabled changes
   useEffect(() => {

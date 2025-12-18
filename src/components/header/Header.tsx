@@ -178,7 +178,7 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
 
     // Cleanup on unmount or when profile changes
     return cleanup;
-  }, [profile?._id, dispatch, setNotifications, setNotificationCount, setMessageNotifications, setMessageCount]);
+  }, [profile, dispatch, setNotifications, setNotificationCount, setMessageNotifications, setMessageCount]);
 
   if (!profile) {
     return <HeaderSkeleton />;
