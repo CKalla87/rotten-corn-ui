@@ -54,15 +54,16 @@
     }
 
     @media (max-width: 768px) {
-      padding: 10px !important;
+      padding: 0 !important;
       box-sizing: border-box !important;
       column-gap: 0 !important;
-      row-gap: 15px !important;
+      row-gap: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
       overflow: visible !important;
       overflow-x: visible !important;
       overflow-y: visible !important;
+      margin: 0 !important;
     }
 
     @media screen and (max-width: 768px) {
@@ -76,11 +77,12 @@
     }
 
     @media (max-width: 480px) {
-      padding: 8px;
-      row-gap: 12px;
+      padding: 0;
+      row-gap: 0;
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
+      margin: 0;
     }
 
     .streams-post {

@@ -222,8 +222,8 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           </div>
         </div>
       </div>
-      <hr />
-      <div className="user-post" style={{ marginTop: '1rem', borderBottom: '' }}>
+      <hr className="post-divider" />
+      <div className="user-post">
         {post?.post && post?.bgColor === '#ffffff' && <p>{post.post}</p>}
         {post?.post && post?.bgColor !== '#ffffff' && (
           <div className="user-post-with-bg" style={{ backgroundColor: `${post?.bgColor}` }}>
