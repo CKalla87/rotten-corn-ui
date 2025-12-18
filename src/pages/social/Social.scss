@@ -24,16 +24,6 @@
     }
   }
 
-  // Additional mobile-specific override with higher specificity
-  @media screen and (max-width: 768px) {
-    &[class*="dashboard"] {
-      overflow: visible !important;
-      overflow-x: visible !important;
-      overflow-y: visible !important;
-      height: auto !important;
-    }
-  }
-
   &-sidebar {
     flex-shrink: 0;
     width: 200px;
@@ -101,7 +91,8 @@
   }
 }
 
-// Global mobile overrides with maximum specificity - must be at end of file
+// CRITICAL: Root-level mobile overrides MUST be at end of file
+// This ensures they load after all nested styles and override cached CSS
 @media screen and (max-width: 768px) {
   .dashboard {
     overflow: visible !important;
@@ -123,4 +114,3 @@
     overflow-y: visible !important;
   }
 }
-
