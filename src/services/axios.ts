@@ -53,9 +53,28 @@ axiosInstance.interceptors.request.use(
       const token = localStorage.getItem('authToken');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
+      } else if (!token && config.url && !config.url.includes('/signin') && !config.url.includes('/signup')) {
+        // Log when token is missing for authenticated routes (helpful for debugging)
+        console.warn('⚠️ No auth token found for request:', config.url);
       }
     } catch (error) {
       console.error('Failed to get token from localStorage:', error);
+    }
+    
+    // Debug logging for local development
+    if (APP_ENVIRONMENT === 'local' || import.meta.env.DEV) {
+      // Stringify data to see exact format being sent
+      const dataString = config.data ? JSON.stringify(config.data) : 'no data';
+      console.log('🔵 Axios Request:', {
+        url: config.url,
+        method: config.method,
+        baseURL: config.baseURL,
+        fullURL: `${config.baseURL}${config.url}`,
+        hasToken: !!localStorage.getItem('authToken'),
+        contentType: config.headers?.['Content-Type'],
+        dataString: dataString,
+        dataObject: config.data
+      });
     }
     
     // Ensure Content-Type is set correctly for file uploads
@@ -84,6 +103,18 @@ axiosInstance.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    
+    // Log error responses for debugging (especially 400 errors)
+    if (error.response && (APP_ENVIRONMENT === 'local' || import.meta.env.DEV)) {
+      console.error('🔴 Backend Error Response:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    }
     
     // Handle CORS errors
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {

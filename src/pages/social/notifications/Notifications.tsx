@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { FaCircle, FaRegCircle, FaRegTrashAlt } from 'react-icons/fa';
+import { FaCircle, FaRegTrashAlt } from 'react-icons/fa';
 import Avatar from '@components/avatar/Avatar';
 import { NotificationPreview } from '@components/dialog';
 import { Utils } from '@services/utils/utils.service';
 import { NotificationUtils } from '@services/utils/notification-utils.service';
 import { notificationService } from '@services/api/notifications/notification.service';
 import { socketService } from '@services/socket/socket.service';
+import { timeAgo } from '@services/utils/timeago.utils';
 import type { AppDispatch, RootState } from '@redux/store';
 import './Notifications.scss';
 
@@ -58,6 +59,41 @@ const Notifications = () => {
   });
   const dispatch = useDispatch<AppDispatch>();
 
+  // Format notification message with more context
+  const formatNotificationMessage = (notification: Notification): string => {
+    const username = notification?.userFrom?.username || notification?.senderName || 'Someone';
+    const notificationType = notification?.notificationType;
+    const message = notification?.message || notification?.description || notification?.topText;
+    
+    // If we have a custom message, use it
+    if (message) {
+      return message;
+    }
+    
+    // Otherwise format based on notification type
+    switch (notificationType) {
+      case 'follows':
+        return `${username} is now following you.`;
+      case 'comments':
+        const comment = notification?.comment as string | undefined;
+        return comment ? `${username} commented: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"` : `${username} commented on your post`;
+      case 'reactions':
+        const reaction = notification?.reaction as string | undefined;
+        const reactionEmoji: Record<string, string> = {
+          love: '❤️',
+          like: '👍',
+          haha: '😄',
+          angry: '😠',
+          sad: '😢',
+          wow: '😲'
+        };
+        const reactionText = reaction ? (reactionEmoji[reaction] || reaction) : 'reacted';
+        return `${username} ${reactionText} your post`;
+      default:
+        return `${username} interacted with you`;
+    }
+  };
+
   const getUserNotifications = async () => {
     try {
       const response = await notificationService.getUserNotifications();
@@ -78,7 +114,8 @@ const Notifications = () => {
             }
             
             if (profilePicUrl) {
-              userFrom.profilePicture = profilePicUrl;
+              // Fix Cloudinary URL if needed
+              userFrom.profilePicture = Utils.fixCloudinaryUrl(profilePicUrl);
             }
           }
           return notification;
@@ -134,29 +171,43 @@ const Notifications = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const notificationsRef = useRef(notifications);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+
   useEffect(() => {
     // Only set up socket listeners after initial load is complete
     if (loading || !profile) {
       return;
     }
     
-    // Set up socket listeners for real-time updates
-    const notificationItems = notifications.map((notification) => ({
-      ...notification,
-      description: notification.description || notification.message || ''
-    }));
-    
-    NotificationUtils.socketIONotification(profile, notificationItems, setNotifications, 'notificationPage');
-    
-    // Cleanup socket listeners on unmount
-    return () => {
+    // Cleanup function to remove socket listeners
+    const cleanup = () => {
       if (socketService.socket) {
         socketService.socket.off('insert notification');
         socketService.socket.off('update notification');
         socketService.socket.off('delete notification');
       }
     };
-  }, [loading, profile, notifications]);
+
+    // Clean up any existing listeners first
+    cleanup();
+    
+    // Set up socket listeners for real-time updates
+    // Use ref to access latest notifications without causing re-renders
+    const notificationItems = notificationsRef.current.map((notification) => ({
+      ...notification,
+      description: notification.description || notification.message || ''
+    }));
+    
+    NotificationUtils.socketIONotification(profile, notificationItems, setNotifications, 'notificationPage');
+    
+    // Cleanup socket listeners on unmount or when profile/loading changes
+    return cleanup;
+  }, [loading, profile?._id, setNotifications]);
 
   return (
     <>
@@ -191,31 +242,31 @@ const Notifications = () => {
               className="notification-box"
               onClick={() => markAsRead(notification)}
             >
-              <div className="notification-box-sub-card">
-                <div className="notification-box-sub-card-media">
-                  <div className="notification-box-sub-card-media-image-icon">
-                    <Avatar
-                      name={notification?.userFrom?.username}
-                      bgColor={notification?.userFrom?.avatarColor}
-                      textColor="#ffffff"
-                      size={40}
-                      avatarSrc={notification?.userFrom?.profilePicture}
-                    />
-                  </div>
+              <div className="notification-box-sub-card-media">
+                <div className="notification-box-sub-card-media-image-icon">
+                  <Avatar
+                    name={notification?.userFrom?.username || notification?.senderName}
+                    bgColor={notification?.userFrom?.avatarColor}
+                    textColor="#ffffff"
+                    size={40}
+                    avatarSrc={notification?.userFrom?.profilePicture ? Utils.fixCloudinaryUrl(notification.userFrom.profilePicture) : undefined}
+                  />
                 </div>
                 <div className="notification-box-sub-card-media-body">
                   <h6 className="title">
-                    {notification?.message}
-                    <small data-testid="subtitle" className="subtitle" onClick={(e) => deleteNotification(e, notification?._id || '')}>
-                      <FaRegTrashAlt className="trash" />
-                    </small>
+                    {formatNotificationMessage(notification)}
                   </h6>
                   <div className="subtitle-body">
-                    <small className="subtitle">
-                      {!notification?.read ? <FaCircle className="icon" /> : <FaRegCircle className="icon" />}
-                    </small>
-                    <p className="subtext">1 hr ago</p>
+                    {!notification?.read && <FaCircle className="icon unread-indicator" />}
+                    <p className="subtext">{notification?.createdAt ? timeAgo.transform(notification.createdAt) : 'Just now'}</p>
                   </div>
+                </div>
+                <div className="notification-icons">
+                  <FaRegTrashAlt 
+                    className="trash" 
+                    onClick={(e) => deleteNotification(e, notification?._id || '')}
+                  />
+                  {!notification?.read && <FaCircle className="icon unread-indicator-right" />}
                 </div>
               </div>
             </div>

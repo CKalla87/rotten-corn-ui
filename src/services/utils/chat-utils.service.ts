@@ -104,31 +104,63 @@ export class ChatUtils {
     selectedImage
   }: MessageDataParams): {
     conversationId: string;
-    receiverId: string | undefined;
-    receiverUsername: string | undefined;
-    receiverAvatarColor: string | undefined;
-    receiverProfilePicture: string | undefined;
+    receiverId: string;
+    receiverUsername?: string;
+    receiverAvatarColor?: string;
+    receiverProfilePicture?: string;
     body: string;
-    isRead: boolean | undefined;
-    gifUrl: string | undefined;
-    selectedImage: string | undefined;
+    isRead?: boolean;
+    gifUrl?: string;
+    selectedImage?: string;
   } {
     const chatConversationId = find(
       chatMessages,
       (chat) => chat.receiverId === searchParamsId || chat.senderId === searchParamsId
     );
 
-    const messageData = {
+    // Build messageData object, only including defined values
+    // Ensure receiverId is properly extracted
+    const receiverId = receiver?._id;
+    if (!receiverId || typeof receiverId !== 'string' || receiverId.trim() === '') {
+      throw new Error('Invalid receiver ID: receiver._id must be a non-empty string');
+    }
+
+    const messageData: {
+      conversationId: string;
+      receiverId: string;
+      receiverUsername?: string;
+      receiverAvatarColor?: string;
+      receiverProfilePicture?: string;
+      body: string;
+      isRead?: boolean;
+      gifUrl?: string;
+      selectedImage?: string;
+    } = {
       conversationId: chatConversationId ? (chatConversationId.conversationId as string) : (conversationId || ''),
-      receiverId: receiver?._id as string | undefined,
-      receiverUsername: receiver?.username as string | undefined,
-      receiverAvatarColor: receiver?.avatarColor as string | undefined,
-      receiverProfilePicture: receiver?.profilePicture as string | undefined,
-      body: (message || '').trim(),
-      isRead,
-      gifUrl,
-      selectedImage
+      receiverId: receiverId,
+      body: (message || '').trim()
     };
+
+    // Only add optional fields if they have values
+    if (receiver?.username) {
+      messageData.receiverUsername = receiver.username;
+    }
+    if (receiver?.avatarColor) {
+      messageData.receiverAvatarColor = receiver.avatarColor;
+    }
+    if (receiver?.profilePicture) {
+      messageData.receiverProfilePicture = receiver.profilePicture;
+    }
+    if (typeof isRead === 'boolean') {
+      messageData.isRead = isRead;
+    }
+    if (gifUrl) {
+      messageData.gifUrl = gifUrl;
+    }
+    if (selectedImage) {
+      messageData.selectedImage = selectedImage;
+    }
+
     return messageData;
   }
 
@@ -186,21 +218,35 @@ export class ChatUtils {
   }
 
   static socketIOMessageReceived(
-    chatMessages: ChatUser[],
+    _chatMessages: ChatUser[],
     username: string,
     setConversationId: (id: string) => void,
     setChatMessages: (messages: ChatUser[]) => void
   ): void {
-    let updatedChatMessages = cloneDeep(chatMessages);
+    // Remove existing listeners to prevent duplicates
+    socketService?.socket?.off('message received');
+    socketService?.socket?.off('message read');
+    
     socketService?.socket?.on('message received', (data: ChatUser) => {
       if (
         (data.senderUsername as string)?.toLowerCase() === username?.toLowerCase() ||
         (data.receiverUsername as string)?.toLowerCase() === username?.toLowerCase()
       ) {
-        setConversationId(data.conversationId || '');
-        ChatUtils.privateChatMessages.push(data);
-        updatedChatMessages = [...ChatUtils.privateChatMessages];
-        setChatMessages(updatedChatMessages);
+        // Check if message already exists to prevent duplicates
+        const messageId = data._id || (data as unknown as { _id?: string })._id;
+        const messageExists = ChatUtils.privateChatMessages.some(
+          (msg) => {
+            const msgId = msg._id || (msg as unknown as { _id?: string })._id;
+            return msgId === messageId;
+          }
+        );
+        
+        if (!messageExists) {
+          setConversationId(data.conversationId || '');
+          ChatUtils.privateChatMessages.push(data);
+          const updatedChatMessages = [...ChatUtils.privateChatMessages];
+          setChatMessages(updatedChatMessages);
+        }
       }
     });
 
@@ -212,7 +258,7 @@ export class ChatUtils {
         const findMessageIndex = findIndex(ChatUtils.privateChatMessages, ['_id', data._id]);
         if (findMessageIndex > -1) {
           ChatUtils.privateChatMessages.splice(findMessageIndex, 1, data);
-          updatedChatMessages = [...ChatUtils.privateChatMessages];
+          const updatedChatMessages = [...ChatUtils.privateChatMessages];
           setChatMessages(updatedChatMessages);
         }
       }

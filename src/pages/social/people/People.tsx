@@ -158,15 +158,26 @@ const People = () => {
               )}
               <div className="card-element-header">
                 <div className="card-element-header-bg"></div>
-                <Avatar
-                  name={data?.username}
-                  bgColor={data?.avatarColor}
-                  textColor="#ffffff"
-                  size={120}
-                  avatarSrc={data?.profilePicture}
-                />
+                <div 
+                  onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Avatar
+                    name={data?.username}
+                    bgColor={data?.avatarColor}
+                    textColor="#ffffff"
+                    size={120}
+                    avatarSrc={data?.profilePicture}
+                  />
+                </div>
                 <div className="card-element-header-text">
-                  <span className="card-element-header-name">{data?.username}</span>
+                  <span 
+                    className="card-element-header-name"
+                    onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {data?.username}
+                  </span>
                 </div>
               </div>
               <CardElementStats

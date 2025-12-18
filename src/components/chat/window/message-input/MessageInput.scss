@@ -15,6 +15,20 @@
   transition: border-color 0.2s ease;
   flex-shrink: 0;
 
+  @media (min-width: 769px) {
+    width: 98%;
+    max-width: 98%;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: 100%;
+    min-height: 44px;
+    margin: 0;
+    padding: 8px 10px;
+  }
+
   &:focus-within {
     border-color: #50b5ff;
   }

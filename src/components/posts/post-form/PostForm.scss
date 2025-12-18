@@ -10,11 +10,19 @@
 
     .post-form-title {
       height: 60px;
-      line-height: 60px;
-      font-size: 19.6px;
-      font-weight: normal;
       color: var(--gray-11);
+      white-space: nowrap;
+      text-overflow: ellipsis;
       padding-left: 10px;
+      font-size: 19.6px;
+      font-weight: 400;
+      line-height: 60px;
+      overflow: hidden;
+
+      @media (max-width: 768px) {
+        white-space: nowrap;
+        font-size: 16px;
+      }
     }
   }
 
@@ -26,7 +34,11 @@
       border: 0;
       border-top: 1px solid var(--white-4);
       margin-top: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+
+      @media (min-width: 769px) {
+        margin-bottom: 16px;
+      }
     }
 
     .post-form-input-body {
@@ -54,23 +66,69 @@
     }
 
     .post-form-list {
-      padding: 0;
+      justify-content: flex-start;
+      gap: 24px;
+      padding: 0 5px;
       margin: 0;
-      align-items: center;
       display: flex;
       list-style: none;
 
+      @media (min-width: 769px) {
+        gap: 24px;
+      }
+
+      @media (max-width: 768px) {
+        justify-content: space-between;
+        gap: 2px;
+        padding: 0 5px;
+      }
+
       &-item {
-        display: flex;
         color: var(--primary-1);
         background: var(--white-7);
-        border-radius: 5px;
-        padding: 0.5rem;
-        margin-right: 1rem;
         cursor: pointer;
+        white-space: nowrap;
+        border-radius: 5px;
+        flex-shrink: 0;
+        align-items: center;
+        margin-right: 0;
+        padding: 0.5rem;
+        display: flex;
+        overflow: visible;
+
+        @media (max-width: 768px) {
+          text-overflow: ellipsis;
+          flex: 0 0 calc(25% - 2px);
+          gap: 3px;
+          min-width: 0;
+          max-width: calc(25% - 2px);
+          margin-right: 0;
+          padding: 0.35rem 0.5rem;
+          font-size: 12px;
+          overflow: hidden;
+          white-space: nowrap;
+        }
 
         img {
           padding-right: 5px;
+
+          @media (max-width: 768px) {
+            flex-shrink: 0;
+            width: 14px;
+            height: 14px;
+            padding-right: 3px;
+          }
+        }
+
+        svg {
+          vertical-align: middle;
+          align-items: center;
+          display: inline-flex;
+          margin-right: 5px;
+
+          @media (min-width: 769px) {
+            margin-right: 5px;
+          }
         }
       }
 
@@ -82,3 +140,15 @@
     }
   }
 }
+
+
+// Auto-added missing styles
+@media (max-width:768px) {
+  .post-form-list-item svg {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+  }
+
+}
+

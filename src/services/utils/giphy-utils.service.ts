@@ -12,7 +12,11 @@ export class GiphyUtils {
       setLoading(false);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error fetching trending GIFs:', errorMessage);
+      console.error('❌ Error fetching trending GIFs:', errorMessage);
+      if (errorMessage.includes('API key is not configured')) {
+        console.error('💡 Giphy API key is missing. Please set VITE_GIPHY_API_KEY in your .env file.');
+        console.error('   Get an API key from: https://developers.giphy.com/dashboard/');
+      }
       setGifs([]);
       setLoading(false);
     }
@@ -34,7 +38,11 @@ export class GiphyUtils {
       setLoading(false);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error searching GIFs:', errorMessage);
+      console.error('❌ Error searching GIFs:', errorMessage);
+      if (errorMessage.includes('API key is not configured')) {
+        console.error('💡 Giphy API key is missing. Please set VITE_GIPHY_API_KEY in your .env file.');
+        console.error('   Get an API key from: https://developers.giphy.com/dashboard/');
+      }
       setGifs([]);
       setLoading(false);
     }

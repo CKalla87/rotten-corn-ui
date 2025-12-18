@@ -45,3 +45,7 @@ terraform.rc
 .env.production
 .env.local
 .env.staging
+
+# Redis database dump files
+dump.rdb
+*.rdb

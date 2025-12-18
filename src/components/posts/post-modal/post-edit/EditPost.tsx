@@ -24,6 +24,7 @@ const EditPost = () => {
   const { profile } = useSelector((state: RootState) => state.user);
   const [loading, setLoading] = useState(false);
   const [postImage, setPostImage] = useState('');
+  const [hasVideo, setHasVideo] = useState(false);
   const [allowedNumberOfCharacters, setAllowedNumberOfCharacters] = useState('100/100');
   const [textAreaBackground, setTextAreaBackground] = useState('#ffffff');
   const [postData, setPostData] = useState({
@@ -47,17 +48,66 @@ const EditPost = () => {
   const counterRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLDivElement>(null);
+  const inputFocusedRef = useRef(false);
+  const imageInputFocusedRef = useRef(false);
   const maxNumberOfCharacters = 100;
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const currentTextLength = (event.currentTarget as HTMLDivElement).textContent?.length || 0;
+    const element = event.currentTarget as HTMLDivElement;
+    // Ensure LTR direction (only set dir attribute)
+    element.setAttribute('dir', 'ltr');
+    
+    const currentTextLength = element.textContent?.length || 0;
     if (currentTextLength === maxNumberOfCharacters && event.keyCode !== 8) {
       event.preventDefault();
     }
   };
 
+  const onBeforeInput = (event: React.FormEvent<HTMLDivElement>) => {
+    const element = event.currentTarget as HTMLDivElement;
+    // Ensure LTR before input (only set dir attribute)
+    element.setAttribute('dir', 'ltr');
+    
+    // Get current selection and ensure parent has LTR
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      if (container.nodeType === Node.TEXT_NODE && container.parentNode) {
+        (container.parentNode as HTMLElement).setAttribute('dir', 'ltr');
+      } else if (container.nodeType === Node.ELEMENT_NODE) {
+        (container as HTMLElement).setAttribute('dir', 'ltr');
+      }
+    }
+  };
+
+  const postInputEditable = (event: React.FormEvent<HTMLDivElement>, textContent: string) => {
+    const element = event.currentTarget as HTMLDivElement;
+    
+    // Ensure direction stays LTR (only set dir attribute, CSS handles the rest)
+    element.setAttribute('dir', 'ltr');
+    
+    const currentTextLength = element.textContent?.length || 0;
+    const counter = maxNumberOfCharacters - currentTextLength;
+    if (counterRef.current) {
+      counterRef.current.textContent = `${counter}/${maxNumberOfCharacters}`;
+    }
+    setAllowedNumberOfCharacters(`${counter}/${maxNumberOfCharacters}`);
+    // Allow posting if there's text OR an image/gif/video
+    const hasContent = currentTextLength > 0 || postImage || postData.gifUrl || postData.image || postData.video || selectedPostImage || selectedVideo;
+    setDisable(!hasContent);
+    // Update postData without causing re-render during typing - use functional update
+    setPostData((prevData) => {
+      if (prevData.post !== textContent) {
+        return { ...prevData, post: textContent };
+      }
+      return prevData;
+    });
+  };
+
   const clearImage = () => {
     setSelectedVideo(null);
+    setHasVideo(false);
     const postDataForUtils = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
     PostUtils.clearImage(postDataForUtils, postState.post || '', inputRef, dispatch, setSelectedPostImage, setPostImage, setDisable, (data) => {
       setPostData((prev) => ({ ...prev, ...data }));
@@ -80,7 +130,24 @@ const EditPost = () => {
         setPostData((prevData) => {
           const updatedData = { ...prevData, post: postState.post || '' };
           if (imageInputRef.current) {
-            imageInputRef.current.textContent = postState.post || '';
+            // Ensure contentEditable is set before setting textContent
+            imageInputRef.current.setAttribute('contenteditable', 'true');
+            imageInputRef.current.contentEditable = 'true';
+            imageInputRef.current.setAttribute('dir', 'ltr');
+            imageInputRef.current.removeAttribute('readonly');
+            imageInputRef.current.removeAttribute('disabled');
+            imageInputRef.current.style.pointerEvents = 'auto';
+            imageInputRef.current.style.userSelect = 'text';
+            imageInputRef.current.style.cursor = 'text';
+            // Only update if the element is not currently being edited
+            const isFocused = document.activeElement === imageInputRef.current;
+            if (!isFocused) {
+              // Only set textContent if it's different to avoid cursor issues
+              const currentText = imageInputRef.current.textContent || '';
+              if (currentText !== (postState.post || '')) {
+                imageInputRef.current.textContent = postState.post || '';
+              }
+            }
           }
           return updatedData;
         });
@@ -97,13 +164,30 @@ const EditPost = () => {
       setTextAreaBackground(postState.bgColor);
       setTimeout(() => {
         if (inputRef?.current) {
-          setPostData((prevData) => {
-            const updatedData = { ...prevData, post: postState.post || '' };
-            if (inputRef.current) {
-              inputRef.current.textContent = postState.post || '';
-            }
-            return updatedData;
-          });
+          // Only update if the element is not currently being edited
+          const isFocused = document.activeElement === inputRef.current;
+          if (!isFocused) {
+            setPostData((prevData) => {
+              const updatedData = { ...prevData, post: postState.post || '' };
+              if (inputRef.current) {
+                // Ensure contentEditable is set before setting textContent
+                inputRef.current.setAttribute('contenteditable', 'true');
+                inputRef.current.contentEditable = 'true';
+                inputRef.current.setAttribute('dir', 'ltr');
+                inputRef.current.removeAttribute('readonly');
+                inputRef.current.removeAttribute('disabled');
+                inputRef.current.style.pointerEvents = 'auto';
+                inputRef.current.style.userSelect = 'text';
+                inputRef.current.style.cursor = 'text';
+                // Only set textContent if it's different to avoid cursor issues
+                const currentText = inputRef.current.textContent || '';
+                if (currentText !== (postState.post || '')) {
+                  inputRef.current.textContent = postState.post || '';
+                }
+              }
+              return updatedData;
+            });
+          }
         }
       }, 0);
     }
@@ -120,6 +204,7 @@ const EditPost = () => {
         image: ''
       }));
       setPostImage(postState.gifUrl);
+      setHasVideo(false);
       postInputData();
     }
     if (postState.imgId && !postState.gifUrl) {
@@ -133,6 +218,7 @@ const EditPost = () => {
       }));
       const imageUrl = Utils.getImage(postStateWithExtras.imgId || '', postStateWithExtras.imgVersion || '');
       setPostImage(imageUrl);
+      setHasVideo(false);
       postInputData();
     }
     const postStateWithExtras = postState as { imgId?: string; imgVersion?: string; videoId?: string; videoVersion?: string };
@@ -144,6 +230,7 @@ const EditPost = () => {
       }));
       const videoUrl = Utils.getVideo(postStateWithExtras.videoId || '', postStateWithExtras.videoVersion || '');
       setPostImage(videoUrl);
+      setHasVideo(true);
       postInputData();
     }
   }, [postState, getFeeling, postInputData]);
@@ -168,14 +255,17 @@ const EditPost = () => {
         }
         if (selectedVideo) {
           result = await ImageUtils.readAsBase64(selectedVideo);
+          setHasVideo(true);
         }
         const type = selectedPostImage ? 'image' : 'video';
         if (type === 'image') {
           updatedPostData.image = result;
           updatedPostData.video = '';
+          setHasVideo(false);
         } else {
           updatedPostData.image = '';
           updatedPostData.video = result;
+          setHasVideo(true);
         }
         updatedPostData.gifUrl = '';
         updatedPostData.imgId = '';
@@ -215,8 +305,52 @@ const EditPost = () => {
 
 
   useEffect(() => {
-    PostUtils.positionCursor('editable');
+    // Reset focus refs when postState changes to allow re-focusing
+    if (postState.post) {
+      inputFocusedRef.current = false;
+      imageInputFocusedRef.current = false;
+    }
+    // Ensure contentEditable is always set on editable elements
+    const timeoutId = setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.contentEditable = 'true';
+        inputRef.current.setAttribute('contenteditable', 'true');
+        inputRef.current.removeAttribute('readonly');
+        inputRef.current.removeAttribute('disabled');
+        inputRef.current.style.pointerEvents = 'auto';
+        inputRef.current.style.userSelect = 'text';
+        inputRef.current.style.cursor = 'text';
+        inputRef.current.style.webkitUserSelect = 'text';
+        // Set vendor prefixes using setProperty for TypeScript compatibility
+        inputRef.current.style.setProperty('-moz-user-select', 'text');
+        inputRef.current.style.setProperty('-ms-user-select', 'text');
+        // Force a reflow to ensure the attribute is applied
+        void inputRef.current.offsetHeight;
+      }
+      if (imageInputRef.current) {
+        imageInputRef.current.contentEditable = 'true';
+        imageInputRef.current.setAttribute('contenteditable', 'true');
+        imageInputRef.current.removeAttribute('readonly');
+        imageInputRef.current.removeAttribute('disabled');
+        imageInputRef.current.style.pointerEvents = 'auto';
+        imageInputRef.current.style.userSelect = 'text';
+        imageInputRef.current.style.cursor = 'text';
+        imageInputRef.current.style.webkitUserSelect = 'text';
+        // Set vendor prefixes using setProperty for TypeScript compatibility
+        imageInputRef.current.style.setProperty('-moz-user-select', 'text');
+        imageInputRef.current.style.setProperty('-ms-user-select', 'text');
+        // Force a reflow to ensure the attribute is applied
+        void imageInputRef.current.offsetHeight;
+      }
+      // Position cursor after ensuring contentEditable is set (only if not focused)
+      if (document.activeElement?.id !== 'editable' && document.activeElement?.getAttribute('data-testid') !== 'post-editable') {
+        PostUtils.positionCursor('editable');
+      }
+    }, 0);
+    
+    return () => clearTimeout(timeoutId);
   }, [postState]);
+
 
   useEffect(() => {
     if (!loading && apiResponse === 'success') {
@@ -224,23 +358,11 @@ const EditPost = () => {
     }
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
-      setDisable(postData.post.length <= 0 && !postImage);
+      // Allow posting if there's text OR an image/gif/video
+      const hasContent = postData.post.length > 0 || postImage || postData.gifUrl || postData.image || postData.video || selectedPostImage || selectedVideo;
+      setDisable(!hasContent);
     }, 0);
   }, [loading, dispatch, apiResponse, postData, postImage]);
-
-  useEffect(() => {
-    setTimeout(() => {
-      if (imageInputRef?.current && imageInputRef?.current.textContent?.length) {
-        if (counterRef.current) {
-          counterRef.current.textContent = `${maxNumberOfCharacters - imageInputRef.current.textContent.length}/100`;
-        }
-      } else if (inputRef?.current && inputRef?.current.textContent?.length) {
-        if (counterRef.current) {
-          counterRef.current.textContent = `${maxNumberOfCharacters - inputRef.current.textContent.length}/100`;
-        }
-      }
-    }, 0);
-  }, []);
 
   useEffect(() => {
     setTimeout(() => {
@@ -263,6 +385,7 @@ const EditPost = () => {
         setPostData((prevData) => ({ ...prevData, image: '' }));
         setSelectedPostImage(null);
         setPostImage(postState.gifUrl);
+        setHasVideo(false);
         const postDataForUtils = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
         PostUtils.postInputData(imageInputRef, postDataForUtils, postState.post || '', (data) => {
           setPostData((prev) => ({ ...prev, ...data }));
@@ -271,6 +394,7 @@ const EditPost = () => {
     } else if (postState.image) {
       setTimeout(() => {
         setPostImage(postState.image);
+        setHasVideo(false);
         const postDataForUtils2 = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
         PostUtils.postInputData(imageInputRef, postDataForUtils2, postState.post || '', (data) => {
           setPostData((prev) => ({ ...prev, ...data }));
@@ -281,7 +405,7 @@ const EditPost = () => {
     setTimeout(() => {
       editableFields();
     }, 0);
-  }, [editableFields, postState, postData]);
+  }, [editableFields, postState]);
 
   return (
     <>
@@ -323,26 +447,95 @@ const EditPost = () => {
                       <div
                         ref={(el) => {
                           inputRef.current = el;
-                          inputRef?.current?.focus();
+                          if (el) {
+                            // Always ensure contentEditable is set
+                            el.setAttribute('dir', 'ltr');
+                            el.setAttribute('contenteditable', 'true');
+                            el.contentEditable = 'true';
+                            el.style.pointerEvents = 'auto';
+                            el.style.userSelect = 'text';
+                            el.style.cursor = 'text';
+                            el.removeAttribute('readonly');
+                            el.removeAttribute('disabled');
+                            // Only focus on initial mount, not on every re-render
+                            if (!inputFocusedRef.current) {
+                              inputFocusedRef.current = true;
+                              requestAnimationFrame(() => {
+                                if (inputRef.current) {
+                                  inputRef.current.focus();
+                                }
+                              });
+                            }
+                          }
                         }}
                         id="editable"
                         data-testid="editable"
                         className={`editable flex-item ${textAreaBackground !== '#ffffff' ? 'textInputColor' : ''} ${postData.post.length === 0 && textAreaBackground !== '#ffffff' ? 'defaultInputTextColor' : ''}`}
-                        contentEditable={true}
+                        contentEditable="true"
+                        dir="ltr"
                         data-placeholder="What's on your mind?..."
+                        onBeforeInput={onBeforeInput}
                         onInput={(e) => {
-                          const textContent = (e.currentTarget as HTMLDivElement).textContent || '';
-                          const currentTextLength = textContent.length;
-                          const counter = maxNumberOfCharacters - currentTextLength;
-                          if (counterRef.current) {
-                            counterRef.current.textContent = `${counter}/${maxNumberOfCharacters}`;
+                          // Save cursor position BEFORE any DOM manipulation
+                          const selection = window.getSelection();
+                          let savedRange: Range | null = null;
+                          let savedOffset = 0;
+                          if (selection && selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            savedRange = range.cloneRange();
+                            // Also save the offset in case the range becomes invalid
+                            savedOffset = range.startOffset;
                           }
-                          setAllowedNumberOfCharacters(`${counter}/${maxNumberOfCharacters}`);
-                          setDisable(currentTextLength <= 0 && !postImage);
-                          const postDataForUtils3 = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
-                          PostUtils.postInputEditable(textContent, postDataForUtils3, (data) => {
-                            setPostData((prev) => ({ ...prev, ...data }));
-                          }, setDisable);
+                          
+                          const element = e.currentTarget as HTMLDivElement;
+                          // Ensure LTR direction (only set dir attribute, CSS handles styling)
+                          element.setAttribute('dir', 'ltr');
+                          // Ensure contentEditable is still set
+                          element.setAttribute('contenteditable', 'true');
+                          element.contentEditable = 'true';
+                          
+                          const textContent = element.textContent || '';
+                          postInputEditable(e, textContent);
+                          
+                          // Restore cursor position after state updates complete using requestAnimationFrame
+                          requestAnimationFrame(() => {
+                            if (selection && textContent.length > 0) {
+                              try {
+                                // Try to restore the original range first
+                                if (savedRange && savedRange.startContainer && savedRange.startContainer.parentNode) {
+                                  selection.removeAllRanges();
+                                  selection.addRange(savedRange);
+                                } else {
+                                  // Fallback: restore by offset
+                                  const textNode = element.firstChild;
+                                  if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                                    const range = document.createRange();
+                                    const offset = Math.min(savedOffset + 1, textNode.textContent?.length || 0);
+                                    range.setStart(textNode, offset);
+                                    range.collapse(true);
+                                    selection.removeAllRanges();
+                                    selection.addRange(range);
+                                  }
+                                }
+                              } catch {
+                                // If restoring fails, just ensure cursor is at end
+                                const range = document.createRange();
+                                range.selectNodeContents(element);
+                                range.collapse(false);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              }
+                            }
+                          });
+                        }}
+                        onFocus={(e) => {
+                          const element = e.currentTarget as HTMLDivElement;
+                          element.setAttribute('dir', 'ltr');
+                          element.setAttribute('contenteditable', 'true');
+                          element.contentEditable = 'true';
+                          element.style.pointerEvents = 'auto';
+                          element.style.userSelect = 'text';
+                          element.style.cursor = 'text';
                         }}
                         onKeyDown={onKeyDown}
                       ></div>
@@ -357,26 +550,108 @@ const EditPost = () => {
                   <div
                     ref={(el) => {
                       imageInputRef.current = el;
-                      imageInputRef?.current?.focus();
+                      if (el) {
+                        // Always ensure contentEditable is set
+                        el.setAttribute('dir', 'ltr');
+                        el.setAttribute('contenteditable', 'true');
+                        el.contentEditable = 'true';
+                        el.style.pointerEvents = 'auto';
+                        el.style.userSelect = 'text';
+                        el.style.cursor = 'text';
+                        el.removeAttribute('readonly');
+                        el.removeAttribute('disabled');
+                        // Only focus on initial mount, not on every re-render
+                        if (!imageInputFocusedRef.current) {
+                          imageInputFocusedRef.current = true;
+                          // Use a small delay to ensure DOM is ready
+                          requestAnimationFrame(() => {
+                            if (imageInputRef.current) {
+                              imageInputRef.current.focus();
+                              // Position cursor at the start (left side) only on initial mount
+                              const selection = window.getSelection();
+                              if (selection) {
+                                const range = document.createRange();
+                                if (imageInputRef.current.firstChild && imageInputRef.current.firstChild.nodeType === Node.TEXT_NODE) {
+                                  range.setStart(imageInputRef.current.firstChild, 0);
+                                } else {
+                                  range.setStart(imageInputRef.current, 0);
+                                }
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              }
+                            }
+                          });
+                        }
+                      }
                     }}
                     data-testid="post-editable"
                     className="post-input flex-item"
-                    contentEditable={true}
+                    contentEditable="true"
+                    dir="ltr"
                     data-placeholder="What's on your mind?..."
+                    onBeforeInput={onBeforeInput}
                     onInput={(e) => {
-                      const textContent = (e.currentTarget as HTMLDivElement).textContent || '';
-                      const currentTextLength = textContent.length;
-                      const counter = maxNumberOfCharacters - currentTextLength;
-                      if (counterRef.current) {
-                        counterRef.current.textContent = `${counter}/${maxNumberOfCharacters}`;
+                      // Save cursor position BEFORE any DOM manipulation
+                      const selection = window.getSelection();
+                      let savedRange: Range | null = null;
+                      let savedOffset = 0;
+                      if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        savedRange = range.cloneRange();
+                        // Also save the offset in case the range becomes invalid
+                        savedOffset = range.startOffset;
                       }
-                      setAllowedNumberOfCharacters(`${counter}/${maxNumberOfCharacters}`);
-                      setDisable(currentTextLength <= 0 && !postImage);
-                      // Cast postData to match PostUtils interface (it only uses the post field)
-                      const postDataForUtils = { ...postData } as { post: string; bgColor: string; privacy: string; feelings: string; gifUrl: string; profilePicture: string; image: string; video: string };
-                      PostUtils.postInputEditable(textContent, postDataForUtils, (data) => {
-                        setPostData((prev) => ({ ...prev, ...data }));
-                      }, setDisable);
+                      
+                      const element = e.currentTarget as HTMLDivElement;
+                      // Ensure LTR direction (only set dir attribute, CSS handles styling)
+                      element.setAttribute('dir', 'ltr');
+                      // Ensure contentEditable is still set
+                      element.setAttribute('contenteditable', 'true');
+                      element.contentEditable = 'true';
+                      
+                      const textContent = element.textContent || '';
+                      postInputEditable(e, textContent);
+                      
+                      // Restore cursor position after state updates complete using requestAnimationFrame
+                      requestAnimationFrame(() => {
+                        if (selection && textContent.length > 0) {
+                          try {
+                            // Try to restore the original range first
+                            if (savedRange && savedRange.startContainer && savedRange.startContainer.parentNode) {
+                              selection.removeAllRanges();
+                              selection.addRange(savedRange);
+                            } else {
+                              // Fallback: restore by offset
+                              const textNode = element.firstChild;
+                              if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                                const range = document.createRange();
+                                const offset = Math.min(savedOffset + 1, textNode.textContent?.length || 0);
+                                range.setStart(textNode, offset);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              }
+                            }
+                          } catch {
+                            // If restoring fails, just ensure cursor is at end
+                            const range = document.createRange();
+                            range.selectNodeContents(element);
+                            range.collapse(false);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                          }
+                        }
+                      });
+                    }}
+                    onFocus={(e) => {
+                      const element = e.currentTarget as HTMLDivElement;
+                      element.setAttribute('dir', 'ltr');
+                      element.setAttribute('contenteditable', 'true');
+                      element.contentEditable = 'true';
+                      element.style.pointerEvents = 'auto';
+                      element.style.userSelect = 'text';
+                      element.style.cursor = 'text';
                     }}
                     onKeyDown={onKeyDown}
                   ></div>
@@ -384,7 +659,13 @@ const EditPost = () => {
                     <div className="image-delete-btn" data-testid="image-delete-btn" onClick={() => clearImage()}>
                       <FaTimes />
                     </div>
-                    <img data-testid="post-image" className="post-image" src={`${postImage}`} alt="" />
+                    {hasVideo ? (
+                      <div style={{ marginTop: '-40px' }}>
+                        <video width="100%" controls src={postImage} />
+                      </div>
+                    ) : (
+                      <img data-testid="post-image" className="post-image" src={`${postImage}`} alt="" />
+                    )}
                   </div>
                 </div>
               </>

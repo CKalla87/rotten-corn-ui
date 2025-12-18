@@ -10,7 +10,11 @@ import { Utils } from '@services/utils/utils.service';
 import type { RootState, AppDispatch } from '@redux/store';
 import './Sidebar.scss';
 
-const Sidebar = () => {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+const Sidebar = ({ onNavigate }: SidebarProps) => {
   const { profile } = useSelector((state: RootState) => state.user);
   const { chatList } = useSelector((state: RootState) => state.chat);
   const dispatch = useDispatch<AppDispatch>();
@@ -24,6 +28,9 @@ const Sidebar = () => {
   };
 
   const navigateToPage = (name: string, url: string) => {
+    if (onNavigate) {
+      onNavigate();
+    }
     if (name === 'Profile') {
       const params: Record<string, string> = {};
       if (profile?._id && typeof profile._id === 'string') {
@@ -38,7 +45,12 @@ const Sidebar = () => {
       dispatch(getPosts(1));
     }
     if (name === 'Chat') {
-      setChatPageName('Chat');
+      // Navigate directly to chat/messages without query params
+      leaveChatPage();
+      setChatPageName('');
+      socketService?.socket?.off('message received');
+      navigate('/app/social/chat/messages');
+      return;
     } else {
       leaveChatPage();
       setChatPageName('');

@@ -86,7 +86,7 @@ const InfoDisplay = ({
       {loading ? (
         <BasicInfoSkeleton />
       ) : (
-        <div className="side-container" data-testid="side-container">
+        <div className="side-container" data-testid="side-container" data-type={type}>
       <div className="side-container-header">
         <p>{title}</p>
         {isCurrentUser && (
@@ -99,19 +99,57 @@ const InfoDisplay = ({
         <>
           <div className="side-container-body">
             <div className="side-container-body-about" data-testid="quote">
-              {editIntroBtn && !quote && <div className="no-information">{quoteMsg}</div>}
-              <ContentEditable
-                data-testid="quote-editable"
-                data-placeholder={quotePlacehoder}
-                tagName="div"
-                className="about"
-                disabled={editIntroBtn}
-                html={quote || ''}
-                style={{ maxHeight: '70px', overflowY: 'auto', width: '250px' }}
-                onChange={(event) => {
-                  setEditableInputs?.({ ...editableInputs, quote: event.target.value });
-                }}
-              />
+              {(() => {
+                // Check if quote exists and has content - handle all falsy cases
+                // Handle undefined, null, empty string, and whitespace-only strings
+                const quoteValue = quote ?? '';
+                const trimmedQuote = typeof quoteValue === 'string' ? quoteValue.trim() : '';
+                
+                // Explicit check: quote must exist, be a string, and have non-whitespace content
+                const hasQuote = Boolean(
+                  trimmedQuote && 
+                  typeof trimmedQuote === 'string' && 
+                  trimmedQuote.length > 0 &&
+                  trimmedQuote.replace(/\s/g, '').length > 0
+                );
+                
+                // In view mode: show "No information" if no quote, otherwise show quote
+                if (editIntroBtn === true) {
+                  // Always show "No information" when there's no quote in view mode
+                  if (!hasQuote) {
+                    return <div className="no-information">{quoteMsg || 'No information'}</div>;
+                  }
+                  // Only show ContentEditable if there's actual content
+                  return (
+                    <ContentEditable
+                      data-testid="quote-editable"
+                      data-placeholder={quotePlacehoder}
+                      tagName="div"
+                      className="about"
+                      disabled={true}
+                      html={trimmedQuote}
+                      style={{ maxHeight: '70px', overflowY: 'auto' }}
+                      onChange={() => {}}
+                    />
+                  );
+                }
+                
+                // In edit mode: always show ContentEditable
+                return (
+                  <ContentEditable
+                    data-testid="quote-editable"
+                    data-placeholder={quotePlacehoder}
+                    tagName="div"
+                    className="about"
+                    disabled={false}
+                    html={quoteValue}
+                    style={{ maxHeight: '70px', overflowY: 'auto' }}
+                    onChange={(event) => {
+                      setEditableInputs?.({ ...editableInputs, quote: event.target.value });
+                    }}
+                  />
+                );
+              })()}
             </div>
           </div>
           <div className="side-container-body">
@@ -119,8 +157,8 @@ const InfoDisplay = ({
               <FaBriefcase className="icon" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type === 'basic' && editIntroBtn && work && <>Works at</>}
-              {type === 'basic' && editIntroBtn && !work && <div className="no-information">{workMsg}</div>}
+              {type === 'basic' && work && <>Works at </>}
+              {type === 'basic' && !work && editIntroBtn && <div className="no-information">{workMsg}</div>}
               {type !== 'basic' && editIntroBtn && instagram && (
                 <a className="link" href={instagram} target="_blank" rel="noreferrer noopener">
                   {instagram}
@@ -133,7 +171,7 @@ const InfoDisplay = ({
                 tagName={!editIntroBtn ? 'div' : 'span'}
                 disabled={editIntroBtn}
                 html={work || (instagram && !editIntroBtn ? instagram : '')}
-                style={{ maxHeight: '70px', overflowY: 'auto', width: '250px' }}
+                style={{ maxHeight: '70px', overflowY: 'auto' }}
                 onChange={(event) => {
                   if (type === 'basic') {
                     setEditableInputs?.({ ...editableInputs, work: event.target.value });
@@ -149,8 +187,8 @@ const InfoDisplay = ({
               <FaGraduationCap className="icon" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type === 'basic' && editIntroBtn && school && <>Went to</>}
-              {type === 'basic' && editIntroBtn && !school && <div className="no-information">{schoolMsg}</div>}
+              {type === 'basic' && school && <>Went to </>}
+              {type === 'basic' && !school && editIntroBtn && <div className="no-information">{schoolMsg}</div>}
               {type !== 'basic' && editIntroBtn && twitter && (
                 <a className="link" href={twitter} target="_blank" rel="noreferrer noopener">
                   {twitter}
@@ -179,8 +217,8 @@ const InfoDisplay = ({
               <FaMapMarkerAlt className="icon" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type === 'basic' && editIntroBtn && location && <>Lives in</>}
-              {type === 'basic' && editIntroBtn && !location && <div className="no-information">{locationMsg}</div>}
+              {type === 'basic' && location && <>Lives in </>}
+              {type === 'basic' && !location && editIntroBtn && <div className="no-information">{locationMsg}</div>}
               {type !== 'basic' && editIntroBtn && facebook && (
                 <a className="link" href={facebook} target="_blank" rel="noreferrer noopener">
                   {facebook}
@@ -219,17 +257,19 @@ const InfoDisplay = ({
                 </a>
               )}
               {editIntroBtn && !instagram && <div className="no-information">{instagramMsg}</div>}
-              <ContentEditable
-                data-testid="content-1-editable"
-                data-placeholder={instagramPlacehoder}
-                tagName={!editIntroBtn ? 'div' : 'span'}
-                disabled={editIntroBtn}
-                html={instagram || ''}
-                style={{ maxHeight: '70px', overflowY: 'auto' }}
-                onChange={(event) => {
-                  setEditableSocialInputs?.({ ...editableSocialInputs, instagram: event.target.value });
-                }}
-              />
+              {!editIntroBtn && (
+                <ContentEditable
+                  data-testid="content-1-editable"
+                  data-placeholder={instagramPlacehoder}
+                  tagName="span"
+                  disabled={editIntroBtn}
+                  html={instagram || ''}
+                  style={{ maxHeight: '70px', overflowY: 'auto' }}
+                  onChange={(event) => {
+                    setEditableSocialInputs?.({ ...editableSocialInputs, instagram: event.target.value });
+                  }}
+                />
+              )}
             </div>
           </div>
           <div className="side-container-body">
@@ -243,17 +283,19 @@ const InfoDisplay = ({
                 </a>
               )}
               {editIntroBtn && !twitter && <div className="no-information">{twitterMsg}</div>}
-              <ContentEditable
-                data-testid="content-2-editable"
-                data-placeholder={twitterPlacehoder}
-                tagName={!editIntroBtn ? 'div' : 'span'}
-                disabled={editIntroBtn}
-                html={twitter || ''}
-                style={{ maxHeight: '70px', overflowY: 'auto' }}
-                onChange={(event) => {
-                  setEditableSocialInputs?.({ ...editableSocialInputs, twitter: event.target.value });
-                }}
-              />
+              {!editIntroBtn && (
+                <ContentEditable
+                  data-testid="content-2-editable"
+                  data-placeholder={twitterPlacehoder}
+                  tagName="span"
+                  disabled={editIntroBtn}
+                  html={twitter || ''}
+                  style={{ maxHeight: '70px', overflowY: 'auto' }}
+                  onChange={(event) => {
+                    setEditableSocialInputs?.({ ...editableSocialInputs, twitter: event.target.value });
+                  }}
+                />
+              )}
             </div>
           </div>
           <div className="side-container-body">
@@ -267,17 +309,19 @@ const InfoDisplay = ({
                 </a>
               )}
               {editIntroBtn && !facebook && <div className="no-information">{facebookMsg}</div>}
-              <ContentEditable
-                data-testid="content-3-editable"
-                data-placeholder={facebookPlacehoder}
-                tagName={!editIntroBtn ? 'div' : 'span'}
-                disabled={editIntroBtn}
-                html={facebook || ''}
-                style={{ maxHeight: '70px', overflowY: 'auto' }}
-                onChange={(event) => {
-                  setEditableSocialInputs?.({ ...editableSocialInputs, facebook: event.target.value });
-                }}
-              />
+              {!editIntroBtn && (
+                <ContentEditable
+                  data-testid="content-3-editable"
+                  data-placeholder={facebookPlacehoder}
+                  tagName="span"
+                  disabled={editIntroBtn}
+                  html={facebook || ''}
+                  style={{ maxHeight: '70px', overflowY: 'auto' }}
+                  onChange={(event) => {
+                    setEditableSocialInputs?.({ ...editableSocialInputs, facebook: event.target.value });
+                  }}
+                />
+              )}
             </div>
           </div>
           <div className="side-container-body">
@@ -291,17 +335,19 @@ const InfoDisplay = ({
                 </a>
               )}
               {editIntroBtn && !youtube && <div className="no-information">{youtubeMsg}</div>}
-              <ContentEditable
-                data-testid="content-4-editable"
-                data-placeholder={youtubePlacehoder}
-                tagName={!editIntroBtn ? 'div' : 'span'}
-                disabled={editIntroBtn}
-                html={youtube || ''}
-                style={{ maxHeight: '70px', overflowY: 'auto' }}
-                onChange={(event) => {
-                  setEditableSocialInputs?.({ ...editableSocialInputs, youtube: event.target.value });
-                }}
-              />
+              {!editIntroBtn && (
+                <ContentEditable
+                  data-testid="content-4-editable"
+                  data-placeholder={youtubePlacehoder}
+                  tagName="span"
+                  disabled={editIntroBtn}
+                  html={youtube || ''}
+                  style={{ maxHeight: '70px', overflowY: 'auto' }}
+                  onChange={(event) => {
+                    setEditableSocialInputs?.({ ...editableSocialInputs, youtube: event.target.value });
+                  }}
+                />
+              )}
             </div>
           </div>
         </>

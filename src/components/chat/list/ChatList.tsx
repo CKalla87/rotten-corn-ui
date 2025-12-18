@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSearchParams, useLocation, useNavigate, createSearchParams } from 'react-router-dom';
-import { FaSearch, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaArrowLeft } from 'react-icons/fa';
 import { find } from 'lodash';
 import Avatar from '@components/avatar/Avatar';
 import Input from '@components/input/Input';
@@ -65,11 +65,18 @@ const ChatList = () => {
         setSearch(query);
         if (query) {
           const response = await userService.searchUsers(query);
-          setSearchResult(response.data.search);
+          console.log('🔍 Search API Response:', response.data);
+          const searchResults = response.data.search || [];
+          console.log('🔍 Search Results Array:', searchResults);
+          setSearchResult(searchResults);
+          setIsSearching(false);
+        } else {
+          setSearchResult([]);
           setIsSearching(false);
         }
       } catch (error: unknown) {
         setIsSearching(false);
+        setSearchResult([]);
         const axiosError = error as { response?: { data?: { message?: string } } };
         Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
       }
@@ -191,18 +198,25 @@ const ChatList = () => {
 
   return (
     <div data-testid="chatList">
-      <div className="conversation-container">
+      <div className={`conversation-container ${search ? 'search-active' : ''}`}>
         <div className="conversation-container-header">
+          <button
+            className="chat-list-back-button"
+            onClick={() => navigate('/app/social/streams')}
+            aria-label="Back to main page"
+          >
+            <FaArrowLeft />
+          </button>
           <div className="header-img">
             <Avatar
               name={profile?.username}
               bgColor={profile?.avatarColor}
               textColor="#ffffff"
-              size={40}
+              size={32}
               avatarSrc={profile?.profilePicture}
             />
           </div>
-          <div className="title-text">{profile?.username}</div>
+          <div className="title-text">{profile?.username || ''}</div>
         </div>
         <div className="conversation-container-search" data-testid="search-container">
           <FaSearch className="search" />
@@ -229,19 +243,19 @@ const ChatList = () => {
               }}
             />
           )}
+          {search && (
+            <SearchList
+              searchTerm={search}
+              result={searchResult}
+              isSearching={isSearching}
+              setSearchResult={setSearchResult}
+              setIsSearching={setIsSearching}
+              setSearch={setSearch}
+              setSelectedUser={addUsernameToSearchReducer}
+              setComponentType={setComponentType}
+            />
+          )}
         </div>
-        {search && (
-          <SearchList
-            searchTerm={search}
-            result={searchResult}
-            isSearching={isSearching}
-            setSearchResult={setSearchResult}
-            setIsSearching={setIsSearching}
-            setSearch={setSearch}
-            setSelectedUser={addUsernameToSearchReducer}
-            setComponentType={setComponentType}
-          />
-        )}
         {!search && (
           <div className="conversation-container-body" onClick={() => {
             setSearch('');
@@ -277,8 +291,8 @@ const ChatList = () => {
                       size={40}
                       avatarSrc={
                         data.receiverUsername !== profile?.username
-                          ? data.receiverProfilePicture
-                          : data?.senderProfilePicture
+                          ? (data.receiverProfilePicture || undefined)
+                          : (data?.senderProfilePicture || undefined)
                       }
                     />
                   </div>

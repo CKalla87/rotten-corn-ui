@@ -11,6 +11,7 @@ interface InputProps {
   placeholder?: string;
   style?: React.CSSProperties;
   accept?: string;
+  maxLength?: number;
   handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -27,6 +28,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   placeholder, 
   style,
   accept,
+  maxLength,
   handleChange,
   onClick,
   onFocus,
@@ -47,6 +49,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
         value={typeof value === 'boolean' ? undefined : value}
         checked={typeof value === 'boolean' ? value : undefined}
         accept={accept}
+        maxLength={maxLength}
         onChange={handleChange}
         placeholder={placeholder}
         onClick={onClick}
