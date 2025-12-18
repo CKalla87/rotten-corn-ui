@@ -44,8 +44,29 @@ const Streams = () => {
       }
       setLoading(false);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError.response?.data?.message || 'An error occurred', 'error', dispatch);
+      setLoading(false);
+      const axiosError = error as { 
+        response?: { 
+          status?: number;
+          data?: { message?: string } 
+        };
+        message?: string;
+      };
+      
+      // Provide more specific error messages
+      let errorMessage = 'An error occurred while loading posts';
+      
+      if (axiosError.response?.status === 403) {
+        errorMessage = 'Access forbidden. Please check your authentication or try logging in again.';
+      } else if (axiosError.response?.status === 401) {
+        errorMessage = 'Authentication required. Please log in again.';
+      } else if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      } else if (axiosError.message) {
+        errorMessage = axiosError.message;
+      }
+      
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
     }
   };
 
@@ -56,8 +77,12 @@ const Streams = () => {
         dispatch(addReactions(response.data.reactions));
       }
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      // Silently fail for reactions - not critical for page functionality
+      const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
+        // Only log auth errors, don't show notification for reactions
+        console.warn('Failed to load reactions:', axiosError.response?.data?.message || 'Authentication issue');
+      }
     }
   };
 
@@ -66,8 +91,12 @@ const Streams = () => {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      // Silently fail for following list - not critical for page functionality
+      const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
+        // Only log auth errors, don't show notification for following list
+        console.warn('Failed to load following list:', axiosError.response?.data?.message || 'Authentication issue');
+      }
     }
   };
 
@@ -186,10 +215,10 @@ const Streams = () => {
   return (
     <div className="streams" data-testid="streams">
       <div className="streams-content">
-        <div className="streams-post" ref={bodyRef} style={{ backgroundColor: 'white' }}>
+        <div className="streams-post" ref={bodyRef}>
           <PostForm />
           <Posts allPosts={posts} postsLoading={loading} userFollowing={following} />
-          <div ref={bottomLineRef} style={{ marginBottom: '50px', height: '50px' }}></div>
+          <div ref={bottomLineRef} className="streams-bottom-line"></div>
         </div>
         <div className="streams-suggestions">
           <Suggestions />

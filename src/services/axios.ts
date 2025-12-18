@@ -104,16 +104,24 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
-    // Log error responses for debugging (especially 400 errors)
-    if (error.response && (APP_ENVIRONMENT === 'local' || import.meta.env.DEV)) {
-      console.error('🔴 Backend Error Response:', {
-        url: error.config?.url,
-        method: error.config?.method,
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers
-      });
+    // Log error responses for debugging (especially 400, 403 errors)
+    if (error.response) {
+      const isDevelopment = APP_ENVIRONMENT === 'local' || import.meta.env.DEV || APP_ENVIRONMENT === 'development';
+      const shouldLog = isDevelopment || error.response.status === 403 || error.response.status === 401;
+      
+      if (shouldLog) {
+        console.error('🔴 Backend Error Response:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL,
+          fullURL: `${error.config?.baseURL}${error.config?.url}`,
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          hasAuthToken: !!localStorage.getItem('authToken'),
+          headers: error.response.headers
+        });
+      }
     }
     
     // Handle CORS errors
@@ -136,13 +144,33 @@ axiosInstance.interceptors.response.use(
       }
     }
     
-    // If we get a 401 and haven't already retried, clear token and redirect
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle 401 (Unauthorized) and 403 (Forbidden) errors
+    // Both typically indicate authentication/authorization issues
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
+      
+      // Log the specific error for debugging
+      if (error.response?.status === 403) {
+        console.error('🚫 403 Forbidden Error:', {
+          url: error.config?.url,
+          message: 'Access forbidden. This may indicate:',
+          possibleCauses: [
+            'Missing or invalid authentication token',
+            'Token expired',
+            'Insufficient permissions',
+            'API endpoint not properly configured',
+            'CORS configuration issue'
+          ],
+          hasToken: !!localStorage.getItem('authToken'),
+          environment: APP_ENVIRONMENT,
+          baseURL: error.config?.baseURL
+        });
+      }
       
       // Clear token from localStorage
       try {
         localStorage.removeItem('authToken');
+        localStorage.removeItem('keepLoggedIn');
       } catch (err) {
         console.error('Failed to remove token from localStorage:', err);
       }
