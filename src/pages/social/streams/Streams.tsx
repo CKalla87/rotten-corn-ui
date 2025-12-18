@@ -212,19 +212,44 @@ const Streams = () => {
     }
   }, [dispatch]);
 
+  // Inline styles as fallback for production mobile responsiveness
+  // This ensures mobile styles work even if CSS is cached or not loading properly
+  const mobileStyles = typeof window !== 'undefined' && window.innerWidth <= 768
+    ? {
+        overflow: 'visible',
+        overflowX: 'visible',
+        overflowY: 'visible',
+        width: '100%',
+        maxWidth: '100%',
+      }
+    : {};
+
   return (
-    <div className="streams" data-testid="streams">
-      <div className="streams-content">
-        <div className="streams-post" ref={bodyRef}>
-          <PostForm />
-          <Posts allPosts={posts} postsLoading={loading} userFollowing={following} />
-          <div ref={bottomLineRef} className="streams-bottom-line"></div>
-        </div>
-        <div className="streams-suggestions">
-          <Suggestions />
+    <>
+      {/* Inline style tag for mobile overrides - ensures production compatibility */}
+      <style>{`
+        @media screen and (max-width: 768px) {
+          .dashboard { overflow: visible !important; overflow-x: visible !important; overflow-y: visible !important; height: auto !important; }
+          .dashboard-content { overflow: visible !important; overflow-x: visible !important; overflow-y: visible !important; height: auto !important; }
+          .streams { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+          .streams-content { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+          .streams-post { overflow: visible !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
+          .posts-container { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+        }
+      `}</style>
+      <div className="streams" data-testid="streams" style={mobileStyles}>
+        <div className="streams-content" style={mobileStyles}>
+          <div className="streams-post" ref={bodyRef} style={mobileStyles}>
+            <PostForm />
+            <Posts allPosts={posts} postsLoading={loading} userFollowing={following} />
+            <div ref={bottomLineRef} className="streams-bottom-line"></div>
+          </div>
+          <div className="streams-suggestions">
+            <Suggestions />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

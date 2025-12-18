@@ -176,7 +176,9 @@
 }
 
 // Global mobile overrides with maximum specificity
+// This ensures mobile styles work in production builds
 @media screen and (max-width: 768px) {
+  /* Force mobile overflow visible - production fix */
   .dashboard .dashboard-content .streams .streams-content {
     overflow: visible !important;
     overflow-x: visible !important;
@@ -205,6 +207,33 @@
     overflow: visible !important;
     overflow-x: visible !important;
     overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  /* Additional specific selectors for production */
+  div.dashboard {
+    overflow: visible !important;
+  }
+
+  div.dashboard-content {
+    overflow: visible !important;
+  }
+
+  div.streams {
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  div.streams-content {
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  div.streams-post {
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
   }
 }
