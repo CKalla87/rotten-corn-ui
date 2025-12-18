@@ -76,50 +76,8 @@ export function getBaseEndpoint(): string {
 // Export BASE_ENDPOINT as a getter for backward compatibility
 export const BASE_ENDPOINT = getBaseEndpoint();
 
-// Function to get BASE_URL dynamically (allows runtime environment detection)
-function getBaseUrl(): string {
-  // Re-check environment at runtime
-  let currentEnv = getAppEnvironment();
-  
-  // Runtime hostname detection as fallback
-  if (typeof window !== 'undefined' && currentEnv === 'local' && !import.meta.env.DEV) {
-    const hostname = window.location.hostname;
-    if (hostname.includes('dev.chatappserver.space') || hostname.includes('.dev.')) {
-      currentEnv = 'development';
-    } else if (hostname.includes('staging.chatappserver.space') || hostname.includes('.staging.')) {
-      currentEnv = 'staging';
-    } else if (hostname.includes('chatappserver.space') && !hostname.includes('dev.') && !hostname.includes('staging.')) {
-      currentEnv = 'production';
-    }
-  }
-  
-  // Determine endpoint based on current environment
-  let endpoint = '';
-  if (currentEnv === 'local' || import.meta.env.DEV) {
-    endpoint = '';
-  } else if (currentEnv === 'development') {
-    endpoint = 'https://api.dev.chatappserver.space';
-  } else if (currentEnv === 'staging') {
-    endpoint = 'https://api.staging.chatappserver.space';
-  } else {
-    endpoint = 'https://api.chatappserver.space';
-  }
-  
-  // Override with runtime VITE_BASE_ENDPOINT if available
-  if (typeof window !== 'undefined' && window.__ENV__?.VITE_BASE_ENDPOINT && currentEnv !== 'local' && !import.meta.env.DEV) {
-    endpoint = window.__ENV__.VITE_BASE_ENDPOINT;
-  }
-  
-  // Override with build-time VITE_BASE_ENDPOINT if explicitly set
-  if (import.meta.env.VITE_BASE_ENDPOINT && currentEnv !== 'local' && !import.meta.env.DEV) {
-    endpoint = import.meta.env.VITE_BASE_ENDPOINT;
-  }
-  
-  return endpoint ? `${endpoint}/api/v1` : '/api/v1';
-}
-
 // Initial BASE_URL (will be updated by interceptor if needed)
-let BASE_URL = getBaseUrl();
+const BASE_URL = getBaseUrl();
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -151,10 +109,11 @@ axiosInstance.interceptors.request.use(
     
     // Log environment info on first request
     if (!(window as { __envLogged?: boolean }).__envLogged) {
+      const currentEnv = getAppEnvironment();
       console.log('🔧 Axios Configuration:', {
-        APP_ENVIRONMENT,
-        BASE_ENDPOINT,
-        BASE_URL,
+        APP_ENVIRONMENT: currentEnv,
+        BASE_ENDPOINT: getBaseEndpoint(),
+        BASE_URL: dynamicBaseUrl,
         hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
         runtimeEnv: typeof window !== 'undefined' ? window.__ENV__ : 'N/A',
         buildTimeEnv: import.meta.env.VITE_APP_ENVIRONMENT
@@ -163,7 +122,8 @@ axiosInstance.interceptors.request.use(
     }
     
     // Debug logging for development environments
-    if (APP_ENVIRONMENT === 'local' || import.meta.env.DEV || APP_ENVIRONMENT === 'development') {
+    const currentEnv = getAppEnvironment();
+    if (currentEnv === 'local' || import.meta.env.DEV || currentEnv === 'development') {
       // Stringify data to see exact format being sent (mask passwords)
       let dataString = 'no data';
       if (config.data) {
@@ -184,7 +144,7 @@ axiosInstance.interceptors.request.use(
         fullURL: `${config.baseURL}${config.url}`,
         hasToken: !!localStorage.getItem('authToken'),
         contentType: config.headers?.['Content-Type'],
-        environment: APP_ENVIRONMENT,
+        environment: getAppEnvironment(),
         dataString: dataString
       });
     }
@@ -218,7 +178,8 @@ axiosInstance.interceptors.response.use(
     
     // Log error responses for debugging (especially 400, 403, 500, 503 errors)
     if (error.response) {
-      const isDevelopment = APP_ENVIRONMENT === 'local' || import.meta.env.DEV || APP_ENVIRONMENT === 'development';
+      const currentEnv = getAppEnvironment();
+      const isDevelopment = currentEnv === 'local' || import.meta.env.DEV || currentEnv === 'development';
       const shouldLog = isDevelopment || 
                        error.response.status === 403 || 
                        error.response.status === 401 ||
@@ -235,7 +196,7 @@ axiosInstance.interceptors.response.use(
           statusText: error.response.statusText,
           data: error.response.data,
           hasAuthToken: !!localStorage.getItem('authToken'),
-          environment: APP_ENVIRONMENT,
+          environment: getAppEnvironment(),
           headers: error.response.headers
         });
         
@@ -292,7 +253,7 @@ axiosInstance.interceptors.response.use(
             'CORS configuration issue'
           ],
           hasToken: !!localStorage.getItem('authToken'),
-          environment: APP_ENVIRONMENT,
+          environment: getAppEnvironment(),
           baseURL: error.config?.baseURL
         });
       }
