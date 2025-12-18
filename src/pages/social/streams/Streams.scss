@@ -5,9 +5,10 @@
   margin-top: 0;
 
   @media (max-width: 768px) {
-    margin-top: 0;
-    width: 100%;
+    margin-top: 0 !important;
+    width: 100% !important;
     min-height: 100vh;
+    overflow: visible !important;
   }
 
   @media (max-width: 480px) {
@@ -43,9 +44,9 @@
       box-sizing: border-box;
       column-gap: 0;
       row-gap: 15px;
-      width: 100%;
-      max-width: 100%;
-      overflow: visible;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
     }
 
     @media (max-width: 480px) {
@@ -73,14 +74,14 @@
 
       @media (max-width: 768px) {
         box-sizing: border-box;
-        width: 100%;
-        max-width: 100%;
-        height: auto;
-        min-height: auto;
-        overflow: visible;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
         background-color: transparent !important;
-        padding: 0;
-        margin: 0;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       @media (max-width: 480px) {

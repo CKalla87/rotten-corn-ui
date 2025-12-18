@@ -10,9 +10,9 @@
   overflow: hidden;
 
   @media (max-width: 768px) {
-    height: auto;
+    height: auto !important;
     min-height: calc(100vh - 75px);
-    overflow: visible;
+    overflow: visible !important;
 
     &.dashboard-no-header-on-chat {
       height: 100vh;
@@ -58,11 +58,13 @@
     @media (max-width: 768px) {
       flex: 1;
       width: 100%;
-      height: auto;
+      height: auto !important;
       min-height: calc(100vh - 75px);
       margin-left: 0;
       padding-bottom: 20px;
-      overflow: hidden visible;
+      overflow: visible !important;
+      overflow-x: visible;
+      overflow-y: visible;
     }
   }
 
