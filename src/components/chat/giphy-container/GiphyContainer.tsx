@@ -14,19 +14,36 @@ interface GiphyContainerProps {
 const GiphyContainer = ({ handleGiphyClick }: GiphyContainerProps) => {
   const [gifs, setGifs] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   useEffect(() => {
-    GiphyUtils.getTrendingGifs(setGifs, setLoading);
+    // Defer state update to avoid synchronous setState in effect
+    const timeoutId = setTimeout(() => {
+      setError(null);
+    }, 0);
+    GiphyUtils.getTrendingGifs(setGifs, setLoading).catch(() => {
+      setError('Failed to load trending GIFs. Please try again.');
+    });
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
+    // Defer state update to avoid synchronous setState in effect
+    const timeoutId = setTimeout(() => {
+      setError(null);
+    }, 0);
     if (debouncedSearchTerm) {
-      GiphyUtils.searchGifs(debouncedSearchTerm, setGifs, setLoading);
+      GiphyUtils.searchGifs(debouncedSearchTerm, setGifs, setLoading).catch(() => {
+        setError('Failed to search GIFs. Please try again.');
+      });
     } else {
-      GiphyUtils.getTrendingGifs(setGifs, setLoading);
+      GiphyUtils.getTrendingGifs(setGifs, setLoading).catch(() => {
+        setError('Failed to load trending GIFs. Please try again.');
+      });
     }
+    return () => clearTimeout(timeoutId);
   }, [debouncedSearchTerm]);
 
   return (
@@ -45,7 +62,12 @@ const GiphyContainer = ({ handleGiphyClick }: GiphyContainerProps) => {
         />
       </div>
       {loading && <Spinner />}
-      {!loading && gifs.length === 0 && (
+      {error && (
+        <div style={{ padding: '20px', textAlign: 'center', color: '#ff4444' }}>
+          {error}
+        </div>
+      )}
+      {!loading && !error && gifs.length === 0 && (
         <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
           No GIFs found. Try searching for something else.
         </div>

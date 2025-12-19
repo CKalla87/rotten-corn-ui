@@ -12,6 +12,8 @@ import { PostUtils } from '@services/utils/post-utils.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
 import { postService } from '@services/api/post/post.service';
 import { toggleGifModal, closeModal } from '@redux/reducers/modal/modalSlice';
+import { addToPosts, removePost, updatePostInList } from '@redux/reducers/posts/postsSlice';
+import { store } from '@redux/store';
 import Spinner from '@components/spinner/Spinner';
 import type { RootState, AppDispatch } from '@redux/store';
 import './AddPost.scss';
@@ -172,24 +174,75 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
           updatedPostData.image = '';
           updatedPostData.video = result;
         }
-        const response = await PostUtils.sendPostWithFileRequest(
-          type,
-          updatedPostData,
-          imageInputRef,
-          setApiResponse,
-          setLoading,
-          setDisable,
-          dispatch
-        );
-        if (response && response?.data?.message) {
-          PostUtils.closePostModal(dispatch);
+        // Optimistically add post to Redux state immediately
+        const optimisticPost = {
+          ...updatedPostData,
+          _id: `temp-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          commentsCount: '0',
+          reactions: { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 }
+        };
+        
+        // Get current posts from Redux and add optimistic post
+        const currentPosts = (store.getState().allPosts.posts as unknown[]) || [];
+        dispatch(addToPosts([optimisticPost, ...currentPosts]));
+        
+        try {
+          const response = await PostUtils.sendPostWithFileRequest(
+            type,
+            updatedPostData,
+            imageInputRef,
+            setApiResponse,
+            setLoading,
+            setDisable,
+            dispatch
+          );
+          if (response && response?.data?.message) {
+            // Replace optimistic post with real post from API if available
+            const realPost = response.data.post || response.data.data || response.data;
+            if (realPost && realPost._id) {
+              dispatch(updatePostInList(realPost));
+            } else {
+              // If no post in response, socket event will handle it, but remove temp post
+              dispatch(removePost(optimisticPost._id));
+            }
+            PostUtils.closePostModal(dispatch);
+          }
+        } catch (error) {
+          // On error, remove optimistic post
+          dispatch(removePost(optimisticPost._id));
+          throw error; // Re-throw to be caught by outer catch
         }
       } else {
-        const response = await postService.createPost(updatedPostData);
-        if (response) {
-          setApiResponse('success');
-          setLoading(false);
-          PostUtils.closePostModal(dispatch);
+        // Optimistically add post to Redux state immediately
+        const optimisticPost = {
+          ...updatedPostData,
+          _id: `temp-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          commentsCount: '0',
+          reactions: { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 }
+        };
+        
+        // Get current posts from Redux and add optimistic post
+        const currentPosts = (store.getState().allPosts.posts as unknown[]) || [];
+        dispatch(addToPosts([optimisticPost, ...currentPosts]));
+        
+        try {
+          const response = await postService.createPost(updatedPostData);
+          if (response && response.data) {
+            // Replace optimistic post with real post from API
+            const realPost = response.data.post || response.data.data || response.data;
+            if (realPost && realPost._id) {
+              dispatch(updatePostInList(realPost));
+            }
+            setApiResponse('success');
+            setLoading(false);
+            PostUtils.closePostModal(dispatch);
+          }
+        } catch (error) {
+          // On error, remove optimistic post
+          dispatch(removePost(optimisticPost._id));
+          throw error; // Re-throw to be caught by outer catch
         }
       }
     } catch (error: unknown) {

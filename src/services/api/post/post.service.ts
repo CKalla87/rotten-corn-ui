@@ -22,7 +22,10 @@ class PostService {
   }
 
   async getSinglePostReactionByUsername(postId: string, username: string) {
-    const response = await axios.get(`/post/single/reaction/username/${username}/${postId}`);
+    // Use a longer timeout for reaction checks (they can take time in develop env)
+    const response = await axios.get(`/post/single/reaction/username/${username}/${postId}`, {
+      timeout: 120000 // 2 minutes - same as regular requests
+    });
     return response;
   }
 
@@ -42,17 +45,26 @@ class PostService {
   }
 
   async addComment(body: unknown) {
-    const response = await axios.post('/post/comment', body);
+    // Use longer timeout for comment creation (can take time in develop env)
+    const response = await axios.post('/post/comment', body, {
+      timeout: 120000 // 2 minutes
+    });
     return response;
   }
 
   async getPostCommentsNames(postId: string) {
-    const response = await axios.get(`/post/commentsnames/${postId}`);
+    // Use longer timeout for comment names (can take time in develop env)
+    const response = await axios.get(`/post/commentsnames/${postId}`, {
+      timeout: 120000 // 2 minutes
+    });
     return response;
   }
 
   async getPostComments(postId: string) {
-    const response = await axios.get(`/post/comments/${postId}`);
+    // Use longer timeout for getting comments (can take time in develop env)
+    const response = await axios.get(`/post/comments/${postId}`, {
+      timeout: 120000 // 2 minutes
+    });
     return response;
   }
 

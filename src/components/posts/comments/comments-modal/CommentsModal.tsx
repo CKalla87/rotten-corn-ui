@@ -314,7 +314,13 @@ const CommentsModal = () => {
         console.log('💾 Saving comment reaction:', reactionBody);
         
         // Use chat service endpoint (same as chat messages)
-        const apiResponse = await chatService.updateMessageReaction(reactionBody);
+        // The timeout is already set in the axios instance (2 minutes), but add explicit timeout as backup
+        const apiResponse = await Promise.race([
+          chatService.updateMessageReaction(reactionBody),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout: Reaction save took too long')), 120000)
+          )
+        ]);
         
         if (!apiResponse || !apiResponse.data) {
           throw new Error('Invalid API response');
@@ -337,7 +343,15 @@ const CommentsModal = () => {
         savingReactionsRef.current.delete(commentId);
         // If API call fails, revert optimistic update
         console.error('❌ Failed to save comment reaction:', apiError);
-        const errorMessage = (apiError as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to save reaction';
+        
+        // Check if it's a timeout error
+        const isTimeout = (apiError as Error)?.message?.includes('timeout') || 
+                         (apiError as { code?: string })?.code === 'ECONNABORTED';
+        
+        const errorMessage = isTimeout 
+          ? 'Request timed out. The reaction may still be saved. Please refresh to check.'
+          : ((apiError as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to save reaction');
+        
         Utils.dispatchNotification(errorMessage, 'error', dispatch);
         
         // Revert to the state before the optimistic update

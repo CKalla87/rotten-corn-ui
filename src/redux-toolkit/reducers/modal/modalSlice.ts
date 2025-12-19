@@ -80,7 +80,7 @@ const modalSlice = createSlice({
     },
     toggleCommentsModal: (state, action: PayloadAction<boolean | { isOpen: boolean; postId?: string; post?: unknown }>) => {
       if (typeof action.payload === 'boolean') {
-        state.commentsModalIsOpen = action.payload;
+      state.commentsModalIsOpen = action.payload;
       } else {
         state.commentsModalIsOpen = action.payload.isOpen;
         if (action.payload.postId || action.payload.post) {

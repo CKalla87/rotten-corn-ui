@@ -142,30 +142,30 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
       <div className="reaction">
         <div className="likes-block">
           {reactionsCountNum > 0 && (
-            <span
-              data-testid="reactions-count"
-              className="tooltip-container reactions-count"
-              onMouseEnter={getPostReactions}
-              onClick={openReactionsComponent}
-              style={{ cursor: 'pointer' }}
-            >
-              {reactionsCount}
-              <div className="tooltip-container-text tooltip-container-likes-bottom" data-testid="tooltip-container">
-                <div className="likes-block-icons-list">
-                  {postReactions.length === 0 && <FaSpinner className="circle-notch" />}
-                  {postReactions.length > 0 && (
-                    <>
-                      {postReactions.map((reaction) => (
-                        <span key={Utils.generateString(10)}>{reaction?.username}</span>
-                      ))}
-                      {postReactions.length > 20 && (
-                        <span>and {postReactions.length - 20} others...</span>
-                      )}
-                    </>
-                  )}
-                </div>
+          <span
+            data-testid="reactions-count"
+            className="tooltip-container reactions-count"
+            onMouseEnter={getPostReactions}
+            onClick={openReactionsComponent}
+            style={{ cursor: 'pointer' }}
+          >
+            {reactionsCount}
+            <div className="tooltip-container-text tooltip-container-likes-bottom" data-testid="tooltip-container">
+              <div className="likes-block-icons-list">
+                {postReactions.length === 0 && <FaSpinner className="circle-notch" />}
+                {postReactions.length > 0 && (
+                  <>
+                    {postReactions.map((reaction) => (
+                      <span key={Utils.generateString(10)}>{reaction?.username}</span>
+                    ))}
+                    {postReactions.length > 20 && (
+                      <span>and {postReactions.length - 20} others...</span>
+                    )}
+                  </>
+                )}
               </div>
-            </span>
+            </div>
+          </span>
           )}
         </div>
       </div>

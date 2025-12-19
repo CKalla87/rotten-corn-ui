@@ -26,13 +26,13 @@ const ReactionWrapper = ({ children, closeModal }: ReactionWrapperProps) => {
       <div className="modal-wrapper-container">
         {!isEmpty && (
           <>
-            <div className="modal-wrapper-container-header">
-              {childrenArray[0]}
-              {closeModal && (
-                <button onClick={closeModal}>X</button>
-              )}
-            </div>
-            <hr />
+        <div className="modal-wrapper-container-header">
+          {childrenArray[0]}
+          {closeModal && (
+            <button onClick={closeModal}>X</button>
+          )}
+        </div>
+        <hr />
           </>
         )}
         <div className="modal-wrapper-container-body" data-testid="modal-body">

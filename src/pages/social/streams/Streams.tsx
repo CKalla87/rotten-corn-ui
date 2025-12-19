@@ -158,7 +158,37 @@ const Streams = () => {
 
       const handleAddPost = (post: unknown) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        dispatch(addToPosts([post, ...currentPosts]));
+        const postData = post as { _id?: string; createdAt?: string };
+        
+        // Check if this post already exists (might be from optimistic update or duplicate socket event)
+        const existingPostIndex = currentPosts.findIndex((p: unknown) => {
+          const pData = p as { _id?: string };
+          return pData._id === postData._id;
+        });
+        
+        // Check for optimistic post (temp ID) that should be replaced
+        const optimisticPostIndex = currentPosts.findIndex((p: unknown) => {
+          const pData = p as { _id?: string; createdAt?: string };
+          // Match by createdAt if temp post exists (within 5 seconds)
+          if (pData._id?.startsWith('temp-') && postData.createdAt && pData.createdAt) {
+            const timeDiff = Math.abs(new Date(postData.createdAt).getTime() - new Date(pData.createdAt).getTime());
+            return timeDiff < 5000; // Within 5 seconds
+          }
+          return false;
+        });
+        
+        if (optimisticPostIndex > -1) {
+          // Replace optimistic post with real post
+          const newPosts = [...currentPosts];
+          newPosts[optimisticPostIndex] = post;
+          dispatch(addToPosts(newPosts));
+        } else if (existingPostIndex === -1) {
+          // New post that doesn't exist - add to beginning
+          dispatch(addToPosts([post, ...currentPosts]));
+        } else {
+          // Post exists - update it (might have new data from backend)
+          dispatch(updatePostInList(post));
+        }
       };
 
       const handleUpdatePost = (post: unknown) => {
@@ -239,8 +269,13 @@ const Streams = () => {
           .streams-content { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
           .streams-post { overflow: visible !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
           .posts-container { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
-          .modal-wrapper { padding: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; overflow-x: hidden !important; overflow-y: auto !important; }
-          .modal-box { width: 100% !important; max-width: 100vw !important; max-height: 100vh !important; margin: 0 !important; padding: 10px !important; border-radius: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; }
+          .modal-wrapper { padding: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; overflow-x: hidden !important; overflow-y: auto !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; justify-content: flex-start !important; align-items: flex-start !important; }
+          .modal-box { width: 100vw !important; max-width: 100vw !important; min-width: 100vw !important; max-height: 100vh !important; margin: 0 !important; padding: 10px !important; border-radius: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; height: auto !important; min-height: auto !important; box-sizing: border-box !important; flex: none !important; flex-shrink: 0 !important; flex-grow: 0 !important; }
+          .modal-box-content { width: 100% !important; max-width: 100% !important; min-width: 100% !important; box-sizing: border-box !important; }
+          .modal-box-header { height: auto !important; min-height: 40px !important; padding: 12px 10px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+          .modal-box-header h2 { font-size: 1rem !important; white-space: nowrap !important; }
+          .modal-box-header-cancel { height: auto !important; min-height: 40px !important; font-size: 1.25rem !important; }
+          .modal-box-button { margin-top: 10px !important; padding: 10px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
         }
       `}</style>
       <div className="streams" data-testid="streams">

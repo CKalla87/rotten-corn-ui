@@ -337,6 +337,36 @@ axiosInstance.interceptors.response.use(
       }
     }
     
+    // Handle 503 (Service Unavailable) errors
+    if (error.response?.status === 503) {
+      const currentEnv = getAppEnvironment();
+      const isLocal = currentEnv === 'local' || import.meta.env.DEV;
+      
+      if (isLocal) {
+        console.error('🚨 503 Service Unavailable Error:', {
+          url: error.config?.url,
+          message: 'Backend service is temporarily unavailable. This may indicate:',
+          possibleCauses: [
+            'Backend server is overloaded',
+            'Backend server is restarting',
+            'Database connection issues',
+            'Backend service is down',
+            'Network connectivity issues'
+          ],
+          suggestion: 'Please try again in a few moments or check backend server status',
+          baseURL: error.config?.baseURL
+        });
+      }
+      
+      // Don't retry 503 errors automatically - let the user retry
+      const serviceUnavailableError = new Error('Service temporarily unavailable. Please try again in a moment.') as AxiosError;
+      serviceUnavailableError.config = error.config;
+      serviceUnavailableError.request = error.request;
+      serviceUnavailableError.response = error.response;
+      serviceUnavailableError.isAxiosError = true;
+      return Promise.reject(serviceUnavailableError);
+    }
+    
     // Handle 401 (Unauthorized) and 403 (Forbidden) errors
     // Both typically indicate authentication/authorization issues
     if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {

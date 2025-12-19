@@ -32,7 +32,10 @@ class ChatService {
   }
 
   async updateMessageReaction(body: unknown) {
-    const response = await axios.put('/chat/message/reaction', body);
+    // Use a longer timeout for reaction updates (they can take time in develop env)
+    const response = await axios.put('/chat/message/reaction', body, {
+      timeout: 120000 // 2 minutes - same as regular requests
+    });
     return response;
   }
 

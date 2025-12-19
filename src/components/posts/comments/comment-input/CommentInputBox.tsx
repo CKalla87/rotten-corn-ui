@@ -90,8 +90,24 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
         commentsCount: String(newCommentsCount)
       }));
       
-      // Send to API first
-      const response = await postService.addComment(commentBody);
+      // Send to API first with timeout handling
+      let response;
+      try {
+        response = await Promise.race([
+          postService.addComment(commentBody),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout: Comment creation took too long')), 120000)
+          )
+        ]);
+      } catch (timeoutError) {
+        // Handle timeout specifically
+        if ((timeoutError as Error)?.message?.includes('timeout')) {
+          Utils.dispatchNotification('Comment creation timed out. The comment may still be posted. Please refresh to check.', 'error', dispatch);
+          // Don't revert optimistic update - comment might have been saved
+          return;
+        }
+        throw timeoutError; // Re-throw if it's not a timeout
+      }
       
       // Try different response structures to get the new comment
       const newComment = response?.data?.comment || 
@@ -138,14 +154,38 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
       setShowEmojiContainer(false);
       setShowGifContainer(false);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      const axiosError = error as { 
+        response?: { 
+          status?: number;
+          data?: { message?: string } 
+        };
+        message?: string;
+        code?: string;
+      };
       
-      // Revert optimistic update on error
-      dispatch(updatePostInList({
-        ...post,
-        commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined
-      }));
+      // Check for 503 Service Unavailable
+      const is503 = axiosError?.response?.status === 503;
+      const isTimeout = (error as Error)?.message?.includes('timeout') || 
+                       axiosError?.code === 'ECONNABORTED';
+      
+      let errorMessage = 'An error occurred';
+      if (is503) {
+        errorMessage = 'Service temporarily unavailable. Please try again in a moment.';
+      } else if (isTimeout) {
+        errorMessage = 'Request timed out. The comment may still be posted. Please refresh to check.';
+      } else {
+        errorMessage = axiosError?.response?.data?.message || 'An error occurred';
+      }
+      
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
+      
+      // Only revert optimistic update if it's not a timeout or 503 (might have been saved)
+      if (!isTimeout && !is503) {
+        dispatch(updatePostInList({
+          ...post,
+          commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined
+        }));
+      }
     }
   };
 
