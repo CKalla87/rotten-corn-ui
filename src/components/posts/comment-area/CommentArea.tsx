@@ -122,7 +122,7 @@ const CommentArea = ({ post }: CommentAreaProps) => {
       }
       if (previousReaction !== newReaction) {
         if (reactionsObj[newReaction] !== undefined) {
-          reactionsObj[newReaction] = (reactionsObj[newReaction] || 0) + 1;
+        reactionsObj[newReaction] = (reactionsObj[newReaction] || 0) + 1;
         } else {
           reactionsObj[newReaction] = 1;
         }
@@ -307,9 +307,9 @@ const CommentArea = ({ post }: CommentAreaProps) => {
             )}
           </div>
           {showReactions && (
-            <div className="reactions-container app-reactions">
+          <div className="reactions-container app-reactions">
               <Reactions handleClick={addReactionPost} showLabel={false} />
-            </div>
+          </div>
           )}
         </div>
       </div>
