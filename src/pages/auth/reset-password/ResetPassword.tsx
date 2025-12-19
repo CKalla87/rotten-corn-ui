@@ -88,6 +88,7 @@ const ResetPassword = () => {
                     label={loading ? 'RESET PASSWORD IN PROGRESS...' : 'RESET PASSWORD'}
                     className="auth-button button" 
                     disabled={!password || !confirmPassword}
+                    type="submit"
                   />
                   <Link to={'/'}>
                     <span className="login">

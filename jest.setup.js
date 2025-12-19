@@ -13,10 +13,27 @@ if (typeof global.importMeta === 'undefined') {
   global.importMeta = {
     env: {
       DEV: true,
-      VITE_BASE_ENDPOINT: 'http://localhost:5000'
+      VITE_BASE_ENDPOINT: 'http://localhost:5000',
+      VITE_GIPHY_API_KEY: ''
     }
   };
 }
+
+// Make import.meta available globally for TypeScript/Jest compatibility
+// This allows import.meta.env to work in test files
+Object.defineProperty(global, 'import', {
+  value: {
+    meta: {
+      env: {
+        DEV: true,
+        VITE_BASE_ENDPOINT: 'http://localhost:5000',
+        VITE_GIPHY_API_KEY: ''
+      }
+    }
+  },
+  writable: true,
+  configurable: true
+});
 
 // Polyfill MessagePort for undici
 if (typeof global.MessagePort === 'undefined') {

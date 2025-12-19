@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { FaSpinner } from 'react-icons/fa';
 import { postService } from '@services/api/post/post.service';
-import { reactionsMap } from '@services/utils/static.data';
 import { Utils } from '@services/utils/utils.service';
 import { toggleReactionsModal, toggleCommentsModal } from '@redux/reducers/modal/modalSlice';
 import { updatePostItem } from '@redux/reducers/post/postSlice';
@@ -98,12 +97,24 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
       : post.reactions 
         ? Object.entries(post.reactions as PostReactionsCount).map(([type, count]) => ({ type, value: count || 0 }))
         : [];
-    dispatch(updatePostItem({
+    
+    const postId = post._id || (post as { id?: string })?.id;
+    
+    // Ensure all post data is included, especially _id
+    const postData = {
       ...post,
+      _id: postId,
+      id: postId,
       commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined,
       reactions: reactionsArray as Array<Record<string, unknown>>
-    }));
-    dispatch(toggleCommentsModal(true));
+    };
+    
+    console.log('📤 Setting post in Redux:', postData);
+    console.log('📤 Post _id:', postId);
+    
+    dispatch(updatePostItem(postData));
+    // Store post ID and full post data in modal for immediate access
+    dispatch(toggleCommentsModal({ isOpen: true, postId: postId as string, post: postData }));
   };
 
   useEffect(() => {
@@ -124,72 +135,38 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   }, [post, getPostReactions]);
 
   const reactionsCount = sumAllReactions(reactions);
+  const reactionsCountNum = typeof reactionsCount === 'number' ? reactionsCount : Number(reactionsCount) || 0;
 
   return (
     <div className="reactions-display">
       <div className="reaction">
         <div className="likes-block">
-          <div className="likes-block-icons reactions-icon-display">
-            {reactions.length > 0 &&
-              reactions.map((reaction) => (
-                <div className="tooltip-container" key={Utils.generateString(10)}>
-                  <img
-                    data-testid="reaction-img"
-                    className="reaction-img"
-                    src={reactionsMap[reaction?.type]}
-                    alt=""
-                    onMouseEnter={getPostReactions}
-                  />
-                  <div className="tooltip-container-text tooltip-container-bottom" data-testid="reaction-tooltip">
-                    <p className="title">
-                      <img className="title-img" src={reactionsMap[reaction?.type]} alt="" />
-                      {reaction?.type.toUpperCase()}
-                    </p>
-                    <div className="likes-block-icons-list">
-                      {postReactions.length === 0 && <FaSpinner className="circle-notch" />}
-                      {postReactions.length > 0 && (
-                        <>
-                          {postReactions.map((postReaction) => (
-                            <div key={Utils.generateString(10)}>
-                              {postReaction?.type === reaction?.type && (
-                                <span key={postReaction?._id}>{postReaction?.username}</span>
-                              )}
-                            </div>
-                          ))}
-                          {postReactions.length > 20 && (
-                            <span>and {postReactions.length - 20} others...</span>
-                          )}
-                        </>
+          {reactionsCountNum > 0 && (
+            <span
+              data-testid="reactions-count"
+              className="tooltip-container reactions-count"
+              onMouseEnter={getPostReactions}
+              onClick={openReactionsComponent}
+              style={{ cursor: 'pointer' }}
+            >
+              {reactionsCount}
+              <div className="tooltip-container-text tooltip-container-likes-bottom" data-testid="tooltip-container">
+                <div className="likes-block-icons-list">
+                  {postReactions.length === 0 && <FaSpinner className="circle-notch" />}
+                  {postReactions.length > 0 && (
+                    <>
+                      {postReactions.map((reaction) => (
+                        <span key={Utils.generateString(10)}>{reaction?.username}</span>
+                      ))}
+                      {postReactions.length > 20 && (
+                        <span>and {postReactions.length - 20} others...</span>
                       )}
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
-              ))}
-          </div>
-          <span
-            data-testid="reactions-count"
-            className="tooltip-container reactions-count"
-            onMouseEnter={getPostReactions}
-            onClick={openReactionsComponent}
-            style={{ cursor: 'pointer' }}
-          >
-            {reactionsCount}
-            <div className="tooltip-container-text tooltip-container-likes-bottom" data-testid="tooltip-container">
-              <div className="likes-block-icons-list">
-                {postReactions.length === 0 && <FaSpinner className="circle-notch" />}
-                {postReactions.length > 0 && (
-                  <>
-                    {postReactions.map((reaction) => (
-                      <span key={Utils.generateString(10)}>{reaction?.username}</span>
-                    ))}
-                    {postReactions.length > 20 && (
-                      <span>and {postReactions.length - 20} others...</span>
-                    )}
-                  </>
-                )}
               </div>
-            </div>
-          </span>
+            </span>
+          )}
         </div>
       </div>
       <div className="comment tooltip-container" data-testid="comment-container">

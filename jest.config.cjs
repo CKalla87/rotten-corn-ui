@@ -26,14 +26,6 @@ module.exports = {
     '^@services/axios$': '<rootDir>/src/__mocks__/services/axios.ts',
     ...moduleNameMapper,
   },
-  globals: {
-    'import.meta': {
-      env: {
-        DEV: true,
-        VITE_BASE_ENDPOINT: 'http://localhost:5000'
-      }
-    }
-  },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   setupFiles: ['<rootDir>/jest.setup.js'],
   transform: {

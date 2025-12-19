@@ -78,8 +78,18 @@ const modalSlice = createSlice({
     toggleReactionsModal: (state, action: PayloadAction<boolean>) => {
       state.reactionModalIsOpen = action.payload;
     },
-    toggleCommentsModal: (state, action: PayloadAction<boolean>) => {
-      state.commentsModalIsOpen = action.payload;
+    toggleCommentsModal: (state, action: PayloadAction<boolean | { isOpen: boolean; postId?: string; post?: unknown }>) => {
+      if (typeof action.payload === 'boolean') {
+        state.commentsModalIsOpen = action.payload;
+      } else {
+        state.commentsModalIsOpen = action.payload.isOpen;
+        if (action.payload.postId || action.payload.post) {
+          state.data = { 
+            postId: action.payload.postId,
+            post: action.payload.post
+          };
+        }
+      }
     },
     toggleDeleteDialog: (state, action: PayloadAction<{ data: unknown; toggle: boolean }>) => {
       const { data, toggle } = action.payload;

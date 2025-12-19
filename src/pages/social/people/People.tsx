@@ -202,6 +202,8 @@ const People = () => {
                 onClickBtnOne={() => followUser(data)}
                 onClickBtnTwo={() => unFollowUser(data)}
                 onNavigateToProfile={() => ProfileUtils.navigateToProfile(data, navigate)}
+                userId={data?._id}
+                username={data?.username}
               />
             </div>
           ))}

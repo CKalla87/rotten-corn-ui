@@ -46,6 +46,22 @@ jest.mock('@services/socket/socket.service', () => ({
   }
 }));
 
+// Mock giphy service to avoid import.meta issues
+jest.mock('@services/api/giphy/giphy.service', () => ({
+  giphyService: {
+    search: jest.fn().mockResolvedValue({
+      data: {
+        data: []
+      }
+    }),
+    trending: jest.fn().mockResolvedValue({
+      data: {
+        data: []
+      }
+    })
+  }
+}));
+
 // Conditionally load MSW only if needed
 // Some tests don't need MSW, so we'll try to load it but handle errors gracefully
 type MSWServer = { listen: () => void; resetHandlers: () => void; close: () => void };

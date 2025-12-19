@@ -85,6 +85,15 @@
 
 .card-following-button {
   flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+  }
 
   .following-button {
     padding: 10px 20px;
@@ -100,6 +109,11 @@
     box-shadow: 0 2px 8px rgba(80, 181, 255, 0.2);
     letter-spacing: 0.3px;
 
+    @media (max-width: 768px) {
+      width: 100%;
+      min-width: auto;
+    }
+
     &:hover:not(:disabled) {
       background-color: var(--primary-2);
       box-shadow: 0 4px 12px rgba(80, 181, 255, 0.3);
@@ -109,6 +123,11 @@
     &:active:not(:disabled) {
       transform: translateY(0);
       box-shadow: 0 2px 6px rgba(80, 181, 255, 0.25);
+    }
+
+    &.message-button {
+      background-color: var(--primary-1);
+      color: var(--white-1);
     }
 
     &.isUserFollowed {
@@ -180,7 +199,7 @@
     left: 0;
     right: 0;
     height: 80px;
-    background-color: var(--white-2);
+    background-color: #1A1A1A;
     border-radius: 16px 16px 0 0;
 
     @media (max-width: 768px) {

@@ -5,16 +5,27 @@
   margin-bottom: 10px;
   position: relative;
 
-  .message-right-reactions-container {
-    position: relative;
-    margin-right: 5px;
-  }
-
   .message-right-content-container-wrapper {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     max-width: 70%;
+    position: relative;
+
+    .message-reactions-container {
+      position: absolute;
+      right: 0;
+      bottom: 100%;
+      margin-bottom: 10px;
+      z-index: 1000;
+      pointer-events: none;
+      
+      > div {
+        position: relative;
+        z-index: 1000;
+        pointer-events: auto;
+      }
+    }
 
     .message-content {
       background: var(--primary-1);

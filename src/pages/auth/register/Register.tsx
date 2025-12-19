@@ -144,6 +144,7 @@ const Register = () => {
           label={loading ? 'SIGNUP IN PROGRESS...' : 'SIGNUP'}
           className="auth-button button"
           disabled={!username || !email || !password}
+          type="submit"
         />
       </form>
     </div>

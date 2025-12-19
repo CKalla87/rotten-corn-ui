@@ -6,6 +6,8 @@ import { getConversationList } from '@redux/api/chat';
 import { setSelectedChatUser } from '@redux/reducers/chat/chatSlice';
 import { ChatList } from '@components/chat/list';
 import { ChatWindow } from '@components/chat/window';
+import { chatService } from '@services/api/chat/chat.service';
+import { ChatUtils } from '@services/utils/chat-utils.service';
 import useEffectOnce from '@hooks/useEffectOnce';
 import type { RootState, AppDispatch } from '@redux/store';
 import './Chat.scss';
@@ -20,6 +22,7 @@ interface ChatUser {
 
 const Chat = () => {
   const { selectedChatUser, chatList } = useSelector((state: RootState) => state.chat);
+  const { profile } = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch<AppDispatch>();
   const [searchParams] = useSearchParams();
 
@@ -44,25 +47,53 @@ const Chat = () => {
       return;
     }
     
-    // Only set selected chat if we have both params and chatList is loaded
-    if (username && id && chatList.length > 0) {
-      const user = find(chatList as ChatUser[], (chat: ChatUser) => {
-        const receiverMatch = chat.receiverUsername?.toLowerCase() === username.toLowerCase();
-        const senderMatch = chat.senderUsername?.toLowerCase() === username.toLowerCase();
-        return receiverMatch || senderMatch;
-      });
-      
-      if (user) {
-        dispatch(setSelectedChatUser({ isLoading: false, user: user as unknown as { _id?: string; username?: string; avatarColor?: string; profilePicture?: string; [key: string]: unknown } }));
+    // If we have both params, try to find user in chatList or create new conversation
+    if (username && id) {
+      if (chatList.length > 0) {
+        const user = find(chatList as ChatUser[], (chat: ChatUser) => {
+          const receiverMatch = chat.receiverUsername?.toLowerCase() === username.toLowerCase();
+          const senderMatch = chat.senderUsername?.toLowerCase() === username.toLowerCase();
+          return receiverMatch || senderMatch;
+        });
+        
+        if (user) {
+          dispatch(setSelectedChatUser({ isLoading: false, user: user as unknown as { _id?: string; username?: string; avatarColor?: string; profilePicture?: string; [key: string]: unknown } }));
+        } else {
+          // User not in chatList - create new conversation entry
+          const newUser: ChatUser = {
+            receiverId: id,
+            receiverUsername: username,
+            senderId: profile?._id as string,
+            senderUsername: profile?.username as string,
+            body: ''
+          };
+          ChatUtils.joinRoomEvent(newUser, profile || {});
+          ChatUtils.clearPrivateChatMessages();
+          dispatch(setSelectedChatUser({ isLoading: false, user: newUser as unknown as { _id?: string; username?: string; avatarColor?: string; profilePicture?: string; [key: string]: unknown } }));
+          // Add chat users to create the conversation
+          if (profile?.username) {
+            chatService.addChatUsers({ userOne: profile.username, userTwo: username });
+          }
+        }
       } else {
-        // Clear if user not found in chatList
-        dispatch(setSelectedChatUser({ isLoading: false, user: null }));
+        // chatList not loaded yet, but we have params - create temporary user object
+        const tempUser: ChatUser = {
+          receiverId: id,
+          receiverUsername: username,
+          senderId: profile?._id as string,
+          senderUsername: profile?.username as string,
+          body: ''
+        };
+        ChatUtils.joinRoomEvent(tempUser, profile || {});
+        ChatUtils.clearPrivateChatMessages();
+        dispatch(setSelectedChatUser({ isLoading: false, user: tempUser as unknown as { _id?: string; username?: string; avatarColor?: string; profilePicture?: string; [key: string]: unknown } }));
+        // Add chat users to create the conversation
+        if (profile?.username) {
+          chatService.addChatUsers({ userOne: profile.username, userTwo: username });
+        }
       }
-    } else if ((username || id) && chatList.length === 0) {
-      // Clear if we have params but chatList isn't loaded yet
-      dispatch(setSelectedChatUser({ isLoading: false, user: null }));
     }
-  }, [searchParams, chatList, dispatch]);
+  }, [searchParams, chatList, dispatch, profile]);
 
   const hasSelectedChat = !!selectedChatUser;
 

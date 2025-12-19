@@ -178,11 +178,15 @@ const Streams = () => {
         postReactions?: unknown;
       }
 
-      const handleUpdateComment = (reactionData: CommentData) => {
+      const handleUpdateComment = (commentData: CommentData) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === reactionData?.postId);
-        if (post && reactionData.postReactions) {
-          const updatedPost = { ...post, reactions: reactionData.postReactions };
+        const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === commentData?.postId);
+        if (post) {
+          const updatedPost = { 
+            ...post, 
+            commentsCount: commentData.commentsCount !== undefined ? String(commentData.commentsCount) : post.commentsCount,
+            reactions: commentData.postReactions || post.reactions
+          };
           dispatch(updatePostInList(updatedPost));
         }
       };
