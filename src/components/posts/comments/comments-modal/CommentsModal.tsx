@@ -100,7 +100,6 @@ const CommentListItem = memo(({
       data-testid="modal-list-item"
       ref={(el) => {
         if (commentId) {
-          // eslint-disable-next-line react-hooks/immutability
           commentRefs.current[commentId] = el;
         }
       }}
@@ -169,7 +168,6 @@ const CommentListItem = memo(({
           </div>
           <div className="comment-reactions-section">
             <div className="comment-reactions-wrapper" ref={(el) => {
-              // eslint-disable-next-line react-hooks/immutability
               reactionsRefs.current[commentId] = el;
             }}>
               <div 
@@ -244,10 +242,19 @@ CommentListItem.displayName = 'CommentListItem';
 const CommentsModal = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { commentsModalIsOpen, data } = useSelector((state: RootState) => state.modal);
-  const { post: postFromRedux } = useSelector((state: RootState) => state.post);
-  const { posts: allPosts } = useSelector((state: RootState) => state.allPosts);
-  const { profile } = useSelector((state: RootState) => state.user);
+  // Use shallow equality checks to prevent unnecessary re-renders
+  const { commentsModalIsOpen, data } = useSelector((state: RootState) => state.modal, (left, right) => 
+    left.commentsModalIsOpen === right.commentsModalIsOpen && left.data === right.data
+  );
+  const { post: postFromRedux } = useSelector((state: RootState) => state.post, (left, right) => 
+    left.post === right.post
+  );
+  const { posts: allPosts } = useSelector((state: RootState) => state.allPosts, (left, right) => 
+    left.posts === right.posts
+  );
+  const { profile } = useSelector((state: RootState) => state.user, (left, right) => 
+    left.profile === right.profile
+  );
   const [postComments, setPostComments] = useState<CommentData[]>([]);
   const [postData, setPostData] = useState<PostData | null>(null);
   const [showReactionsForComment, setShowReactionsForComment] = useState<string | null>(null);
@@ -280,38 +287,33 @@ const CommentsModal = () => {
     return privacy?.icon || null;
   };
 
-  const getPostComments = useCallback(async () => {
+  // Extract comment processing logic to reuse for deferred updates
+  const processCommentsResponse = useCallback((response: { data?: unknown }) => {
     try {
-      // Use postId from state (either from modal data or Redux post)
-      const currentPostId = postId;
-      if (!currentPostId) {
-        setPostComments([]);
-        return;
-      }
-      const response = await postService.getPostComments(currentPostId);
-      
       // Handle different possible response structures
       let comments: CommentData[] = [];
+      const responseData = (response as { data?: unknown }).data;
       
       // Try response.data.comments first (most common)
-      if (response.data?.comments && Array.isArray(response.data.comments)) {
-        comments = response.data.comments;
+      if (responseData && typeof responseData === 'object' && 'comments' in responseData && Array.isArray((responseData as { comments?: unknown }).comments)) {
+        comments = (responseData as { comments: CommentData[] }).comments;
       }
       // Try response.data.data.comments
-      else if (response.data?.data?.comments && Array.isArray(response.data.data.comments)) {
-        comments = response.data.data.comments;
+      else if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+        const nestedData = (responseData as { data?: unknown }).data;
+        if (nestedData && typeof nestedData === 'object' && 'comments' in nestedData && Array.isArray((nestedData as { comments?: unknown }).comments)) {
+          comments = (nestedData as { comments: CommentData[] }).comments;
+        } else if (Array.isArray(nestedData)) {
+          comments = nestedData as CommentData[];
+        }
       }
       // Try if response.data is directly an array
-      else if (Array.isArray(response.data)) {
-        comments = response.data;
-      }
-      // Try response.data.data as array
-      else if (Array.isArray(response.data?.data)) {
-        comments = response.data.data;
+      else if (Array.isArray(responseData)) {
+        comments = responseData as CommentData[];
       }
       // Last resort: try to use response.data if it exists
-      else if (response.data) {
-        comments = Array.isArray(response.data) ? response.data : [];
+      else if (responseData) {
+        comments = Array.isArray(responseData) ? (responseData as CommentData[]) : [];
       }
       
       // Process comments - reactions and gifUrl should now be included in API response from backend
@@ -356,7 +358,41 @@ const CommentsModal = () => {
       }
       setPostComments([]);
     }
-  }, [postId, dispatch]);
+  }, [dispatch]);
+
+  const getPostComments = useCallback(async () => {
+    try {
+      // Use postId from state (either from modal data or Redux post)
+      const currentPostId = postId;
+      if (!currentPostId) {
+        setPostComments([]);
+        return;
+      }
+      const response = await postService.getPostComments(currentPostId);
+      
+      // If user is scrolling, defer the state update until scroll ends
+      if (isScrollingRef.current) {
+        // Store the response and apply it after scroll ends
+        const applyUpdate = () => {
+          if (!isScrollingRef.current) {
+            // Apply the update now that scrolling has stopped
+            processCommentsResponse(response);
+          } else {
+            // Still scrolling, check again in 100ms
+            setTimeout(applyUpdate, 100);
+          }
+        };
+        setTimeout(applyUpdate, 100);
+        return;
+      }
+      
+      // Process and apply comments immediately if not scrolling
+      processCommentsResponse(response);
+    } catch (error) {
+      console.error('Error fetching post comments:', error);
+      setPostComments([]);
+    }
+  }, [postId, processCommentsResponse]);
 
   const closeCommentsModal = () => {
     dispatch(closeModal());
@@ -439,6 +475,55 @@ const CommentsModal = () => {
       
       const currentUserReaction = getUserReaction(commentBeforeUpdate);
       const isRemoving = currentUserReaction === reaction;
+      
+      // If scrolling, defer the optimistic update until scroll ends
+      if (isScrollingRef.current) {
+        // Queue the update for after scrolling
+        const applyUpdate = () => {
+          if (!isScrollingRef.current) {
+            // Apply optimistic update now that scrolling has stopped
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = cloneDeep(comment);
+                const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
+                
+                if (isRemoving) {
+                  updatedComment.reaction = currentReactions.filter(
+                    (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
+                  );
+                  updatedComment.userReaction = '';
+                } else {
+                  const existingReactionIndex = currentReactions.findIndex(
+                    (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
+                  );
+                  
+                  const newReaction: CommentReaction = {
+                    senderName: profile?.username || '',
+                    username: profile?.username || '',
+                    type: reaction
+                  };
+                  
+                  if (existingReactionIndex > -1) {
+                    const updatedReactions = [...currentReactions];
+                    updatedReactions[existingReactionIndex] = newReaction;
+                    updatedComment.reaction = updatedReactions;
+                  } else {
+                    updatedComment.reaction = [...currentReactions, newReaction];
+                  }
+                  updatedComment.userReaction = reaction;
+                }
+                
+                return updatedComment;
+              }
+              return comment;
+            }));
+          } else {
+            // Still scrolling, check again
+            setTimeout(applyUpdate, 100);
+          }
+        };
+        setTimeout(applyUpdate, 100);
+      }
       
       // Optimistically update the comment in the list (like chat messages)
       // Use functional setState to avoid depending on postComments
@@ -630,7 +715,7 @@ const CommentsModal = () => {
   }, [postComments]);
 
   // Track scrolling to prevent unnecessary updates during scroll
-  // Use requestAnimationFrame to throttle scroll events and prevent re-renders
+  // Use a more aggressive approach: completely prevent state updates during scroll
   useEffect(() => {
     const container = commentsContainerRef.current;
     if (!container) return;
@@ -638,8 +723,17 @@ const CommentsModal = () => {
     let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
     let rafId: number | null = null;
     let isScrolling = false;
+    let lastScrollTime = 0;
     
     const handleScroll = () => {
+      const now = performance.now();
+      
+      // Throttle scroll detection - only update flag every 100ms
+      if (now - lastScrollTime < 100) {
+        return;
+      }
+      lastScrollTime = now;
+      
       if (!isScrolling) {
         isScrolling = true;
         isScrollingRef.current = true;
@@ -655,17 +749,18 @@ const CommentsModal = () => {
         cancelAnimationFrame(rafId);
       }
       
-      // Use RAF to batch scroll events
+      // Use RAF to batch scroll events and debounce the end detection
       rafId = requestAnimationFrame(() => {
         // Reset scrolling flag after scroll ends (debounced)
         scrollTimeout = setTimeout(() => {
           isScrolling = false;
           isScrollingRef.current = false;
-        }, 200);
+        }, 300); // Increased debounce time
       });
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Use passive listener for better performance
+    container.addEventListener('scroll', handleScroll, { passive: true, capture: false });
     
     return () => {
       container.removeEventListener('scroll', handleScroll);
@@ -1081,10 +1176,15 @@ const CommentsModal = () => {
     prevCommentsLengthRef.current = postComments.length;
   }, [postComments.length]);
 
-  // Memoize comments list to avoid conditional hook call
-  // Refs are excluded from dependencies as they don't change and shouldn't trigger re-renders
-  // Only recalculate when postComments actually changes (new comments added/removed)
-  // showReactionsForComment is included but CommentListItem memo will prevent unnecessary re-renders
+  // Create a stable key based on comment IDs and showReactionsForComment
+  // This ensures useMemo only recalculates when comments actually change
+  const commentsKey = useMemo(() => {
+    const ids = postComments.map(c => c._id || '').join(',');
+    return `${ids}|${showReactionsForComment || ''}`;
+  }, [postComments, showReactionsForComment]);
+  
+  // Memoize comments list - only recalculate when commentsKey changes
+  // This prevents recalculation during scroll or other unrelated state updates
   const memoizedComments = useMemo(() => {
     return postComments.map((commentData) => {
       const commentId = commentData?._id || '';
@@ -1110,9 +1210,9 @@ const CommentsModal = () => {
         />
       );
     });
-    // Include showReactionsForComment but CommentListItem memo will prevent unnecessary re-renders
-    // postComments is included - React will use shallow comparison, but CommentListItem memo prevents child re-renders
-  }, [postComments, showReactionsForComment, getUserReaction, toggleReactionsForComment, addCommentReaction]);
+    // Only depend on commentsKey - this is a stable string that only changes when comments/reactions actually change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentsKey]);
 
   if (!commentsModalIsOpen) {
     return null;
