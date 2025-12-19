@@ -76,6 +76,7 @@ interface CommentListItemProps {
 }
 
 // Memoized comment list item to prevent unnecessary re-renders when scrolling
+// Custom comparison function to only re-render when necessary props change
 const CommentListItem = memo(({
   commentId,
   commentData,
@@ -199,6 +200,31 @@ const CommentListItem = memo(({
       </div>
     </li>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if relevant props changed
+  // Refs (reactionsRefs, commentRefs) and reactionsMap are excluded as they don't change
+  // Compare commentData fields that actually matter for rendering
+  const commentDataChanged = 
+    prevProps.commentData?._id !== nextProps.commentData?._id ||
+    prevProps.commentData?.comment !== nextProps.commentData?.comment ||
+    prevProps.commentData?.username !== nextProps.commentData?.username ||
+    prevProps.commentData?.profilePicture !== nextProps.commentData?.profilePicture ||
+    prevProps.commentData?.avatarColor !== nextProps.commentData?.avatarColor ||
+    prevProps.commentData?.gifUrl !== nextProps.commentData?.gifUrl ||
+    prevProps.commentData?.reaction !== nextProps.commentData?.reaction ||
+    prevProps.commentData?.reactions !== nextProps.commentData?.reactions ||
+    prevProps.commentData?.userReaction !== nextProps.commentData?.userReaction;
+  
+  return (
+    prevProps.commentId === nextProps.commentId &&
+    !commentDataChanged &&
+    prevProps.userReaction === nextProps.userReaction &&
+    prevProps.totalReactions === nextProps.totalReactions &&
+    prevProps.gifUrl === nextProps.gifUrl &&
+    prevProps.showReactionsForComment === nextProps.showReactionsForComment &&
+    prevProps.toggleReactionsForComment === nextProps.toggleReactionsForComment &&
+    prevProps.addCommentReaction === nextProps.addCommentReaction
+  );
 });
 
 CommentListItem.displayName = 'CommentListItem';
@@ -219,6 +245,7 @@ const CommentsModal = () => {
   const lastAddedCommentId = useRef<string | null>(null);
   const savingReactionsRef = useRef<Set<string>>(new Set()); // Track comments currently saving reactions
   const lastLoadedPostIdRef = useRef<string | undefined>(undefined); // Track last postId we loaded comments for
+  const postCommentsRef = useRef<CommentData[]>([]); // Ref to access latest postComments without causing re-renders
   
   // Get post ID from modal data (set when opening) or from post Redux state
   const modalData = data as { postId?: string; post?: PostData } | null;
@@ -380,7 +407,9 @@ const CommentsModal = () => {
     }
     
     // Get the current comment and user reaction before updating
-    const commentBeforeUpdate = postComments.find((c) => c._id === commentId);
+    // Use ref to get latest comments without causing re-renders
+    const currentComments = postCommentsRef.current;
+    const commentBeforeUpdate = currentComments.find((c) => c._id === commentId);
     if (!commentBeforeUpdate) {
       console.error('❌ Comment not found:', commentId);
       return;
@@ -399,7 +428,8 @@ const CommentsModal = () => {
       const isRemoving = currentUserReaction === reaction;
       
       // Optimistically update the comment in the list (like chat messages)
-      const updatedComments = postComments.map((comment) => {
+      // Use functional setState to avoid depending on postComments
+      setPostComments((prevComments) => prevComments.map((comment) => {
         if (comment._id === commentId) {
           const updatedComment = cloneDeep(comment);
           
@@ -439,9 +469,7 @@ const CommentsModal = () => {
           return updatedComment;
         }
         return comment;
-      });
-      
-      setPostComments(updatedComments);
+      }));
       
       // Call API to save reaction using the post reaction endpoint with commentId
       try {
@@ -543,7 +571,7 @@ const CommentsModal = () => {
       // Reload comments on error
       getPostComments();
     }
-  }, [postComments, postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]);
+  }, [postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]);
 
   const toggleReactionsForComment = useCallback((commentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -582,6 +610,11 @@ const CommentsModal = () => {
       setPostData(null);
     }
   }, [commentsModalIsOpen, currentPost]);
+
+  // Keep postCommentsRef in sync with postComments
+  useEffect(() => {
+    postCommentsRef.current = postComments;
+  }, [postComments]);
 
   // Load comments when modal opens or post ID changes
   useEffect(() => {
@@ -838,6 +871,7 @@ const CommentsModal = () => {
   }, [postComments]);
 
   // Memoize comments list to avoid conditional hook call
+  // Refs are excluded from dependencies as they don't change and shouldn't trigger re-renders
   const memoizedComments = useMemo(() => {
     return postComments.map((commentData) => {
       const commentId = commentData?._id || '';
@@ -863,7 +897,7 @@ const CommentsModal = () => {
         />
       );
     });
-  }, [postComments, showReactionsForComment, getUserReaction, toggleReactionsForComment, addCommentReaction, commentRefs, reactionsRefs]);
+  }, [postComments, showReactionsForComment, getUserReaction, toggleReactionsForComment, addCommentReaction]);
 
   if (!commentsModalIsOpen) {
     return null;
