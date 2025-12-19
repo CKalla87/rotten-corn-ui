@@ -279,17 +279,43 @@ const EditPost = () => {
         updatedPostData.imgVersion = '';
         updatedPostData.videoId = '';
         updatedPostData.videoVersion = '';
+        // Validate that we have a postId before making the request
+        const postId = postState._id || postState.id;
+        if (!postId || postId.trim() === '') {
+          PostUtils.dispatchNotification(
+            'Post ID is missing. Cannot update post.',
+            'error',
+            setApiResponse,
+            setLoading,
+            setDisable,
+            dispatch
+          );
+          return;
+        }
         await PostUtils.sendUpdatePostWithFileRequest(
           type,
-          postState._id || '',
+          postId,
           updatedPostData,
           setApiResponse,
           setLoading,
           dispatch
         );
       } else {
+        // Validate that we have a postId before making the request
+        const postId = postState._id || postState.id;
+        if (!postId || postId.trim() === '') {
+          PostUtils.dispatchNotification(
+            'Post ID is missing. Cannot update post.',
+            'error',
+            setApiResponse,
+            setLoading,
+            setDisable,
+            dispatch
+          );
+          return;
+        }
         await PostUtils.sendUpdatePostRequest(
-          postState._id || '',
+          postId,
           updatedPostData,
           setApiResponse,
           setLoading,

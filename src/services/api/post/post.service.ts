@@ -69,16 +69,25 @@ class PostService {
   }
 
   async updatePost(postId: string, body: unknown) {
+    if (!postId || postId.trim() === '') {
+      throw new Error('Post ID is required for updating a post');
+    }
     const response = await axios.put(`/post/${postId}`, body);
     return response;
   }
 
   async updatePostWithImage(postId: string, body: unknown) {
+    if (!postId || postId.trim() === '') {
+      throw new Error('Post ID is required for updating a post with image');
+    }
     const response = await axios.put(`/post/image/${postId}`, body);
     return response;
   }
 
   async updatePostWithVideo(postId: string, body: unknown) {
+    if (!postId || postId.trim() === '') {
+      throw new Error('Post ID is required for updating a post with video');
+    }
     const response = await axios.put(`/post/video/${postId}`, body);
     return response;
   }

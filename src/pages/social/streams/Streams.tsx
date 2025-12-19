@@ -29,6 +29,7 @@ const Streams = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPostsCount, setTotalPostsCount] = useState(0);
   const appPosts = useRef<unknown[]>([]);
+  const initialLoadCompleteRef = useRef(false);
   const PAGE_SIZE = 10;
 
   const storedUsername = useLocalStorage('username', 'get');
@@ -37,10 +38,26 @@ const Streams = () => {
   const getAllPosts = async (page: number = currentPage) => {
     try {
       const response = await postService.getAllPosts(page);
-      if (response.data.posts.length > 0) {
-        appPosts.current = [...posts, ...response.data.posts];
-        const allPosts = uniqBy(appPosts.current, '_id');
-        setPosts(allPosts);
+      if (response.data.posts && response.data.posts.length >= 0) {
+        // Always update posts, even if empty array (to clear state properly)
+        if (page === 1) {
+          // First page - replace posts
+          appPosts.current = response.data.posts;
+          setPosts(response.data.posts);
+          // Also update Redux state
+          dispatch(addToPosts(response.data.posts));
+        } else {
+          // Subsequent pages - append posts
+          appPosts.current = [...posts, ...response.data.posts];
+          const allPosts = uniqBy(appPosts.current, '_id');
+          setPosts(allPosts);
+          // Also update Redux state
+          dispatch(addToPosts(allPosts));
+        }
+        // Update total count if provided
+        if (response.data.totalPosts !== undefined) {
+          setTotalPostsCount(response.data.totalPosts);
+        }
       }
       setLoading(false);
     } catch (error: unknown) {
@@ -112,9 +129,16 @@ const Streams = () => {
   useInfiniteScroll(bodyRef as React.RefObject<HTMLElement>, bottomLineRef as React.RefObject<HTMLElement>, fetchPostData);
 
   useEffectOnce(() => {
+    // Reset initial load flag on mount (page refresh)
+    initialLoadCompleteRef.current = false;
+    
     getReactionsByUsername();
     deleteSelectedPostId();
-    dispatch(getPosts(1));
+    // Fetch posts via Redux and also directly as fallback
+    dispatch(getPosts(1)).catch(() => {
+      // If Redux fetch fails, try direct API call
+      getAllPosts(1);
+    });
     dispatch(getUserSuggestions());
     getUserFollowing();
   });
@@ -125,25 +149,36 @@ const Streams = () => {
 
   // Sync local posts state with Redux state when Redux updates
   useEffect(() => {
-    // Use setTimeout to defer state update and avoid synchronous setState in effect warning
-    const timeoutId = setTimeout(() => {
-      if (derivedPosts.length > 0) {
-        setPosts(derivedPosts);
-      }
-    }, 0);
-    return () => clearTimeout(timeoutId);
-  }, [derivedPosts]);
-
-  useEffect(() => {
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
       setLoading(derivedLoading);
-      setPosts(derivedPosts);
-      setTotalPostsCount(derivedTotalPostsCount);
-      // Update appPosts ref when Redux posts change
-      appPosts.current = derivedPosts;
+      
+      // On initial load (refresh), always sync from Redux when loading completes
+      // This ensures posts are loaded on page refresh
+      if (!initialLoadCompleteRef.current) {
+        if (!derivedLoading) {
+          // Initial load complete - sync posts from Redux (even if empty)
+          // This is critical for page refresh - we need to load posts from Redux
+          setPosts(derivedPosts);
+          appPosts.current = derivedPosts;
+          initialLoadCompleteRef.current = true;
+        }
+      } 
+      // After initial load, only update if Redux has posts (don't clear on temporary empty state)
+      else if (derivedPosts.length > 0) {
+        // Redux has posts - always sync (e.g., new post added via socket)
+        setPosts(derivedPosts);
+        appPosts.current = derivedPosts;
+      }
+      // If Redux is empty after initial load but we have posts, preserve existing posts
+      // This prevents clearing posts when modal opens or other operations
+      
+      // Always update total count if provided
+      if (derivedTotalPostsCount !== undefined) {
+        setTotalPostsCount(derivedTotalPostsCount);
+      }
     }, 0);
-  }, [derivedLoading, derivedPosts, derivedTotalPostsCount]);
+  }, [derivedLoading, derivedPosts, derivedTotalPostsCount, posts.length]);
 
   // Use ref to store latest posts for socket handlers
   const allPostsRef = useRef(allPosts);

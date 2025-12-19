@@ -24,7 +24,7 @@ interface AddPostProps {
 }
 
 const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
-  const { gifModalIsOpen, feeling } = useSelector((state: RootState) => state.modal);
+  const { gifModalIsOpen, feeling, isOpen } = useSelector((state: RootState) => state.modal);
   const { gifUrl, image, privacy, video } = useSelector((state: RootState) => state.post);
   const { profile } = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch<AppDispatch>();
@@ -52,6 +52,7 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
   const imageInputRef = useRef<HTMLDivElement>(null);
   const inputFocusedRef = useRef(false);
   const imageInputFocusedRef = useRef(false);
+  const modalWasOpenRef = useRef(false);
   const maxNumberOfCharacters = 100;
 
   const selectBackground = (bgColor: string) => {
@@ -117,7 +118,44 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     }
   };
 
+  const resetFormState = () => {
+    // Reset all local state to initial values
+    setPostData({
+      post: '',
+      bgColor: '#ffffff',
+      privacy: '',
+      feelings: '',
+      gifUrl: '',
+      profilePicture: '',
+      image: '',
+      video: ''
+    });
+    setPostImage('');
+    setSelectedPostImage(null);
+    setSelectedVideo(null);
+    setHasVideo(false);
+    setTextAreaBackground('#ffffff');
+    setAllowedNumberOfCharacters('100/100');
+    setDisable(true);
+    setLoading(false);
+    setApiResponse('');
+    
+    // Clear contentEditable divs
+    if (inputRef.current) {
+      inputRef.current.textContent = '';
+    }
+    if (imageInputRef.current) {
+      imageInputRef.current.textContent = '';
+    }
+    
+    // Reset focus refs
+    inputFocusedRef.current = false;
+    imageInputFocusedRef.current = false;
+  };
+
   const closePostModal = () => {
+    // Clear all local state before closing modal
+    resetFormState();
     PostUtils.closePostModal(dispatch);
   };
 
@@ -140,6 +178,7 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     setLoading(!loading);
     setDisable(!disable);
     try {
+      // Always get the latest content from the DOM to ensure we're posting what's actually displayed
       const updatedPostData = { ...postData };
       if (feeling) {
         updatedPostData.feelings = feeling;
@@ -147,10 +186,14 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
       updatedPostData.privacy = privacy || 'Public';
       updatedPostData.gifUrl = gifUrl || '';
       updatedPostData.profilePicture = profile?.profilePicture || '';
-      if (postImage) {
-        updatedPostData.post = imageInputRef.current?.textContent || updatedPostData.post || '';
+      
+      // Get the actual text content from the visible input (always use the current DOM content)
+      if (postImage || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo) {
+        // If there's an image/video, use the image input ref
+        updatedPostData.post = imageInputRef.current?.textContent?.trim() || '';
       } else {
-        updatedPostData.post = inputRef.current?.textContent || updatedPostData.post || '';
+        // Otherwise use the regular input ref
+        updatedPostData.post = inputRef.current?.textContent?.trim() || '';
       }
       if (selectedPostItem || selectedImage || selectedVideo || selectedPostVideo) {
         let result = '';
@@ -206,6 +249,8 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
               // If no post in response, socket event will handle it, but remove temp post
               dispatch(removePost(optimisticPost._id));
             }
+            // Clear form state before closing modal
+            resetFormState();
             PostUtils.closePostModal(dispatch);
           }
         } catch (error) {
@@ -237,6 +282,8 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
             }
             setApiResponse('success');
             setLoading(false);
+            // Clear form state before closing modal
+            resetFormState();
             PostUtils.closePostModal(dispatch);
           }
         } catch (error) {
@@ -257,6 +304,18 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
       );
     }
   };
+
+  // Reset form state when modal opens (only when transitioning from closed to open)
+  useEffect(() => {
+    if (isOpen && !modalWasOpenRef.current) {
+      // Reset form state when modal opens to ensure clean state
+      resetFormState();
+      modalWasOpenRef.current = true;
+    } else if (!isOpen) {
+      // Track when modal closes
+      modalWasOpenRef.current = false;
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     PostUtils.positionCursor('editable');
