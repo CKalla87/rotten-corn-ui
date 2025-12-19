@@ -100,6 +100,7 @@ const CommentListItem = memo(({
       data-testid="modal-list-item"
       ref={(el) => {
         if (commentId) {
+          // eslint-disable-next-line react-hooks/immutability
           commentRefs.current[commentId] = el;
         }
       }}
@@ -168,6 +169,7 @@ const CommentListItem = memo(({
           </div>
           <div className="comment-reactions-section">
             <div className="comment-reactions-wrapper" ref={(el) => {
+              // eslint-disable-next-line react-hooks/immutability
               reactionsRefs.current[commentId] = el;
             }}>
               <div 
