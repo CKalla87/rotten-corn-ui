@@ -52,7 +52,34 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   const getPostReactions = useCallback(async () => {
     try {
       const response = await postService.getPostReactions(post?._id || '');
-      setPostReactions(response.data.reactions);
+      const reactionsArray = response.data?.reactions || [];
+      setPostReactions(reactionsArray);
+      
+      // Convert reactions array to count object and update reactions state
+      // This ensures reactions are displayed even if post.reactions is not updated
+      if (reactionsArray.length > 0) {
+        const reactionsCount: PostReactionsCount = {};
+        reactionsArray.forEach((reaction: PostReaction) => {
+          if (reaction.type) {
+            const reactionType = reaction.type.toLowerCase();
+            reactionsCount[reactionType] = (reactionsCount[reactionType] || 0) + 1;
+          }
+        });
+        
+        // Update reactions state with the calculated counts
+        const normalizedReactions: Record<string, number> = {};
+        Object.keys(reactionsCount).forEach((key) => {
+          const value = reactionsCount[key];
+          if (typeof value === 'number') {
+            normalizedReactions[key] = value;
+          }
+        });
+        const formattedReactions = Utils.formattedReactions(normalizedReactions);
+        // Use setTimeout to avoid synchronous setState
+        setTimeout(() => {
+          setReactions(formattedReactions);
+        }, 0);
+      }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
@@ -118,6 +145,7 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   };
 
   useEffect(() => {
+    // First try to use post.reactions if it's in count format
     const reactionsCount = post?.reactions as PostReactionsCount || {};
     const normalizedReactions: Record<string, number> = {};
     Object.keys(reactionsCount).forEach((key) => {
@@ -126,10 +154,20 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
         normalizedReactions[key] = value;
       }
     });
-    const formattedReactions = Utils.formattedReactions(normalizedReactions);
+    
+    // Only set reactions from post.reactions if we have valid counts
+    // Otherwise, getPostReactions will fetch and set them
+    if (Object.keys(normalizedReactions).length > 0) {
+      const formattedReactions = Utils.formattedReactions(normalizedReactions);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setReactions(formattedReactions);
+      }, 0);
+    }
+    
+    // Always fetch latest reactions from API to ensure accuracy
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
-      setReactions(formattedReactions);
       void getPostReactions();
     }, 0);
   }, [post, getPostReactions]);
