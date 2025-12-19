@@ -228,7 +228,7 @@ const Post = ({ post, showIcons = false }: PostProps) => {
         {post?.post && post?.bgColor === '#ffffff' && <p>{post.post}</p>}
         {post?.post && post?.bgColor !== '#ffffff' && (
           <div className="user-post-with-bg" style={{ backgroundColor: `${post?.bgColor}` }}>
-            {post.post}
+            <span className="user-post-text">{post.post}</span>
           </div>
         )}
         {post?.gifUrl && (
