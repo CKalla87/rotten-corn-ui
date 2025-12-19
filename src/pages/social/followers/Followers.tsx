@@ -143,6 +143,8 @@ const Followers = () => {
                 onClickBtnOne={() => blockUser(data)}
                 onClickBtnTwo={() => unblockUser(data)}
                 onNavigateToProfile={() => ProfileUtils.navigateToProfile(data, navigate)}
+                userId={undefined}
+                username={undefined}
               />
             </div>
           ))}

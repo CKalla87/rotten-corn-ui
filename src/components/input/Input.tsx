@@ -16,6 +16,7 @@ interface InputProps {
   onClick?: (e: React.MouseEvent<HTMLInputElement>) => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(({ 
@@ -32,7 +33,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   handleChange,
   onClick,
   onFocus,
-  onBlur
+  onBlur,
+  onKeyDown
 }, ref) => {
   return (
     <div className="form-row">
@@ -55,6 +57,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
         onClick={onClick}
         onFocus={onFocus}
         onBlur={onBlur}
+        onKeyDown={onKeyDown}
         className={`form-input ${className || ''}`}
         style={style}
         autoComplete="false"

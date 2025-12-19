@@ -7,6 +7,7 @@ import Avatar from '@components/avatar/Avatar';
 import ImageModal from '@components/image-modal/ImageModal';
 import Dialog from '@components/dialog/Dialog';
 import PostCommentSection from '@components/posts/post-comment-section/PostCommentSection';
+import CommentArea from '@components/posts/comment-area/CommentArea';
 import ReactionsModal from '@components/posts/reactions/reactions-modal/ReactionsModal';
 import CommentsModal from '@components/posts/comments/comments-modal/CommentsModal';
 import CommentInputBox from '@components/posts/comments/comment-input/CommentInputBox';
@@ -321,12 +322,12 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           </div>
         )}
       </div>
+      <hr />
       {(post?.reactions && post.reactions.length > 0) || (post?.commentsCount && Number(post.commentsCount) > 0) ? (
-        <>
-          <hr />
-          <PostCommentSection post={post} />
-        </>
-      ) : null}
+        <PostCommentSection post={post} />
+      ) : (
+        <CommentArea post={post} />
+      )}
       {selectedPostId === (post._id as string) && <CommentInputBox post={post as Record<string, unknown>} />}
       </div>
     </>

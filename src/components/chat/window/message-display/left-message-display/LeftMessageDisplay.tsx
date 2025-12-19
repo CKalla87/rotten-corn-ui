@@ -67,25 +67,6 @@ const LeftMessageDisplay = ({
 }: LeftMessageDisplayProps) => {
   return (
     <div className="message left-message" data-testid="left-message">
-      <div className="message-reactions-container">
-        {toggleReaction && index === activeElementIndex && (
-          <div ref={reactionRef}>
-            <Reactions
-              showLabel={false}
-              handleClick={(event: string) => {
-                const body = {
-                  conversationId: chat?.conversationId,
-                  messageId: chat?._id,
-                  reaction: event,
-                  type: 'add'
-                };
-                handleReactionClick?.(body);
-                setToggleReaction?.(false);
-              }}
-            />
-          </div>
-        )}
-      </div>
       <div className="left-message-bubble-container">
         <div className="message-img">
           <Avatar
@@ -97,6 +78,25 @@ const LeftMessageDisplay = ({
           />
         </div>
         <div className="message-content-container">
+          <div className="message-reactions-container">
+            {toggleReaction && index === activeElementIndex && (
+              <div ref={reactionRef}>
+                <Reactions
+                  showLabel={false}
+                  handleClick={(event: string) => {
+                    const body = {
+                      conversationId: chat?.conversationId,
+                      messageId: chat?._id,
+                      reaction: event,
+                      type: 'add'
+                    };
+                    handleReactionClick?.(body);
+                    setToggleReaction?.(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <div className="message-content-container-wrapper">
             <div
               className="message-content"
@@ -206,7 +206,13 @@ const LeftMessageDisplay = ({
               )}
             </div>
             {showReactionIcon && index === activeElementIndex && !chat?.deleteForMe && (
-              <div className="message-content-emoji-container" onClick={() => setToggleReaction?.(true)}>
+              <div 
+                className="message-content-emoji-container" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToggleReaction?.(true);
+                }}
+              >
                 &#9786;
               </div>
             )}

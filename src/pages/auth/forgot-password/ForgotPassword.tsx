@@ -68,6 +68,7 @@ const ForgotPassword = () => {
                     label={loading ? 'FORGOT PASSWORD IN PROGRESS...' : 'FORGOT PASSWORD'}
                     className="auth-button button" 
                     disabled={!email}
+                    type="submit"
                   />
                   <Link to={'/'}>
                     <span className="login">

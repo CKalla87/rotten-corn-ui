@@ -67,26 +67,26 @@ const RightMessageDisplay = ({
 }: RightMessageDisplayProps) => {
   return (
     <div className="message right-message" data-testid="right-message">
-      <div className="message-right-reactions-container">
-        {togglReaction && index === activeElementIndex && !chat?.deleteForEveryone && (
-          <div ref={reactionRef}>
-            <Reactions
-              showLabel={false}
-              handleClick={(event: string) => {
-                const body = {
-                  conversationId: chat?.conversationId,
-                  messageId: chat?._id,
-                  reaction: event,
-                  type: 'add'
-                };
-                handleReactionClick?.(body);
-                setToggleReaction?.(false);
-              }}
-            />
-          </div>
-        )}
-      </div>
       <div className="message-right-content-container-wrapper">
+        <div className="message-reactions-container">
+          {togglReaction && index === activeElementIndex && !chat?.deleteForEveryone && (
+            <div ref={reactionRef}>
+              <Reactions
+                showLabel={false}
+                handleClick={(event: string) => {
+                  const body = {
+                    conversationId: chat?.conversationId,
+                    messageId: chat?._id,
+                    reaction: event,
+                    type: 'add'
+                  };
+                  handleReactionClick?.(body);
+                  setToggleReaction?.(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
         <div
           data-testid="message-content"
           className="message-content"
@@ -121,7 +121,13 @@ const RightMessageDisplay = ({
             />
           )}
           {showReactionIcon && index === activeElementIndex && !chat?.deleteForEveryone && (
-            <div className="message-content-emoji-right-container" onClick={() => setToggleReaction?.(true)}>
+            <div 
+              className="message-content-emoji-right-container" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setToggleReaction?.(true);
+              }}
+            >
               &#9786;
             </div>
           )}

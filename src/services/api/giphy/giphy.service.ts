@@ -1,22 +1,21 @@
 import axios from 'axios';
 
 const GIPHY_URL = 'https://api.giphy.com/v1/gifs';
-// Handle import.meta which may not be available in test environment
-let API_KEY = '';
-try {
-  // Type-safe check for import.meta in both Vite and Jest environments
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const importMeta = (globalThis as any).import?.meta || (typeof (globalThis as any).import !== 'undefined' && (globalThis as any).import.meta);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const env = importMeta?.env as any;
-  if (env?.VITE_GIPHY_API_KEY) {
-    API_KEY = env.VITE_GIPHY_API_KEY;
+
+// Get API key from environment - Vite exposes import.meta.env
+// Similar pattern to axios.ts for consistency
+const getApiKey = (): string => {
+  // Check runtime injection first (from window.__ENV__) - for hosted environments
+  if (typeof window !== 'undefined' && window.__ENV__?.VITE_GIPHY_API_KEY) {
+    return window.__ENV__.VITE_GIPHY_API_KEY;
   }
-} catch (error) {
-  // In test environment, API_KEY will be empty string
-  API_KEY = '';
-  console.error('Error reading Giphy API key:', error);
-}
+  
+  // Fall back to build-time environment variables (Vite)
+  // This works in Vite runtime - tests should mock this module
+  return import.meta.env.VITE_GIPHY_API_KEY || '';
+};
+
+const API_KEY = getApiKey();
 
 // Log API key status for debugging (but don't log the actual key)
 if (!API_KEY) {
@@ -24,12 +23,6 @@ if (!API_KEY) {
   console.error('   Get an API key from: https://developers.giphy.com/dashboard/');
   console.error('   Then add: VITE_GIPHY_API_KEY=your-key-here to your .env file');
   console.error('   ⚠️ IMPORTANT: You MUST restart your dev server (npm run dev) after adding the key!');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const importMeta = (globalThis as any).import?.meta || (typeof (globalThis as any).import !== 'undefined' && (globalThis as any).import.meta);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const env = importMeta?.env as any;
-  const keyStatus = env?.VITE_GIPHY_API_KEY ? 'exists but empty' : 'undefined';
-  console.error('   Current VITE_GIPHY_API_KEY:', keyStatus);
 } else {
   console.log('✅ Giphy API key is configured (key length:', API_KEY.length, 'characters)');
   console.log('   Key starts with:', API_KEY.substring(0, 4) + '...');

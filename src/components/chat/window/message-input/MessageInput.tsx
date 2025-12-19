@@ -10,6 +10,7 @@ import loadable from '@loadable/component';
 import { GiphyContainer } from '@components/chat/giphy-container';
 import { ImagePreview } from '@components/chat/image-preview';
 import { ImageUtils } from '@services/utils/image-utils.service';
+import { ChatUtils } from '@services/utils/chat-utils.service';
 import './MessageInput.scss';
 
 const EmojiPickerComponent = loadable(() => import('./EmojiPicker'), {
@@ -18,9 +19,17 @@ const EmojiPickerComponent = loadable(() => import('./EmojiPicker'), {
 
 interface MessageInputProps {
   setChatMessage?: (message: string, url?: string, base64File?: string) => void;
+  receiver?: {
+    username?: string;
+    [key: string]: unknown;
+  };
+  profile?: {
+    username?: string;
+    [key: string]: unknown;
+  };
 }
 
-const MessageInput = ({ setChatMessage }: MessageInputProps) => {
+const MessageInput = ({ setChatMessage, receiver, profile }: MessageInputProps) => {
   const [message, setMessage] = useState('');
   const [showEmojiContainer, setShowEmojiContainer] = useState(false);
   const [showGifContainer, setShowGifContainer] = useState(false);
@@ -36,8 +45,47 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
   const gifContainerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLLIElement>(null);
   const gifButtonRef = useRef<HTMLLIElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
-  const handleClick = () => {
+  const emitStopTyping = () => {
+    if (receiver?.username && profile?.username && isTypingRef.current) {
+      ChatUtils.emitStopTypingEvent(receiver.username, profile.username);
+      isTypingRef.current = false;
+    }
+  };
+
+  const emitTyping = () => {
+    if (receiver?.username && profile?.username && !isTypingRef.current) {
+      ChatUtils.emitTypingEvent(receiver.username, profile.username);
+      isTypingRef.current = true;
+    }
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to stop typing after 3 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      emitStopTyping();
+    }, 3000);
+  };
+
+  const handleClick = (e?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent default form submission
+    if (e) {
+      e.preventDefault();
+    }
+    
+    // Don't send if there's nothing to send
+    if (!message.trim() && !showGifPreview && !showImagePreview) {
+      return;
+    }
+    
+    // Stop typing when message is sent
+    emitStopTyping();
+    
     if (showGifPreview && gifUrl) {
       // Send GIF
       setChatMessage?.(message || 'Sent a GIF', gifUrl, '');
@@ -131,6 +179,17 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
     };
   }, [showEmojiContainer, showGifContainer]);
 
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      emitStopTyping();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
       <div className="chat-inputarea" ref={inputAreaRef} data-testid="chat-inputarea">
@@ -168,7 +227,10 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
             }}
           />
         )}
-        <form onSubmit={handleClick}>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          handleClick(e);
+        }}>
           <ul className="chat-list">
             <li
               className="chat-list-item"
@@ -227,21 +289,43 @@ const MessageInput = ({ setChatMessage }: MessageInputProps) => {
             value={message}
             labelText=""
             placeholder="Message"
-            handleChange={(event) => setMessage(event.target.value)}
+            handleChange={(event) => {
+              setMessage(event.target.value);
+              // Emit typing event when user types
+              if (event.target.value.trim().length > 0) {
+                emitTyping();
+              } else {
+                emitStopTyping();
+              }
+            }}
+            onBlur={() => {
+              // Stop typing when input loses focus
+              emitStopTyping();
+            }}
+            onKeyDown={(e) => {
+              // Handle Enter/Return key to send message
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleClick();
+              }
+            }}
           />
         </form>
-        {(showImagePreview || showGifPreview) && !message ? (
-          <Button label={<FaPaperPlane />} className="paper" handleClick={handleClick} />
-        ) : (
-          <Button label={<FaPaperPlane />} className="paper" handleClick={handleClick} />
-        )}
+        <Button 
+          label={<FaPaperPlane />} 
+          className="paper" 
+          handleClick={() => handleClick()}
+        />
       </div>
     </>
   );
 };
 
 MessageInput.propTypes = {
-  setChatMessage: PropTypes.func
+  setChatMessage: PropTypes.func,
+  receiver: PropTypes.object,
+  profile: PropTypes.object
 };
 
 export default MessageInput;

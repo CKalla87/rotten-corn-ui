@@ -12,15 +12,40 @@
   position: relative;
   overflow: hidden;
 
+  // Mobile styles only apply when on streams page - check if streams is visible
   @media (max-width: 768px) {
-    box-sizing: border-box;
-    width: calc(100% - 20px);
-    max-width: calc(100vw - 40px);
-    min-height: auto;
-    max-height: 90vh;
-    margin: 10px;
-    padding: 0;
-    overflow: visible auto;
+    // Only apply when streams page is present (not on profile or other pages)
+    body:has(.streams:not([style*="display: none"])) & {
+      box-sizing: border-box !important;
+      width: 100% !important;
+      max-width: calc(100vw - 20px) !important;
+      min-height: auto !important;
+      max-height: calc(100vh - 20px) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      position: relative !important;
+      align-self: flex-start !important;
+      margin-top: 0 !important;
+    }
+  }
+
+  @media screen and (max-width: 768px) {
+    // Only apply when streams page is present (not on profile or other pages)
+    body:has(.streams:not([style*="display: none"])) & {
+      box-sizing: border-box !important;
+      width: 100% !important;
+      max-width: calc(100vw - 20px) !important;
+      min-height: auto !important;
+      max-height: calc(100vh - 20px) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      position: relative !important;
+      align-self: flex-start !important;
+    }
   }
 
   &-loading {
@@ -387,10 +412,11 @@ hr {
   &-header {
     display: grid;
     grid-template-areas: "button h2 .";
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: 1fr;
     height: 40px;
     padding: 16px;
+    align-items: center;
   }
 
   &-header h2 {
@@ -400,6 +426,10 @@ hr {
     text-overflow: ellipsis;
     font-weight: 700;
     max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: center;
+    justify-self: center;
   }
 
   &-header .back-button {
@@ -423,34 +453,148 @@ hr {
 }
 
 
+// Mobile header styles only apply when on streams page - check if streams is visible
 @media (max-width:768px) {
-  .modal-box-header {
-    height: auto;
-    min-height: 40px;
-    padding: 12px;
+  // Only apply when streams page is present (not on profile or other pages)
+  body:has(.streams:not([style*="display: none"])) .modal-box-header {
+    height: auto !important;
+    min-height: 40px !important;
+    padding: 12px !important;
   }
 
-  .modal-box-header h2 {
-    white-space: nowrap;
-    font-size: 1rem;
+  body:has(.streams:not([style*="display: none"])) .modal-box-header h2 {
+    white-space: nowrap !important;
+    font-size: 1rem !important;
   }
 
-  .modal-box-header-cancel {
-    height: auto;
-    min-height: 40px;
-    font-size: 1.25rem;
+  body:has(.streams:not([style*="display: none"])) .modal-box-header-cancel {
+    height: auto !important;
+    min-height: 40px !important;
+    font-size: 1.25rem !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  // Only apply when streams page is present (not on profile or other pages)
+  body:has(.streams:not([style*="display: none"])) .modal-box-header {
+    height: auto !important;
+    min-height: 40px !important;
+    padding: 12px !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) .modal-box-header h2 {
+    white-space: nowrap !important;
+    font-size: 1rem !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) .modal-box-header-cancel {
+    height: auto !important;
+    min-height: 40px !important;
+    font-size: 1.25rem !important;
   }
 }
 
 
 
-// Auto-added missing styles
+// Mobile button styles only apply when on streams page - check if streams is visible
 @media (max-width:768px) {
-  .modal-box-button {
-    margin-top: 10px;
-    padding: 10px;
+  // Only apply when streams page is present (not on profile or other pages)
+  body:has(.streams:not([style*="display: none"])) .modal-box-button {
+    margin-top: 10px !important;
+    padding: 10px !important;
   }
 
+  // Fix "Choose a GIF" title to stay on one line on mobile
+  body:has(.streams:not([style*="display: none"])) .modal-giphy-header {
+    grid-template-columns: auto 1fr auto !important;
+    padding: 12px 10px !important;
+    height: auto !important;
+    min-height: 40px !important;
+    align-items: center !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) .modal-giphy-header h2 {
+    font-size: 0.9rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    text-align: center !important;
+    justify-self: center !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) .modal-giphy-header .back-button {
+    font-size: 1.25rem !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    min-width: 32px !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  // Only apply when streams page is present (not on profile or other pages)
+  body:has(.streams:not([style*="display: none"])) .modal-box-button {
+    margin-top: 10px !important;
+    padding: 10px !important;
+  }
+
+  // Fix "Choose a GIF" title to stay on one line on mobile
+  body:has(.streams:not([style*="display: none"])) .modal-giphy-header {
+    grid-template-columns: auto 1fr auto !important;
+    padding: 12px 10px !important;
+    height: auto !important;
+    min-height: 40px !important;
+    align-items: center !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) .modal-giphy-header h2 {
+    font-size: 0.9rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    text-align: center !important;
+    justify-self: center !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) .modal-giphy-header .back-button {
+    font-size: 1.25rem !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    min-width: 32px !important;
+  }
+
+  /* Force modal positioning - production fix for streams page only */
+  body:has(.streams:not([style*="display: none"])) .modal-wrapper .modal-box {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: calc(100vw - 20px) !important;
+    min-height: auto !important;
+    max-height: calc(100vh - 20px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    align-self: flex-start !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) div.modal-wrapper {
+    padding: 10px !important;
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+  }
+
+  body:has(.streams:not([style*="display: none"])) div.modal-box {
+    width: 100% !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+    margin: 0 !important;
+  }
 }
 
 

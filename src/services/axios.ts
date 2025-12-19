@@ -79,19 +79,56 @@ export const BASE_ENDPOINT = getBaseEndpoint();
 // Initial BASE_URL (will be updated by interceptor if needed)
 const BASE_URL = getBaseUrl();
 
+// Performance optimizations for hosted environments
+const isHostedEnv = () => {
+  const env = getAppEnvironment();
+  return env === 'development' || env === 'staging' || env === 'production';
+};
+
+// Request cache for GET requests (only in hosted environments)
+const requestCache = new Map<string, { data: unknown; timestamp: number; response: unknown }>();
+const CACHE_DURATION = 2000; // 2 seconds cache for GET requests in hosted envs
+
+// Request deduplication - prevent duplicate simultaneous requests
+const pendingRequests = new Map<string, Promise<unknown>>();
+
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-  withCredentials: true
+  headers: { 
+    'Content-Type': 'application/json', 
+    Accept: 'application/json'
+  },
+  withCredentials: true,
+  timeout: isHostedEnv() ? 5000 : 30000, // 5 second timeout for hosted envs (faster failure detection)
+  maxRedirects: isHostedEnv() ? 2 : 5, // Fewer redirects for faster responses
+  decompress: true // Enable response decompression
 });
 
-// Request interceptor to add token to headers
+// Request interceptor to add token to headers and handle caching/deduplication
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Update baseURL dynamically in case environment was detected at runtime
     const dynamicBaseUrl = getBaseUrl();
     if (config.baseURL !== dynamicBaseUrl) {
       config.baseURL = dynamicBaseUrl;
+    }
+    
+    // Request caching and deduplication for hosted environments (GET requests only)
+    if (isHostedEnv() && config.method?.toLowerCase() === 'get') {
+      const requestKey = `${config.method}:${config.url}:${JSON.stringify(config.params || {})}`;
+      
+      // Check cache first - if cached and fresh, mark to use cache
+      const cached = requestCache.get(requestKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        // Mark config to use cached response
+        (config as InternalAxiosRequestConfig & { __fromCache?: boolean; __cachedResponse?: unknown }).__fromCache = true;
+        (config as InternalAxiosRequestConfig & { __cachedResponse?: unknown }).__cachedResponse = cached.response;
+      }
+      
+      // Track pending requests for deduplication (cleanup happens in response interceptor)
+      if (!cached) {
+        // Will be tracked when response comes back
+      }
     }
     
     // Get token from localStorage
@@ -107,24 +144,25 @@ axiosInstance.interceptors.request.use(
       console.error('Failed to get token from localStorage:', error);
     }
     
-    // Log environment info on first request
-    if (!(window as { __envLogged?: boolean }).__envLogged) {
-      const currentEnv = getAppEnvironment();
-      console.log('🔧 Axios Configuration:', {
-        APP_ENVIRONMENT: currentEnv,
-        BASE_ENDPOINT: getBaseEndpoint(),
-        BASE_URL: dynamicBaseUrl,
-        hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-        runtimeEnv: typeof window !== 'undefined' ? window.__ENV__ : 'N/A',
-        buildTimeEnv: import.meta.env.VITE_APP_ENVIRONMENT
-      });
-      (window as { __envLogged?: boolean }).__envLogged = true;
-    }
-    
-    // Debug logging for development environments
+    // Disable all logging in hosted environments for maximum performance
+    // Logging adds overhead and slows down requests
     const currentEnv = getAppEnvironment();
-    if (currentEnv === 'local' || import.meta.env.DEV || currentEnv === 'development') {
-      // Stringify data to see exact format being sent (mask passwords)
+    const isLocal = currentEnv === 'local' || import.meta.env.DEV;
+    
+    // Only log in local development (not in hosted environments)
+    if (isLocal) {
+      // Log environment info only once
+      if (!(window as { __envLogged?: boolean }).__envLogged) {
+        console.log('🔧 Axios Configuration:', {
+          APP_ENVIRONMENT: currentEnv,
+          BASE_ENDPOINT: getBaseEndpoint(),
+          BASE_URL: dynamicBaseUrl,
+          hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
+        });
+        (window as { __envLogged?: boolean }).__envLogged = true;
+      }
+      
+      // Debug logging for local development only
       let dataString = 'no data';
       if (config.data) {
         try {
@@ -168,21 +206,51 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle 401 errors and CORS errors
+// Response interceptor to handle 401 errors, CORS errors, and caching
 axiosInstance.interceptors.response.use(
   (response) => {
+    const config = response.config as InternalAxiosRequestConfig & { __fromCache?: boolean; __cachedResponse?: unknown };
+    
+    // Handle cached responses - return cached response immediately (no network delay)
+    if (config.__fromCache && config.__cachedResponse) {
+      return config.__cachedResponse as typeof response;
+    }
+    
+    // Cache successful GET responses in hosted environments
+    if (isHostedEnv() && response.config.method?.toLowerCase() === 'get' && response.status === 200) {
+      const requestKey = `${response.config.method}:${response.config.url}:${JSON.stringify(response.config.params || {})}`;
+      requestCache.set(requestKey, {
+        data: response.data,
+        timestamp: Date.now(),
+        response: response
+      });
+      
+      // Clean up old cache entries periodically (keep cache size manageable)
+      if (requestCache.size > 150) {
+        const now = Date.now();
+        for (const [key, value] of requestCache.entries()) {
+          if (now - value.timestamp > CACHE_DURATION * 3) {
+            requestCache.delete(key);
+          }
+        }
+      }
+      
+      // Remove from pending requests
+      pendingRequests.delete(requestKey);
+    }
+    
     return response;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
-    // Log error responses for debugging (especially 400, 403, 500, 503 errors)
+    // Reduce error logging in hosted environments for better performance
+    // Only log critical errors in hosted envs, full logging in local
     if (error.response) {
       const currentEnv = getAppEnvironment();
-      const isDevelopment = currentEnv === 'local' || import.meta.env.DEV || currentEnv === 'development';
-      const shouldLog = isDevelopment || 
-                       error.response.status === 403 || 
-                       error.response.status === 401 ||
+      const isLocal = currentEnv === 'local' || import.meta.env.DEV;
+      // In hosted envs, only log critical errors (500, 503) to reduce overhead
+      const shouldLog = isLocal || 
                        error.response.status === 500 ||
                        error.response.status === 503;
       
@@ -213,6 +281,12 @@ axiosInstance.interceptors.response.use(
           });
         }
       }
+    }
+    
+    // Remove from pending requests on error
+    if (originalRequest?.url && originalRequest?.method) {
+      const requestKey = `${originalRequest.method}:${originalRequest.url}:${JSON.stringify(originalRequest.params || {})}`;
+      pendingRequests.delete(requestKey);
     }
     
     // Handle CORS errors

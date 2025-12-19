@@ -163,6 +163,7 @@ const Login = () => {
           label={loading ? 'SIGNIN IN PROGRESS...' : 'SIGNIN'}
           className="auth-button button"
           disabled={!username || !password}
+          type="submit"
         />
         <Link to={'/forgot-password'}>
           <span className="forgot-password">

@@ -23,6 +23,7 @@ const ChatWindow = () => {
   const [conversationId, setConversationId] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<Record<string, unknown>>>([]);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
   const [rendered, setRendered] = useState(false);
   const isSendingMessageRef = useRef(false);
@@ -359,10 +360,96 @@ const ChatWindow = () => {
 
   const updateMessageReaction = async (body: unknown) => {
     try {
+      const reactionBody = body as {
+        conversationId?: string;
+        messageId?: string;
+        reaction?: string;
+        type?: string;
+      };
+      
+      // Optimistic update - add reaction immediately to UI
+      if (reactionBody.messageId && reactionBody.reaction && reactionBody.type === 'add') {
+        setChatMessages((prevMessages) => {
+          const messageIndex = prevMessages.findIndex((msg) => msg._id === reactionBody.messageId);
+          if (messageIndex > -1) {
+            const updatedMessages = [...prevMessages];
+            const message = { ...updatedMessages[messageIndex] };
+            
+            // Get current reactions or initialize empty array
+            const currentReactions = (message.reaction as Array<{ senderName?: string; type?: string; [key: string]: unknown }>) || [];
+            
+            // Check if user already has ANY reaction (not just the same type)
+            // If they do, replace it with the new one (backend replaces old reaction with new one)
+            const existingReactionIndex = currentReactions.findIndex(
+              (r) => r.senderName === profile?.username
+            );
+            
+            const newReaction = {
+              senderName: profile?.username || '',
+              type: reactionBody.reaction
+            };
+            
+            if (existingReactionIndex > -1) {
+              // User already has a reaction - replace it with the new one
+              const updatedReactions = [...currentReactions];
+              updatedReactions[existingReactionIndex] = newReaction;
+              message.reaction = updatedReactions;
+            } else {
+              // User doesn't have a reaction yet - add the new one
+              message.reaction = [...currentReactions, newReaction];
+            }
+            
+            updatedMessages[messageIndex] = message;
+            
+            // Also update ChatUtils
+            const utilsIndex = ChatUtils.privateChatMessages.findIndex((msg) => msg._id === reactionBody.messageId);
+            if (utilsIndex > -1) {
+              ChatUtils.privateChatMessages[utilsIndex] = message;
+            }
+            
+            return updatedMessages;
+          }
+          return prevMessages;
+        });
+      } else if (reactionBody.messageId && reactionBody.reaction && reactionBody.type === 'remove') {
+        // Optimistic update - remove reaction immediately from UI
+        setChatMessages((prevMessages) => {
+          const messageIndex = prevMessages.findIndex((msg) => msg._id === reactionBody.messageId);
+          if (messageIndex > -1) {
+            const updatedMessages = [...prevMessages];
+            const message = { ...updatedMessages[messageIndex] };
+            
+            // Get current reactions
+            const currentReactions = (message.reaction as Array<{ senderName?: string; type?: string; [key: string]: unknown }>) || [];
+            
+            // Remove reaction
+            const filteredReactions = currentReactions.filter(
+              (r) => !(r.senderName === profile?.username && r.type === reactionBody.reaction)
+            );
+            message.reaction = filteredReactions;
+            
+            updatedMessages[messageIndex] = message;
+            
+            // Also update ChatUtils
+            const utilsIndex = ChatUtils.privateChatMessages.findIndex((msg) => msg._id === reactionBody.messageId);
+            if (utilsIndex > -1) {
+              ChatUtils.privateChatMessages[utilsIndex] = message;
+            }
+            
+            return updatedMessages;
+          }
+          return prevMessages;
+        });
+      }
+      
+      // Send to API
       await chatService.updateMessageReaction(body);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      
+      // On error, refresh messages from server to get correct state
+      // The socket will handle the update, so we don't need to manually refresh
     }
   };
 
@@ -391,6 +478,7 @@ const ChatWindow = () => {
   useEffect(() => {
     if (rendered) {
       ChatUtils.socketIOMessageReceived(chatMessages, searchParams.get('username') || '', setConversationId, setChatMessages);
+      ChatUtils.socketIOTyping(searchParams.get('username') || '', setTypingUsers);
     }
     if (!rendered) setRendered(true);
     ChatUtils.usersOnline((data: unknown) => {
@@ -419,8 +507,11 @@ const ChatWindow = () => {
   }, [chatMessages, scrollToBottom]);
 
   useEffect(() => {
-    ChatUtils.socketIOMessageReaction(chatMessages, searchParams.get('username') || '', setConversationId, setChatMessages);
-  }, [chatMessages, searchParams]);
+    if (rendered) {
+      ChatUtils.socketIOMessageReaction(chatMessages, searchParams.get('username') || '', setConversationId, setChatMessages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, rendered]);
 
   return (
     <div className="chat-window-container" data-testid="chatWindowContainer">
@@ -470,12 +561,18 @@ const ChatWindow = () => {
                 profile={profile || undefined}
                 updateMessageReaction={updateMessageReaction}
                 deleteChatMessage={deleteChatMessage}
+                typingUsers={typingUsers}
+                receiver={receiver}
               />
             </div>
             <div className="chat-window-input">
-              <MessageInput setChatMessage={(message: string, url?: string, base64File?: string) => {
-                sendChatMessage(message, url || '', base64File || '');
-              }} />
+              <MessageInput 
+                setChatMessage={(message: string, url?: string, base64File?: string) => {
+                  sendChatMessage(message, url || '', base64File || '');
+                }}
+                receiver={receiver}
+                profile={profile || undefined}
+              />
             </div>
           </div>
         </div>

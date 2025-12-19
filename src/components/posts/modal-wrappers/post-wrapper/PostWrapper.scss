@@ -11,6 +11,29 @@
   position: fixed;
   inset: 0;
   overflow-y: auto;
+
+  // Mobile styles only apply when on streams page - check if streams is visible
+  @media (max-width: 768px) {
+    // Only apply when streams page is present (not on profile or other pages)
+    body:has(.streams:not([style*="display: none"])) & {
+      padding: 10px !important;
+      align-items: flex-start !important;
+      padding-top: 10px !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+  }
+
+  @media screen and (max-width: 768px) {
+    // Only apply when streams page is present (not on profile or other pages)
+    body:has(.streams:not([style*="display: none"])) & {
+      padding: 10px !important;
+      align-items: flex-start !important;
+      padding-top: 10px !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+  }
 }
 
 .modal-bg {

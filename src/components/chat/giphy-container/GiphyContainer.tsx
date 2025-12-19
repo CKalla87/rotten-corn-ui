@@ -4,7 +4,6 @@ import { FaSearch } from 'react-icons/fa';
 import Input from '@components/input/Input';
 import Spinner from '@components/spinner/Spinner';
 import { GiphyUtils } from '@services/utils/giphy-utils.service';
-import { Utils } from '@services/utils/utils.service';
 import useDebounce from '@hooks/useDebounce';
 import './GiphyContainer.scss';
 
@@ -46,18 +45,28 @@ const GiphyContainer = ({ handleGiphyClick }: GiphyContainerProps) => {
         />
       </div>
       {loading && <Spinner />}
+      {!loading && gifs.length === 0 && (
+        <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+          No GIFs found. Try searching for something else.
+        </div>
+      )}
       <ul className="search-results">
-        {gifs.map((gif) => {
+        {gifs.map((gif, index) => {
           const gifData = gif as { images?: { original?: { url?: string } } };
           const gifUrl = gifData?.images?.original?.url || '';
+          if (!gifUrl) return null;
           return (
             <li
               className="gif-result"
               data-testid="list-item"
-              key={Utils.generateString(10)}
-              onClick={() => handleGiphyClick?.(gifUrl)}
+              key={`gif-${index}-${gifUrl.substring(0, 20)}`}
+              onClick={() => {
+                if (gifUrl && handleGiphyClick) {
+                  handleGiphyClick(gifUrl);
+                }
+              }}
             >
-              <img src={gifUrl} alt="" />
+              <img src={gifUrl} alt="GIF" loading="lazy" />
             </li>
           );
         })}

@@ -1,6 +1,7 @@
 import { find, findIndex, cloneDeep, remove } from 'lodash';
 import { createSearchParams } from 'react-router-dom';
 import { socketService } from '@services/socket/socket.service';
+import React from 'react';
 import { chatService } from '@services/api/chat/chat.service';
 import type { AppDispatch } from '@redux/store';
 import { setSelectedChatUser } from '@redux/reducers/chat/chatSlice';
@@ -288,24 +289,106 @@ export class ChatUtils {
     });
   }
 
+  static socketIOTyping(
+    username: string,
+    setTypingUsers: React.Dispatch<React.SetStateAction<string[]>>
+  ): void {
+    // Remove existing listener to prevent duplicates
+    socketService?.socket?.off('typing');
+    socketService?.socket?.off('stop typing');
+    
+    socketService?.socket?.on('typing', (data: { senderName: string; receiverName: string }) => {
+      if (
+        (data.receiverName as string)?.toLowerCase() === username?.toLowerCase()
+      ) {
+        setTypingUsers((prevUsers: string[]) => {
+          if (!prevUsers.includes(data.senderName)) {
+            return [...prevUsers, data.senderName];
+          }
+          return prevUsers;
+        });
+      }
+    });
+
+    socketService?.socket?.on('stop typing', (data: { senderName: string; receiverName: string }) => {
+      if (
+        (data.receiverName as string)?.toLowerCase() === username?.toLowerCase()
+      ) {
+        setTypingUsers((prevUsers: string[]) => {
+          return prevUsers.filter((user: string) => user !== data.senderName);
+        });
+      }
+    });
+  }
+
+  static emitTypingEvent(receiverName: string, senderName: string): void {
+    socketService?.socket?.emit('typing', {
+      receiverName,
+      senderName
+    });
+  }
+
+  static emitStopTypingEvent(receiverName: string, senderName: string): void {
+    socketService?.socket?.emit('stop typing', {
+      receiverName,
+      senderName
+    });
+  }
+
   static socketIOMessageReaction(
     chatMessages: ChatUser[],
     username: string,
     setConversationId: (id: string) => void,
     setChatMessages: (messages: ChatUser[]) => void
   ): void {
+    // Remove existing listener to prevent duplicates
+    socketService?.socket?.off('message reaction');
+    
     socketService?.socket?.on('message reaction', (data: ChatUser) => {
       if (
         (data.senderUsername as string)?.toLowerCase() === username?.toLowerCase() ||
         (data.receiverUsername as string)?.toLowerCase() === username?.toLowerCase()
       ) {
-        const updatedChatMessages = cloneDeep(chatMessages);
         setConversationId(data.conversationId || '');
-        const messageIndex = findIndex(updatedChatMessages, (message) => (message as ChatUser & { _id?: string })?._id === (data as ChatUser & { _id?: string })?._id);
+        
+        // Update ChatUtils.privateChatMessages (source of truth)
+        const messageIndex = findIndex(ChatUtils.privateChatMessages, (message) => {
+          const msgId = (message as ChatUser & { _id?: string })?._id;
+          const dataId = (data as ChatUser & { _id?: string })?._id;
+          return msgId === dataId;
+        });
+        
         if (messageIndex > -1) {
-          updatedChatMessages[messageIndex] = data;
-          setChatMessages(updatedChatMessages);
+          // Update the message in ChatUtils
+          ChatUtils.privateChatMessages[messageIndex] = data;
+        } else {
+          // If message not found, try to find and update in current chatMessages
+          const currentMessageIndex = findIndex(chatMessages, (message) => {
+            const msgId = (message as ChatUser & { _id?: string })?._id;
+            const dataId = (data as ChatUser & { _id?: string })?._id;
+            return msgId === dataId;
+          });
+          
+          if (currentMessageIndex > -1) {
+            // Update in ChatUtils if it exists there
+            const utilsIndex = findIndex(ChatUtils.privateChatMessages, (message) => {
+              const msgId = (message as ChatUser & { _id?: string })?._id;
+              const dataId = (data as ChatUser & { _id?: string })?._id;
+              return msgId === dataId;
+            });
+            
+            if (utilsIndex > -1) {
+              ChatUtils.privateChatMessages[utilsIndex] = data;
+            } else {
+              // Add to ChatUtils if not there
+              ChatUtils.privateChatMessages.push(data);
+            }
+          }
         }
+        
+        // Update state with latest from ChatUtils
+        const updatedChatMessages = [...ChatUtils.privateChatMessages];
+        setChatMessages(updatedChatMessages);
       }
     });
   }
