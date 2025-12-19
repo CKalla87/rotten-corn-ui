@@ -2,10 +2,22 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
 
   @media (max-width: 768px) {
-    gap: 0.4rem;
+    gap: 0.5rem;
     margin-top: 0.75rem;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  @media (max-width: 480px) {
+    gap: 0.4rem;
+    margin-top: 0.6rem;
   }
 }
 
@@ -16,10 +28,20 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
+  min-width: 0;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
-    padding: 0.4rem 0.75rem;
+    padding: 0.5rem 1rem;
     font-size: 0.85rem;
+    width: 100%;
+    flex: none;
+    min-width: auto;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.8rem;
   }
 }
 

@@ -408,7 +408,7 @@
         color: var(--black-1);
         display: inline;
         min-width: 50px;
-        margin-left: 4px;
+        margin-left: 0;
         overflow-wrap: break-word; // Only break if word is too long
         word-break: normal; // Don't break words unless necessary
         width: auto; // Allow natural width to expand
@@ -447,7 +447,7 @@
       [contenteditable="false"] {
         display: inline;
         color: var(--black-1);
-        margin-left: 4px;
+        margin-left: 0;
         overflow-wrap: break-word; // Only break if word is too long
         word-break: normal; // Don't break words unless necessary
 
@@ -461,6 +461,14 @@
         &::after {
           content: none !important;
         }
+      }
+
+      .intro-label {
+        display: inline;
+        color: var(--black-1);
+        margin: 0;
+        padding: 0;
+        white-space: pre; // Preserve the trailing space
       }
 
       span {

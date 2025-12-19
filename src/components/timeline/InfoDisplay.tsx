@@ -157,7 +157,7 @@ const InfoDisplay = ({
               <FaBriefcase className="icon" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type === 'basic' && work && <>Works at </>}
+              {type === 'basic' && work && <span className="intro-label">Works at </span>}
               {type === 'basic' && !work && editIntroBtn && <div className="no-information">{workMsg}</div>}
               {type !== 'basic' && editIntroBtn && instagram && (
                 <a className="link" href={instagram} target="_blank" rel="noreferrer noopener">
@@ -187,7 +187,7 @@ const InfoDisplay = ({
               <FaGraduationCap className="icon" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type === 'basic' && school && <>Went to </>}
+              {type === 'basic' && school && <span className="intro-label">Went to </span>}
               {type === 'basic' && !school && editIntroBtn && <div className="no-information">{schoolMsg}</div>}
               {type !== 'basic' && editIntroBtn && twitter && (
                 <a className="link" href={twitter} target="_blank" rel="noreferrer noopener">
@@ -217,7 +217,7 @@ const InfoDisplay = ({
               <FaMapMarkerAlt className="icon" />
             </div>
             <div className="side-container-body-content" data-testid="content-1">
-              {type === 'basic' && location && <>Lives in </>}
+              {type === 'basic' && location && <span className="intro-label">Lives in </span>}
               {type === 'basic' && !location && editIntroBtn && <div className="no-information">{locationMsg}</div>}
               {type !== 'basic' && editIntroBtn && facebook && (
                 <a className="link" href={facebook} target="_blank" rel="noreferrer noopener">

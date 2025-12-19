@@ -18,6 +18,11 @@
   border-bottom: 1px solid var(--white-3);
   overflow: visible;
 
+  @media (max-width: 768px) {
+    // When sidebar is open, header should be behind it
+    z-index: 19;
+  }
+
   .header-navbar {
     display: flex;
     justify-content: space-between;
@@ -414,6 +419,7 @@ ul .dropdown-ul {
         flex-wrap: nowrap;
         min-width: 0;
         overflow: visible !important;
+        z-index: 1;
 
         .header-nav-item {
           justify-content: center;
@@ -421,16 +427,18 @@ ul .dropdown-ul {
           display: flex;
           flex-shrink: 0;
           min-width: 0;
+          position: relative;
+          z-index: 1;
 
-          .header-list-name {
-            display: contents;
+        .header-list-name {
+          display: contents;
 
-            .header-list-icon {
-              width: 20px !important;
-              height: 20px !important;
-              font-size: 18px;
-              flex-shrink: 0;
-            }
+          .header-list-icon {
+            width: 20px !important;
+            height: 20px !important;
+            font-size: 18px;
+            flex-shrink: 0;
+          }
 
             &.profile-image {
               display: flex;

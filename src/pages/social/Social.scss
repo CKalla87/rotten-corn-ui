@@ -33,7 +33,7 @@
     overflow-y: auto;
 
     @media (max-width: 768px) {
-      z-index: 100;
+      z-index: 1000;
       width: 280px;
       min-width: auto;
       max-width: 80%;
@@ -43,6 +43,7 @@
       left: 0;
       transform: translate(-100%);
       box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      background-color: var(--white-10);
 
       &.sidebar-open {
         transform: translate(0);
@@ -74,7 +75,7 @@
     display: none;
 
     @media (max-width: 768px) {
-      z-index: 99;
+      z-index: 999;
       opacity: 0;
       visibility: hidden;
       background-color: rgba(0, 0, 0, 0.5);
@@ -112,5 +113,21 @@
     overflow: visible !important;
     overflow-x: visible !important;
     overflow-y: visible !important;
+  }
+
+  // Ensure header notification icon is behind sidebar when sidebar is open
+  .dashboard-sidebar.sidebar-open ~ * .header-nav-wrapper,
+  .dashboard-sidebar.sidebar-open ~ .dashboard-content .header-nav-wrapper {
+    z-index: 19 !important;
+  }
+
+  .dashboard-sidebar.sidebar-open {
+    z-index: 1000 !important;
+  }
+
+  // Ensure header elements are behind sidebar
+  .dashboard-sidebar.sidebar-open ~ * .header-nav-item,
+  .dashboard-sidebar.sidebar-open ~ .dashboard-content .header-nav-item {
+    z-index: 1 !important;
   }
 }
