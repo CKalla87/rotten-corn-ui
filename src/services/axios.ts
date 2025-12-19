@@ -11,8 +11,18 @@ function getAppEnvironment(): string {
   return import.meta.env.VITE_APP_ENVIRONMENT || import.meta.env.REACT_APP_ENVIRONMENT || import.meta.env.MODE || 'local';
 }
 
+// Cache for base URL to avoid repeated lookups and logging during scrolling
+let cachedBaseUrl: string | null = null;
+let baseUrlLogged = false;
+
 // Function to get BASE_URL dynamically (allows runtime environment detection)
+// Cached to prevent repeated lookups and console spam during scrolling
 function getBaseUrl(): string {
+  // Return cached value if already computed
+  if (cachedBaseUrl !== null) {
+    return cachedBaseUrl;
+  }
+  
   // Re-check environment at runtime
   let currentEnv = getAppEnvironment();
   
@@ -21,13 +31,22 @@ function getBaseUrl(): string {
     const hostname = window.location.hostname;
     if (hostname.includes('dev.chatappserver.space') || hostname.includes('.dev.')) {
       currentEnv = 'development';
-      console.log('🌐 Detected develop environment from hostname:', hostname);
+      if (!baseUrlLogged) {
+        console.log('🌐 Detected develop environment from hostname:', hostname);
+        baseUrlLogged = true;
+      }
     } else if (hostname.includes('staging.chatappserver.space') || hostname.includes('.staging.')) {
       currentEnv = 'staging';
-      console.log('🌐 Detected staging environment from hostname:', hostname);
+      if (!baseUrlLogged) {
+        console.log('🌐 Detected staging environment from hostname:', hostname);
+        baseUrlLogged = true;
+      }
     } else if (hostname.includes('chatappserver.space') && !hostname.includes('dev.') && !hostname.includes('staging.')) {
       currentEnv = 'production';
-      console.log('🌐 Detected production environment from hostname:', hostname);
+      if (!baseUrlLogged) {
+        console.log('🌐 Detected production environment from hostname:', hostname);
+        baseUrlLogged = true;
+      }
     }
   }
   
@@ -48,7 +67,11 @@ function getBaseUrl(): string {
   // Override with runtime VITE_BASE_ENDPOINT if available (from window.__ENV__)
   if (typeof window !== 'undefined' && window.__ENV__?.VITE_BASE_ENDPOINT && currentEnv !== 'local' && !import.meta.env.DEV) {
     endpoint = window.__ENV__.VITE_BASE_ENDPOINT;
-    console.log('🌐 Using runtime VITE_BASE_ENDPOINT:', endpoint);
+    // Only log once to avoid console spam during scrolling
+    if (!baseUrlLogged) {
+      console.log('🌐 Using runtime VITE_BASE_ENDPOINT:', endpoint);
+      baseUrlLogged = true;
+    }
   }
   
   // Override with build-time VITE_BASE_ENDPOINT if explicitly set (but not in local dev to use proxy)
@@ -56,7 +79,9 @@ function getBaseUrl(): string {
     endpoint = import.meta.env.VITE_BASE_ENDPOINT;
   }
   
-  return endpoint ? `${endpoint}/api/v1` : '/api/v1';
+  const baseUrl = endpoint ? `${endpoint}/api/v1` : '/api/v1';
+  cachedBaseUrl = baseUrl;
+  return baseUrl;
 }
 
 /**

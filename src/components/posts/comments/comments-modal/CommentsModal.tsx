@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo, startTransition } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { find, cloneDeep } from 'lodash';
@@ -269,25 +269,71 @@ const CommentsModal = () => {
   const postCommentsRef = useRef<CommentData[]>([]); // Ref to access latest postComments without causing re-renders
   const isScrollingRef = useRef<boolean>(false); // Track if user is currently scrolling
   
-  // Get post ID from modal data (set when opening) or from post Redux state
-  const modalData = data as { postId?: string; post?: PostData } | null;
-  const postIdFromModal = modalData?.postId;
-  const postIdFromRedux = (postFromRedux as unknown as PostData)?._id || (postFromRedux as { id?: string })?.id;
-  const postId = postIdFromModal || postIdFromRedux || undefined;
+  // Memoize image/video URLs to prevent recalculation on every render during scrolling
+  // This prevents repeated calls to getCloudName() and getBaseUrl() during scroll
+  const postImageUrl = useMemo(() => {
+    if (!postData?.imgId || !postData?.imgVersion || postData?.gifUrl) {
+      return null;
+    }
+    let imgSrc = Utils.getImage(
+      postData.imgId as string,
+      postData.imgVersion as string,
+      postData.image as string
+    );
+    if (imgSrc) {
+      imgSrc = Utils.fixCloudinaryUrl(imgSrc);
+    }
+    return imgSrc;
+  }, [postData?.imgId, postData?.imgVersion, postData?.gifUrl, postData?.image]);
   
-  // Use post from modal data if available, otherwise use Redux post, or find from allPosts
-  let currentPost: PostData | null = (modalData?.post as PostData) || (postFromRedux as unknown as PostData | null) || null;
+  const postVideoUrl = useMemo(() => {
+    if (!postData?.videoId || !postData?.videoVersion) {
+      return null;
+    }
+    return Utils.getVideo(postData.videoId as string, postData.videoVersion as string);
+  }, [postData?.videoId, postData?.videoVersion]);
   
-  // If we have postId but no post data, try to find it from allPosts
-  if (!currentPost && postId && allPosts && Array.isArray(allPosts)) {
-    currentPost = (allPosts as unknown as PostData[]).find((p: PostData) => p._id === postId || p.id === postId) || null;
-  }
+  const postGifUrl = useMemo(() => {
+    if (!postData?.gifUrl) {
+      return null;
+    }
+    return Utils.fixCloudinaryUrl(postData.gifUrl as string);
+  }, [postData?.gifUrl]);
+  
+  const postFallbackImageUrl = useMemo(() => {
+    if (!postData?.image || postData?.imgId || postData?.gifUrl) {
+      return null;
+    }
+    return Utils.fixCloudinaryUrl(postData.image as string);
+  }, [postData?.image, postData?.imgId, postData?.gifUrl]);
+  
+  // Memoize post ID and post data calculations to prevent unnecessary recalculations
+  const modalData = useMemo(() => data as { postId?: string; post?: PostData } | null, [data]);
+  const postIdFromModal = useMemo(() => modalData?.postId, [modalData]);
+  const postIdFromRedux = useMemo(() => {
+    const post = postFromRedux as unknown as PostData;
+    return post?._id || (postFromRedux as { id?: string })?.id;
+  }, [postFromRedux]);
+  const postId = useMemo(() => postIdFromModal || postIdFromRedux || undefined, [postIdFromModal, postIdFromRedux]);
+  
+  // Memoize current post lookup to prevent recalculation on every render
+  const currentPost = useMemo(() => {
+    let post: PostData | null = (modalData?.post as PostData) || (postFromRedux as unknown as PostData | null) || null;
+    
+    // If we have postId but no post data, try to find it from allPosts
+    if (!post && postId && allPosts && Array.isArray(allPosts)) {
+      post = (allPosts as unknown as PostData[]).find((p: PostData) => p._id === postId || p.id === postId) || null;
+    }
+    
+    return post;
+  }, [modalData, postFromRedux, postId, allPosts]);
 
-  const getPrivacy = (type?: string): React.ReactElement | null => {
+  // Memoize getPrivacy to prevent recreation on every render
+  const getPrivacy = useCallback((type?: string): React.ReactElement | null => {
     if (!type) return null;
     const privacy = find(privacyList, (data: PrivacyItem) => data.topText === type);
     return privacy?.icon || null;
-  };
+  }, []);
 
   // Extract comment processing logic to reuse for deferred updates
   const processCommentsResponse = useCallback((response: { data?: unknown }) => {
@@ -350,7 +396,10 @@ const CommentsModal = () => {
         return aTime - bTime;
       });
       
-      setPostComments(processedComments);
+      // Use startTransition for non-urgent updates to prevent blocking the UI during scroll
+      startTransition(() => {
+        setPostComments(processedComments);
+      });
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string }; status?: number } };
       const errorMessage = axiosError?.response?.data?.message || 'Failed to load comments';
@@ -377,8 +426,10 @@ const CommentsModal = () => {
         // Store the response and apply it after scroll ends
         const applyUpdate = () => {
           if (!isScrollingRef.current) {
-            // Apply the update now that scrolling has stopped
-            processCommentsResponse(response);
+            // Apply the update now that scrolling has stopped (use startTransition for smooth UI)
+            startTransition(() => {
+              processCommentsResponse(response);
+            });
           } else {
             // Still scrolling, check again in 100ms
             setTimeout(applyUpdate, 100);
@@ -388,8 +439,10 @@ const CommentsModal = () => {
         return;
       }
       
-      // Process and apply comments immediately if not scrolling
-      processCommentsResponse(response);
+      // Process and apply comments immediately if not scrolling (use startTransition for smooth UI)
+      startTransition(() => {
+        processCommentsResponse(response);
+      });
     } catch (error) {
       console.error('Error fetching post comments:', error);
       setPostComments([]);
@@ -483,8 +536,9 @@ const CommentsModal = () => {
         // Queue the update for after scrolling
         const applyUpdate = () => {
           if (!isScrollingRef.current) {
-            // Apply optimistic update now that scrolling has stopped
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            // Apply optimistic update now that scrolling has stopped (use startTransition for smooth UI)
+            startTransition(() => {
+              setPostComments((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = cloneDeep(comment);
                 const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
@@ -518,19 +572,19 @@ const CommentsModal = () => {
                 return updatedComment;
               }
               return comment;
-            }));
+              }));
+            });
           } else {
             // Still scrolling, check again
             setTimeout(applyUpdate, 100);
           }
         };
         setTimeout(applyUpdate, 100);
-      }
-      
-      // Optimistically update the comment in the list (like chat messages)
-      // Use functional setState to avoid depending on postComments
-      setPostComments((prevComments) => prevComments.map((comment) => {
-        if (comment._id === commentId) {
+      } else {
+        // Not scrolling - apply optimistic update immediately with startTransition
+        startTransition(() => {
+          setPostComments((prevComments) => prevComments.map((comment) => {
+            if (comment._id === commentId) {
           const updatedComment = cloneDeep(comment);
           
           // Ensure reaction is an array (like chat messages)
@@ -570,6 +624,8 @@ const CommentsModal = () => {
         }
         return comment;
       }));
+        });
+      }
       
       // Call API to save reaction using the post reaction endpoint with commentId
       try {
@@ -646,13 +702,15 @@ const CommentsModal = () => {
         Utils.dispatchNotification(errorMessage, 'error', dispatch);
         
         // Revert to the state before the optimistic update
-        setPostComments((prev) => {
-          return prev.map((comment) => {
-            if (comment._id === commentId) {
-              // Restore the original comment state
-              return originalComment;
-            }
-            return comment;
+        startTransition(() => {
+          setPostComments((prev) => {
+            return prev.map((comment) => {
+              if (comment._id === commentId) {
+                // Restore the original comment state
+                return originalComment;
+              }
+              return comment;
+            });
           });
         });
         
@@ -702,12 +760,16 @@ const CommentsModal = () => {
     };
   }, [showReactionsForComment]);
 
-  // Set post data when modal opens
+  // Set post data when modal opens - use startTransition for non-urgent updates
   useEffect(() => {
     if (commentsModalIsOpen && currentPost) {
-      setPostData(currentPost);
+      startTransition(() => {
+        setPostData(currentPost);
+      });
     } else {
-      setPostData(null);
+      startTransition(() => {
+        setPostData(null);
+      });
     }
   }, [commentsModalIsOpen, currentPost]);
 
@@ -814,8 +876,8 @@ const CommentsModal = () => {
     // Create handler once and reuse it
     if (!handleCommentUpdateRef.current) {
       handleCommentUpdateRef.current = (commentData: unknown) => {
-      // Handle both 'comment' event (from backend) and 'update comment' event
-      // Backend emits 'comment' with the comment object directly
+        // Handle both 'comment' event (from backend) and 'update comment' event
+        // Backend emits 'comment' with the comment object directly
       let actualComment: CommentData | undefined;
       let actualPostId: string | undefined;
       
@@ -924,27 +986,29 @@ const CommentsModal = () => {
               const currentComments = postCommentsRef.current;
               const existsById = currentComments.some((c) => c._id === actualComment!._id);
               if (!existsById) {
-                setPostComments((prev) => {
-                  // Use the same logic as below but check again for duplicates
-                  const stillExists = prev.some((c) => c._id === actualComment!._id);
-                  if (stillExists) return prev;
-                  
-                  // Add comment and sort (same logic as below)
-                  const updated = [...prev, actualComment];
-                  updated.sort((a, b) => {
-                    const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
-                      ? new Date(a.createdAt).getTime() 
-                      : Date.now();
-                    const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
-                      ? new Date(b.createdAt).getTime() 
-                      : Date.now();
-                    return aTime - bTime;
+                startTransition(() => {
+                  setPostComments((prev) => {
+                    // Use the same logic as below but check again for duplicates
+                    const stillExists = prev.some((c) => c._id === actualComment!._id);
+                    if (stillExists) return prev;
+                    
+                    // Add comment and sort (same logic as below)
+                    const updated = [...prev, actualComment];
+                    updated.sort((a, b) => {
+                      const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
+                        ? new Date(a.createdAt).getTime() 
+                        : Date.now();
+                      const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
+                        ? new Date(b.createdAt).getTime() 
+                        : Date.now();
+                      return aTime - bTime;
+                    });
+                    if (actualComment._id) {
+                      lastAddedCommentId.current = actualComment._id;
+                      shouldScrollToCommentRef.current = actualComment._id;
+                    }
+                    return updated;
                   });
-                  if (actualComment._id) {
-                    lastAddedCommentId.current = actualComment._id;
-                    shouldScrollToCommentRef.current = actualComment._id;
-                  }
-                  return updated;
                 });
               }
             }
@@ -962,53 +1026,54 @@ const CommentsModal = () => {
           currentPostId
         });
         
-        setPostComments((prev) => {
-          // First check: does this comment ID already exist?
-          const existsById = prev.some((c) => c._id === actualComment!._id);
-          if (existsById) {
-            console.log('⚠️ Comment already exists by ID from socket, skipping:', actualComment._id);
-            return prev;
-          }
-          
-          // For GIFs, ALWAYS check if we have an existing comment with same GIF + user
-          // If same GIF URL and same username, it's the same comment - replace it
-          if (actualComment.gifUrl) {
-            // Find ANY comment with same GIF URL and same username
-            // This catches both optimistic updates and any duplicates
-            const existingIndex = prev.findIndex((c) => {
-              return c.gifUrl === actualComment!.gifUrl && c.username === actualComment!.username;
-            });
-            
-            if (existingIndex !== -1) {
-              // Replace existing comment with real one from socket
-              // This prevents duplicates - same GIF + same user = same comment
-              console.log('✅ Replacing existing GIF comment (same GIF + user):', {
-                oldId: prev[existingIndex]._id,
-                newId: actualComment._id,
-                gifUrl: actualComment.gifUrl,
-                username: actualComment.username
-              });
-              const updated = [...prev];
-              updated[existingIndex] = {
-                ...actualComment,
-                gifUrl: actualComment.gifUrl
-              };
-              updated.sort((a, b) => {
-                const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
-                  ? new Date(a.createdAt).getTime() 
-                  : Date.now();
-                const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
-                  ? new Date(b.createdAt).getTime() 
-                  : Date.now();
-                return aTime - bTime;
-              });
-              if (actualComment._id) {
-                lastAddedCommentId.current = actualComment._id;
-                shouldScrollToCommentRef.current = actualComment._id;
-              }
-              return updated; // Return early - don't add as new comment
+        startTransition(() => {
+          setPostComments((prev) => {
+            // First check: does this comment ID already exist?
+            const existsById = prev.some((c) => c._id === actualComment!._id);
+            if (existsById) {
+              console.log('⚠️ Comment already exists by ID from socket, skipping:', actualComment._id);
+              return prev;
             }
-          }
+            
+            // For GIFs, ALWAYS check if we have an existing comment with same GIF + user
+            // If same GIF URL and same username, it's the same comment - replace it
+            if (actualComment.gifUrl) {
+              // Find ANY comment with same GIF URL and same username
+              // This catches both optimistic updates and any duplicates
+              const existingIndex = prev.findIndex((c) => {
+                return c.gifUrl === actualComment!.gifUrl && c.username === actualComment!.username;
+              });
+              
+              if (existingIndex !== -1) {
+                // Replace existing comment with real one from socket
+                // This prevents duplicates - same GIF + same user = same comment
+                console.log('✅ Replacing existing GIF comment (same GIF + user):', {
+                  oldId: prev[existingIndex]._id,
+                  newId: actualComment._id,
+                  gifUrl: actualComment.gifUrl,
+                  username: actualComment.username
+                });
+                const updated = [...prev];
+                updated[existingIndex] = {
+                  ...actualComment,
+                  gifUrl: actualComment.gifUrl
+                };
+                updated.sort((a, b) => {
+                  const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
+                    ? new Date(a.createdAt).getTime() 
+                    : Date.now();
+                  const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
+                    ? new Date(b.createdAt).getTime() 
+                    : Date.now();
+                  return aTime - bTime;
+                });
+                if (actualComment._id) {
+                  lastAddedCommentId.current = actualComment._id;
+                  shouldScrollToCommentRef.current = actualComment._id;
+                }
+                return updated; // Return early - don't add as new comment
+              }
+            }
           
           // For text comments, check for duplicates
           if (!actualComment.gifUrl) {
@@ -1058,6 +1123,7 @@ const CommentsModal = () => {
           });
           return updated;
         });
+        });
       }
       };
     }
@@ -1086,66 +1152,68 @@ const CommentsModal = () => {
       username: comment.username
     });
     
-    setPostComments((prev) => {
-      // Check by ID first
-      const existsById = prev.some((c) => c._id === comment._id);
-      if (existsById) {
-        console.log('⚠️ Comment already exists by ID, skipping optimistic update');
-        return prev;
-      }
-      
-      // For GIFs, check if we already have this exact GIF from this user very recently
-      // This prevents the optimistic update from adding if socket already added it
-      if (comment.gifUrl) {
-        const recentDuplicate = prev.find((c) => {
-          if (c.gifUrl !== comment.gifUrl || c.username !== comment.username) {
-            return false;
-          }
-          // Check if it's within the last 5 seconds (increased window for socket events)
-          if (c.createdAt && comment.createdAt) {
-            try {
-              const timeDiff = Math.abs(
-                new Date(c.createdAt).getTime() - new Date(comment.createdAt).getTime()
-              );
-              return timeDiff < 5000; // Within 5 seconds
-            } catch {
-              // If date parsing fails, don't block
-            }
-          }
-          return false; // Don't block if we can't verify timestamp
-        });
-        
-        if (recentDuplicate) {
-          console.log('⚠️ Recent duplicate GIF comment in optimistic update, skipping');
+    startTransition(() => {
+      setPostComments((prev) => {
+        // Check by ID first
+        const existsById = prev.some((c) => c._id === comment._id);
+        if (existsById) {
+          console.log('⚠️ Comment already exists by ID, skipping optimistic update');
           return prev;
         }
-      }
-      
-      // Store ID for scrolling
-      if (comment._id) {
-        lastAddedCommentId.current = comment._id;
-        shouldScrollToCommentRef.current = comment._id;
-      }
-      
-      console.log('✅ Adding comment optimistically:', {
-        id: comment._id,
-        hasGif: !!comment.gifUrl,
-        gifUrl: comment.gifUrl?.substring(0, 50),
-        username: comment.username
+        
+        // For GIFs, check if we already have this exact GIF from this user very recently
+        // This prevents the optimistic update from adding if socket already added it
+        if (comment.gifUrl) {
+          const recentDuplicate = prev.find((c) => {
+            if (c.gifUrl !== comment.gifUrl || c.username !== comment.username) {
+              return false;
+            }
+            // Check if it's within the last 5 seconds (increased window for socket events)
+            if (c.createdAt && comment.createdAt) {
+              try {
+                const timeDiff = Math.abs(
+                  new Date(c.createdAt).getTime() - new Date(comment.createdAt).getTime()
+                );
+                return timeDiff < 5000; // Within 5 seconds
+              } catch {
+                // If date parsing fails, don't block
+              }
+            }
+            return false; // Don't block if we can't verify timestamp
+          });
+          
+          if (recentDuplicate) {
+            console.log('⚠️ Recent duplicate GIF comment in optimistic update, skipping');
+            return prev;
+          }
+        }
+        
+        // Store ID for scrolling
+        if (comment._id) {
+          lastAddedCommentId.current = comment._id;
+          shouldScrollToCommentRef.current = comment._id;
+        }
+        
+        console.log('✅ Adding comment optimistically:', {
+          id: comment._id,
+          hasGif: !!comment.gifUrl,
+          gifUrl: comment.gifUrl?.substring(0, 50),
+          username: comment.username
+        });
+        
+        // Add comment and sort
+        const updated = [...prev, comment];
+        updated.sort((a, b) => {
+          const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
+            ? new Date(a.createdAt).getTime() 
+            : Date.now();
+          const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
+            ? new Date(b.createdAt).getTime() 
+            : Date.now();
+          return aTime - bTime;
+        });
+        return updated;
       });
-      
-      // Add comment and sort
-      const updated = [...prev, comment];
-      updated.sort((a, b) => {
-        const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
-          ? new Date(a.createdAt).getTime() 
-          : Date.now();
-        const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
-          ? new Date(b.createdAt).getTime() 
-          : Date.now();
-        return aTime - bTime;
-      });
-      return updated;
     });
   }, []);
 
@@ -1285,48 +1353,38 @@ const CommentsModal = () => {
                   {postData.post}
                 </div>
               )}
-              {postData?.gifUrl && (
+              {postGifUrl && (
                 <div className="image-display-flex">
-                  <img className="post-image" src={Utils.fixCloudinaryUrl(postData.gifUrl as string)} alt="" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                  <img className="post-image" src={postGifUrl} alt="" style={{ maxWidth: '100%', borderRadius: '8px' }} />
                 </div>
               )}
-              {postData?.imgId && postData?.imgVersion && !postData?.gifUrl && (
+              {postImageUrl && (
                 <div className="image-display-flex">
                   <img 
                     className="post-image" 
-                    src={(() => {
-                      let imgSrc = Utils.getImage(
-                        postData.imgId as string, 
-                        postData.imgVersion as string, 
-                        postData.image as string
-                      );
-                      if (imgSrc) {
-                        imgSrc = Utils.fixCloudinaryUrl(imgSrc);
-                      }
-                      return imgSrc;
-                    })()} 
+                    src={postImageUrl} 
                     alt="" 
                     style={{ maxWidth: '100%', borderRadius: '8px', objectFit: 'contain' }}
                   />
                 </div>
               )}
-              {postData?.image && !postData?.imgId && !postData?.gifUrl && (
+              {postFallbackImageUrl && (
                 <div className="image-display-flex">
                   <img 
                     className="post-image" 
-                    src={Utils.fixCloudinaryUrl(postData.image as string)} 
+                    src={postFallbackImageUrl} 
                     alt=""
                     style={{ maxWidth: '100%', borderRadius: '8px' }}
                   />
                 </div>
               )}
-              {postData?.videoId && (
+              {postVideoUrl && (
                 <div className="image-display-flex">
                   <video 
                     width="100%" 
                     height="auto" 
                     controls 
-                    src={Utils.getVideo(postData.videoId as string, postData.videoVersion as string)}
+                    src={postVideoUrl}
                     style={{ borderRadius: '8px' }}
                   />
                 </div>
