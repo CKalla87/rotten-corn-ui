@@ -1,17 +1,25 @@
 .typing-indicator {
-  display: flex;
+  display: flex !important;
   justify-content: flex-start;
   margin-bottom: 10px;
   padding: 0 15px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100%;
+  box-sizing: border-box;
 
   .typing-indicator-content {
-    display: flex;
+    display: flex !important;
     align-items: center;
     gap: 8px;
     background-color: var(--white-2);
     padding: 10px 15px;
     border-radius: 18px;
     max-width: 200px;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative;
+    z-index: 1;
 
     .typing-dots {
       display: flex;

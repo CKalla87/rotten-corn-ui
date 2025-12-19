@@ -85,6 +85,31 @@ const isHostedEnv = () => {
   return env === 'development' || env === 'staging' || env === 'production';
 };
 
+// Get timeout based on environment and request type
+// Using very long timeouts to prevent premature failures
+const getTimeout = (config?: InternalAxiosRequestConfig): number => {
+  const env = getAppEnvironment();
+  
+  // Check if this is a file upload request (image/video)
+  const isFileUpload = config?.url?.includes('/post/image') || 
+                       config?.url?.includes('/post/video') ||
+                       config?.url?.includes('/post/image/post') ||
+                       config?.url?.includes('/post/video/post');
+  
+  if (isFileUpload) {
+    // File uploads need much more time - 5 minutes for large files
+    return 300000; // 5 minutes (300 seconds)
+  }
+  
+  // Regular requests - very long timeouts for all environments
+  if (env === 'development') {
+    return 120000; // 2 minutes for develop (very lenient)
+  } else if (env === 'staging' || env === 'production') {
+    return 120000; // 2 minutes for staging/production
+  }
+  return 120000; // 2 minutes for local
+};
+
 // Request cache for GET requests (only in hosted environments)
 const requestCache = new Map<string, { data: unknown; timestamp: number; response: unknown }>();
 const CACHE_DURATION = 2000; // 2 seconds cache for GET requests in hosted envs
@@ -99,7 +124,7 @@ const axiosInstance = axios.create({
     Accept: 'application/json'
   },
   withCredentials: true,
-  timeout: isHostedEnv() ? 5000 : 30000, // 5 second timeout for hosted envs (faster failure detection)
+  timeout: getTimeout(), // Default timeout (will be overridden per-request for file uploads)
   maxRedirects: isHostedEnv() ? 2 : 5, // Fewer redirects for faster responses
   decompress: true // Enable response decompression
 });
@@ -112,6 +137,9 @@ axiosInstance.interceptors.request.use(
     if (config.baseURL !== dynamicBaseUrl) {
       config.baseURL = dynamicBaseUrl;
     }
+    
+    // Set request-specific timeout (file uploads get longer timeout)
+    config.timeout = getTimeout(config);
     
     // Request caching and deduplication for hosted environments (GET requests only)
     if (isHostedEnv() && config.method?.toLowerCase() === 'get') {
