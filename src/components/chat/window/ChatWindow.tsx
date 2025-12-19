@@ -475,23 +475,40 @@ const ChatWindow = () => {
     if (!rendered) setRendered(true);
   }, [getUserProfileByUserId, getNewUserMessages, searchParams, rendered]);
 
+  // Set up socket listeners for incoming messages
   useEffect(() => {
-    if (rendered) {
-      ChatUtils.socketIOMessageReceived(chatMessages, searchParams.get('username') || '', setConversationId, setChatMessages);
-      ChatUtils.socketIOTyping(searchParams.get('username') || '', setTypingUsers);
-    }
-    if (!rendered) setRendered(true);
+    const username = searchParams.get('username') || '';
+    if (!username) return; // Don't set up listeners if no username
+    
+    // Set up message received listener
+    ChatUtils.socketIOMessageReceived(chatMessages, username, setConversationId, setChatMessages);
+    
+    // Set up typing indicator listener
+    ChatUtils.socketIOTyping(username, setTypingUsers);
+    
+    // Set up online users listener
     ChatUtils.usersOnline((data: unknown) => {
       setOnlineUsers(data as string[]);
     });
+    
+    // Set up chat page listeners
     ChatUtils.usersOnChatPage();
+    
+    // Cleanup function to remove listeners when component unmounts or username changes
+    return () => {
+      // The socketIOMessageReceived and socketIOTyping functions already handle cleanup with socket.off()
+      // But we can add additional cleanup if needed
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, rendered]);
+  }, [searchParams]);
   
   // Debug: Log when chatMessages state changes and scroll to bottom
   useEffect(() => {
-    console.log('🔄 chatMessages state changed, new length:', chatMessages.length);
-    console.log('🔄 Last message:', chatMessages[chatMessages.length - 1]);
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocal) {
+      console.log('🔄 chatMessages state changed, new length:', chatMessages.length);
+      console.log('🔄 Last message:', chatMessages[chatMessages.length - 1]);
+    }
     
     // Scroll to bottom when messages change (including new messages from socket)
     // Only scroll if it's a new message (not initial load)
@@ -505,6 +522,16 @@ const ChatWindow = () => {
       }
     }
   }, [chatMessages, scrollToBottom]);
+
+  // Scroll to bottom when typing users change (to show typing indicator)
+  useEffect(() => {
+    if (typingUsers.length > 0) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [typingUsers, scrollToBottom]);
 
   useEffect(() => {
     if (rendered) {

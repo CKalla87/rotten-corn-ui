@@ -228,11 +228,27 @@ export class ChatUtils {
     socketService?.socket?.off('message received');
     socketService?.socket?.off('message read');
     
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
     socketService?.socket?.on('message received', (data: ChatUser) => {
-      if (
-        (data.senderUsername as string)?.toLowerCase() === username?.toLowerCase() ||
-        (data.receiverUsername as string)?.toLowerCase() === username?.toLowerCase()
-      ) {
+      const senderUsername = (data.senderUsername as string)?.toLowerCase() || '';
+      const receiverUsername = (data.receiverUsername as string)?.toLowerCase() || '';
+      const currentUsername = username?.toLowerCase() || '';
+      
+      if (isLocal) {
+        console.log('📨 Message received event:', {
+          senderUsername,
+          receiverUsername,
+          currentUsername,
+          matchesSender: senderUsername === currentUsername,
+          matchesReceiver: receiverUsername === currentUsername,
+          messageId: data._id,
+          body: data.body
+        });
+      }
+      
+      // Check if message is for current user (either as sender or receiver)
+      if (senderUsername === currentUsername || receiverUsername === currentUsername) {
         // Check if message already exists to prevent duplicates
         const messageId = data._id || (data as unknown as { _id?: string })._id;
         const messageExists = ChatUtils.privateChatMessages.some(
@@ -242,6 +258,14 @@ export class ChatUtils {
           }
         );
         
+        if (isLocal) {
+          console.log('📨 Message processing:', {
+            messageId,
+            messageExists,
+            currentMessagesCount: ChatUtils.privateChatMessages.length
+          });
+        }
+        
         if (!messageExists) {
           // Check if there's a temporary optimistic message that should be replaced
           // Match by sender, receiver, body, and timestamp (within 5 seconds)
@@ -250,9 +274,9 @@ export class ChatUtils {
             if (!msgId?.startsWith('temp-')) return false;
             
             const senderMatch = (msg.senderId as string) === (data.senderId as string) ||
-                               (msg.senderUsername as string) === (data.senderUsername as string);
+                               ((msg.senderUsername as string)?.toLowerCase() === senderUsername);
             const receiverMatch = (msg.receiverId as string) === (data.receiverId as string) ||
-                                 (msg.receiverUsername as string) === (data.receiverUsername as string);
+                                 ((msg.receiverUsername as string)?.toLowerCase() === receiverUsername);
             const bodyMatch = (msg.body as string) === (data.body as string);
             
             return senderMatch && receiverMatch && bodyMatch;
@@ -260,17 +284,30 @@ export class ChatUtils {
           
           if (tempMessageIndex > -1) {
             // Replace the temporary message with the real one
+            if (isLocal) {
+              console.log('🔄 Replacing temp message at index:', tempMessageIndex);
+            }
             ChatUtils.privateChatMessages[tempMessageIndex] = data;
           } else {
             // Add new message
+            if (isLocal) {
+              console.log('➕ Adding new message to chat');
+            }
             ChatUtils.privateChatMessages.push(data);
           }
           
           setConversationId(data.conversationId || '');
-          // Update messages with latest from ChatUtils
+          // Update messages with latest from ChatUtils - create new array to trigger React re-render
           const updatedMessages = [...ChatUtils.privateChatMessages];
+          if (isLocal) {
+            console.log('✅ Updating chat messages state, new count:', updatedMessages.length);
+          }
           setChatMessages(updatedMessages);
+        } else if (isLocal) {
+          console.log('⚠️ Message already exists, skipping');
         }
+      } else if (isLocal) {
+        console.log('⚠️ Message not for current user, ignoring');
       }
     });
 
@@ -293,27 +330,39 @@ export class ChatUtils {
     username: string,
     setTypingUsers: React.Dispatch<React.SetStateAction<string[]>>
   ): void {
+    if (!username) {
+      console.warn('⚠️ socketIOTyping called without username');
+      return;
+    }
+    
     // Remove existing listener to prevent duplicates
     socketService?.socket?.off('typing');
     socketService?.socket?.off('stop typing');
     
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
+    if (isLocal) {
+      console.log('🔧 Setting up typing listeners for username:', username);
+    }
+    
     socketService?.socket?.on('typing', (data: { senderName: string; receiverName: string }) => {
-      const receiverName = (data.receiverName as string)?.toLowerCase();
-      const senderName = data.senderName;
-      const currentUsername = username?.toLowerCase();
+      const receiverName = (data.receiverName as string)?.toLowerCase() || '';
+      const senderName = data.senderName || '';
+      const currentUsername = username?.toLowerCase() || '';
       
       // Debug logging (only in local development)
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       if (isLocal) {
         console.log('📝 Typing event received:', {
           senderName,
           receiverName,
           currentUsername,
-          matches: receiverName === currentUsername
+          matches: receiverName === currentUsername,
+          socketConnected: socketService?.socket?.connected
         });
       }
       
-      if (receiverName === currentUsername) {
+      // Check if this typing event is for the current user
+      if (receiverName === currentUsername && senderName) {
         setTypingUsers((prevUsers: string[]) => {
           if (!prevUsers.includes(senderName)) {
             if (isLocal) {
@@ -323,26 +372,29 @@ export class ChatUtils {
           }
           return prevUsers;
         });
+      } else if (isLocal) {
+        console.log('⚠️ Typing event ignored - not for current user or missing senderName');
       }
     });
 
     socketService?.socket?.on('stop typing', (data: { senderName: string; receiverName: string }) => {
-      const receiverName = (data.receiverName as string)?.toLowerCase();
-      const senderName = data.senderName;
-      const currentUsername = username?.toLowerCase();
+      const receiverName = (data.receiverName as string)?.toLowerCase() || '';
+      const senderName = data.senderName || '';
+      const currentUsername = username?.toLowerCase() || '';
       
       // Debug logging (only in local development)
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       if (isLocal) {
         console.log('🛑 Stop typing event received:', {
           senderName,
           receiverName,
           currentUsername,
-          matches: receiverName === currentUsername
+          matches: receiverName === currentUsername,
+          socketConnected: socketService?.socket?.connected
         });
       }
       
-      if (receiverName === currentUsername) {
+      // Check if this stop typing event is for the current user
+      if (receiverName === currentUsername && senderName) {
         setTypingUsers((prevUsers: string[]) => {
           const filtered = prevUsers.filter((user: string) => user !== senderName);
           if (isLocal) {
@@ -350,6 +402,8 @@ export class ChatUtils {
           }
           return filtered;
         });
+      } else if (isLocal) {
+        console.log('⚠️ Stop typing event ignored - not for current user or missing senderName');
       }
     });
   }
