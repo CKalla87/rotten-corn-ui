@@ -39,7 +39,14 @@ class PostService {
     return response;
   }
 
-  async removeReaction(postId: string, previousReaction: string, postReactions: unknown) {
+  async removeReaction(postId: string, previousReaction: string, postReactions: unknown, commentId?: string) {
+    // If commentId is provided, include it in the request body for comment reactions
+    if (commentId) {
+      const response = await axios.delete(`/post/reaction/${postId}/${previousReaction}/${JSON.stringify(postReactions)}`, {
+        data: { commentId }
+      });
+      return response;
+    }
     const response = await axios.delete(`/post/reaction/${postId}/${previousReaction}/${JSON.stringify(postReactions)}`);
     return response;
   }

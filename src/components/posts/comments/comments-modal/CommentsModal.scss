@@ -194,6 +194,22 @@
           color: var(--gray-7);
           line-height: 1.5;
         }
+
+        .comment-gif-container {
+          position: relative;
+          display: inline-block;
+          max-width: 200px;
+          margin-top: 8px;
+          
+          img {
+            max-width: 200px;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+            object-fit: contain;
+            will-change: opacity;
+          }
+        }
       }
 
       .comment-reactions-section {

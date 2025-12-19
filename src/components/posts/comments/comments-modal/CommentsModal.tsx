@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { find, cloneDeep } from 'lodash';
@@ -7,7 +7,6 @@ import Avatar from '@components/avatar/Avatar';
 import CommentInputBox from '@components/posts/comments/comment-input/CommentInputBox';
 import Reactions from '@components/posts/reactions/Reactions';
 import { postService } from '@services/api/post/post.service';
-import { chatService } from '@services/api/chat/chat.service';
 import { socketService } from '@services/socket/socket.service';
 import { Utils } from '@services/utils/utils.service';
 import { ProfileUtils } from '@services/utils/profile-utils.service';
@@ -62,6 +61,148 @@ interface PostData {
   [key: string]: unknown;
 }
 
+interface CommentListItemProps {
+  commentId: string;
+  commentData: CommentData;
+  userReaction: string;
+  totalReactions: number;
+  gifUrl: string | null;
+  showReactionsForComment: string | null;
+  toggleReactionsForComment: (commentId: string, e: React.MouseEvent) => void;
+  addCommentReaction: (commentId: string, reaction: string) => void;
+  reactionsRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  commentRefs: React.MutableRefObject<Record<string, HTMLLIElement | null>>;
+  reactionsMap: Record<string, string>;
+}
+
+// Memoized comment list item to prevent unnecessary re-renders when scrolling
+const CommentListItem = memo(({
+  commentId,
+  commentData,
+  userReaction,
+  totalReactions,
+  gifUrl,
+  showReactionsForComment,
+  toggleReactionsForComment,
+  addCommentReaction,
+  reactionsRefs,
+  commentRefs,
+  reactionsMap
+}: CommentListItemProps) => {
+  const [gifLoaded, setGifLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  return (
+    <li 
+      className="modal-comments-container-list-item" 
+      key={commentId} 
+      data-testid="modal-list-item"
+      ref={(el) => {
+        if (commentId) {
+          // eslint-disable-next-line react-hooks/immutability
+          commentRefs.current[commentId] = el;
+        }
+      }}
+    >
+      <div className="modal-comments-container-list-item-display">
+        <div className="user-img">
+          <Avatar
+            name={commentData?.username}
+            bgColor={commentData?.avatarColor}
+            textColor="#ffffff"
+            size={45}
+            avatarSrc={commentData?.profilePicture}
+          />
+        </div>
+        <div className="modal-comments-container-list-item-display-block">
+          <div className="comment-data">
+            <h1>{commentData?.username}</h1>
+            <p>{commentData?.comment}</p>
+            {gifUrl && (
+              <div className="comment-gif-container" style={{ minHeight: gifLoaded ? 'auto' : '150px' }}>
+                <img 
+                  ref={imgRef}
+                  src={gifUrl} 
+                  alt="GIF" 
+                  loading="lazy"
+                  decoding="async"
+                  style={{ 
+                    maxWidth: '200px', 
+                    marginTop: '8px', 
+                    borderRadius: '8px',
+                    display: gifLoaded ? 'block' : 'none',
+                    aspectRatio: 'auto',
+                    width: 'auto',
+                    height: 'auto',
+                    opacity: gifLoaded ? 1 : 0,
+                    transition: 'opacity 0.3s ease-in-out'
+                  }}
+                  onLoad={(e) => {
+                    setGifLoaded(true);
+                    const target = e.target as HTMLImageElement;
+                    target.style.opacity = '1';
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+                {!gifLoaded && (
+                  <div style={{
+                    width: '200px',
+                    height: '150px',
+                    marginTop: '8px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--white-3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--gray-7)',
+                    fontSize: '12px'
+                  }}>
+                    Loading GIF...
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="comment-reactions-section">
+            <div className="comment-reactions-wrapper" ref={(el) => {
+              // eslint-disable-next-line react-hooks/immutability
+              reactionsRefs.current[commentId] = el;
+            }}>
+              <div 
+                className={`comment-reaction-button ${userReaction ? String(userReaction).toLowerCase() : ''}`}
+                onClick={(e) => toggleReactionsForComment(commentId, e)}
+              >
+                {userReaction ? (
+                  <img 
+                    className="reaction-img" 
+                    src={reactionsMap[userReaction.toLowerCase()] || reactionsMap.like} 
+                    alt={userReaction} 
+                  />
+                ) : (
+                  <span className="reaction-text">Like</span>
+                )}
+              </div>
+              {showReactionsForComment === commentId && (
+                <div className="comment-reactions-picker">
+                  <Reactions handleClick={(reaction) => addCommentReaction(commentId, reaction)} showLabel={false} />
+                </div>
+              )}
+              {totalReactions > 0 && (
+                <span className="comment-reactions-count">{totalReactions}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+});
+
+CommentListItem.displayName = 'CommentListItem';
+
 const CommentsModal = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -99,7 +240,7 @@ const CommentsModal = () => {
     return privacy?.icon || null;
   };
 
-  const getPostComments = async () => {
+  const getPostComments = useCallback(async () => {
     try {
       // Use postId from state (either from modal data or Redux post)
       const currentPostId = postId;
@@ -175,7 +316,7 @@ const CommentsModal = () => {
       }
       setPostComments([]);
     }
-  };
+  }, [postId, dispatch]);
 
   const closeCommentsModal = () => {
     dispatch(closeModal());
@@ -197,7 +338,7 @@ const CommentsModal = () => {
     return 0;
   };
 
-  const getUserReaction = (comment: CommentData): string => {
+  const getUserReaction = useCallback((comment: CommentData): string => {
     // First check userReaction field (backward compatibility)
     if (comment.userReaction && typeof comment.userReaction === 'string') {
       return comment.userReaction;
@@ -224,9 +365,9 @@ const CommentsModal = () => {
     }
     
     return '';
-  };
+  }, [profile?.username]);
 
-  const addCommentReaction = async (commentId: string, reaction: string) => {
+  const addCommentReaction = useCallback(async (commentId: string, reaction: string) => {
     if (!commentId || !postId) {
       console.error('❌ Missing commentId or postId');
       return;
@@ -302,31 +443,53 @@ const CommentsModal = () => {
       
       setPostComments(updatedComments);
       
-      // Call API to save reaction (using chat message reaction endpoint - same as chat page)
+      // Call API to save reaction using the post reaction endpoint with commentId
       try {
-        const reactionBody = {
-          conversationId: postId, // Use postId as conversationId
-          messageId: commentId, // Use commentId as messageId
-          reaction: reaction,
-          type: isRemoving ? 'remove' : 'add'
-        };
-        
-        console.log('💾 Saving comment reaction:', reactionBody);
-        
-        // Use chat service endpoint (same as chat messages)
-        // The timeout is already set in the axios instance (2 minutes), but add explicit timeout as backup
-        const apiResponse = await Promise.race([
-          chatService.updateMessageReaction(reactionBody),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Request timeout: Reaction save took too long')), 120000)
-          )
-        ]);
-        
-        if (!apiResponse || !apiResponse.data) {
-          throw new Error('Invalid API response');
+        if (isRemoving) {
+          // Remove reaction - use DELETE endpoint with commentId in body
+          console.log('💾 Removing comment reaction:', { commentId, previousReaction: currentUserReaction });
+          
+          const removeResponse = await Promise.race([
+            postService.removeReaction(postId, currentUserReaction, {}, commentId),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout: Reaction removal took too long')), 120000)
+            )
+          ]);
+          
+          if (!removeResponse || !removeResponse.data) {
+            throw new Error('Invalid API response');
+          }
+          
+          console.log('✅ Comment reaction removed:', removeResponse.data);
+        } else {
+          // Add/update reaction - use POST endpoint with commentId
+          const userTo = postData?.userId || '';
+          const reactionBody = {
+            userTo: userTo,
+            postId: postId,
+            commentId: commentId, // This tells backend it's a comment reaction
+            type: reaction,
+            previousReaction: currentUserReaction || '',
+            postReactions: {},
+            profilePicture: profile?.profilePicture || ''
+          };
+          
+          console.log('💾 Saving comment reaction:', reactionBody);
+          
+          // Use post reaction endpoint with commentId - backend will handle comment reactions
+          const apiResponse = await Promise.race([
+            postService.addReaction(reactionBody),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout: Reaction save took too long')), 120000)
+            )
+          ]);
+          
+          if (!apiResponse || !apiResponse.data) {
+            throw new Error('Invalid API response');
+          }
+          
+          console.log('✅ Comment reaction saved:', apiResponse.data);
         }
-        
-        console.log('✅ Comment reaction saved:', apiResponse.data);
         
         // Emit socket event for real-time updates
         socketService?.socket?.emit('comment reaction', {
@@ -380,12 +543,12 @@ const CommentsModal = () => {
       // Reload comments on error
       getPostComments();
     }
-  };
+  }, [postComments, postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]);
 
-  const toggleReactionsForComment = (commentId: string, e: React.MouseEvent) => {
+  const toggleReactionsForComment = useCallback((commentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowReactionsForComment(showReactionsForComment === commentId ? null : commentId);
-  };
+    setShowReactionsForComment(prev => prev === commentId ? null : commentId);
+  }, []);
 
   // Close reactions when clicking outside
   useEffect(() => {
@@ -674,6 +837,33 @@ const CommentsModal = () => {
     }
   }, [postComments]);
 
+  // Memoize comments list to avoid conditional hook call
+  const memoizedComments = useMemo(() => {
+    return postComments.map((commentData) => {
+      const commentId = commentData?._id || '';
+      const userReaction = getUserReaction(commentData);
+      // Use reaction array (like chat) or reactions object
+      const totalReactions = getTotalReactionsCount(commentData.reaction || commentData.reactions);
+      const gifUrl = commentData?.gifUrl && typeof commentData.gifUrl === 'string' ? commentData.gifUrl : null;
+      
+      return (
+        <CommentListItem
+          key={commentId}
+          commentId={commentId}
+          commentData={commentData}
+          userReaction={userReaction}
+          totalReactions={totalReactions}
+          gifUrl={gifUrl}
+          showReactionsForComment={showReactionsForComment}
+          toggleReactionsForComment={toggleReactionsForComment}
+          addCommentReaction={addCommentReaction}
+          reactionsRefs={reactionsRefs}
+          commentRefs={commentRefs}
+          reactionsMap={reactionsMap}
+        />
+      );
+    });
+  }, [postComments, showReactionsForComment, getUserReaction, toggleReactionsForComment, addCommentReaction, commentRefs, reactionsRefs]);
 
   if (!commentsModalIsOpen) {
     return null;
@@ -810,73 +1000,7 @@ const CommentsModal = () => {
             </div>
           ) : (
             <ul className="modal-comments-container-list">
-              {postComments.map((commentData) => {
-                const commentId = commentData?._id || '';
-                const userReaction = getUserReaction(commentData);
-                // Use reaction array (like chat) or reactions object
-                const totalReactions = getTotalReactionsCount(commentData.reaction || commentData.reactions);
-                const gifUrl = commentData?.gifUrl && typeof commentData.gifUrl === 'string' ? commentData.gifUrl : null;
-                
-                return (
-                  <li 
-                    className="modal-comments-container-list-item" 
-                    key={commentId} 
-                    data-testid="modal-list-item"
-                    ref={(el) => {
-                      if (commentId) {
-                        commentRefs.current[commentId] = el;
-                      }
-                    }}
-                  >
-                    <div className="modal-comments-container-list-item-display">
-                      <div className="user-img">
-                        <Avatar
-                          name={commentData?.username}
-                          bgColor={commentData?.avatarColor}
-                          textColor="#ffffff"
-                          size={45}
-                          avatarSrc={commentData?.profilePicture}
-                        />
-                      </div>
-                      <div className="modal-comments-container-list-item-display-block">
-                        <div className="comment-data">
-                          <h1>{commentData?.username}</h1>
-                          <p>{commentData?.comment}</p>
-                          {gifUrl && (
-                            <img src={gifUrl} alt="GIF" style={{ maxWidth: '200px', marginTop: '8px', borderRadius: '8px' }} />
-                          )}
-                        </div>
-                        <div className="comment-reactions-section">
-                          <div className="comment-reactions-wrapper" ref={(el) => { reactionsRefs.current[commentId] = el; }}>
-                            <div 
-                              className={`comment-reaction-button ${userReaction ? String(userReaction).toLowerCase() : ''}`}
-                              onClick={(e) => toggleReactionsForComment(commentId, e)}
-                            >
-                              {userReaction ? (
-                                <img 
-                                  className="reaction-img" 
-                                  src={reactionsMap[userReaction.toLowerCase()] || reactionsMap.like} 
-                                  alt={userReaction} 
-                                />
-                              ) : (
-                                <span className="reaction-text">Like</span>
-                              )}
-                            </div>
-                            {showReactionsForComment === commentId && (
-                              <div className="comment-reactions-picker">
-                                <Reactions handleClick={(reaction) => addCommentReaction(commentId, reaction)} showLabel={false} />
-                              </div>
-                            )}
-                            {totalReactions > 0 && (
-                              <span className="comment-reactions-count">{totalReactions}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
+              {memoizedComments}
             </ul>
           )}
         </div>
