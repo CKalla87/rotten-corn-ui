@@ -298,12 +298,28 @@ export class ChatUtils {
     socketService?.socket?.off('stop typing');
     
     socketService?.socket?.on('typing', (data: { senderName: string; receiverName: string }) => {
-      if (
-        (data.receiverName as string)?.toLowerCase() === username?.toLowerCase()
-      ) {
+      const receiverName = (data.receiverName as string)?.toLowerCase();
+      const senderName = data.senderName;
+      const currentUsername = username?.toLowerCase();
+      
+      // Debug logging (only in local development)
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isLocal) {
+        console.log('📝 Typing event received:', {
+          senderName,
+          receiverName,
+          currentUsername,
+          matches: receiverName === currentUsername
+        });
+      }
+      
+      if (receiverName === currentUsername) {
         setTypingUsers((prevUsers: string[]) => {
-          if (!prevUsers.includes(data.senderName)) {
-            return [...prevUsers, data.senderName];
+          if (!prevUsers.includes(senderName)) {
+            if (isLocal) {
+              console.log('✅ Adding typing user:', senderName, 'Current list:', prevUsers);
+            }
+            return [...prevUsers, senderName];
           }
           return prevUsers;
         });
@@ -311,11 +327,28 @@ export class ChatUtils {
     });
 
     socketService?.socket?.on('stop typing', (data: { senderName: string; receiverName: string }) => {
-      if (
-        (data.receiverName as string)?.toLowerCase() === username?.toLowerCase()
-      ) {
+      const receiverName = (data.receiverName as string)?.toLowerCase();
+      const senderName = data.senderName;
+      const currentUsername = username?.toLowerCase();
+      
+      // Debug logging (only in local development)
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isLocal) {
+        console.log('🛑 Stop typing event received:', {
+          senderName,
+          receiverName,
+          currentUsername,
+          matches: receiverName === currentUsername
+        });
+      }
+      
+      if (receiverName === currentUsername) {
         setTypingUsers((prevUsers: string[]) => {
-          return prevUsers.filter((user: string) => user !== data.senderName);
+          const filtered = prevUsers.filter((user: string) => user !== senderName);
+          if (isLocal) {
+            console.log('✅ Removing typing user:', senderName, 'Updated list:', filtered);
+          }
+          return filtered;
         });
       }
     });

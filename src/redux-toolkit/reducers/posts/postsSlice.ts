@@ -38,7 +38,10 @@ const postsSlice = createSlice({
         return postObj._id === payload._id;
       });
       if (index > -1) {
-        state.posts[index] = action.payload;
+        // Create a new array to ensure React re-renders
+        const newPosts = [...state.posts];
+        newPosts[index] = action.payload;
+        state.posts = newPosts;
       }
     }
   },

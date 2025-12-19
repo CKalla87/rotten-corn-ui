@@ -123,6 +123,17 @@ const Streams = () => {
   const derivedPosts = useMemo(() => allPosts?.posts || [], [allPosts?.posts]);
   const derivedTotalPostsCount = useMemo(() => allPosts?.totalPostsCount || 0, [allPosts?.totalPostsCount]);
 
+  // Sync local posts state with Redux state when Redux updates
+  useEffect(() => {
+    // Use setTimeout to defer state update and avoid synchronous setState in effect warning
+    const timeoutId = setTimeout(() => {
+      if (derivedPosts.length > 0) {
+        setPosts(derivedPosts);
+      }
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [derivedPosts]);
+
   useEffect(() => {
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
@@ -228,6 +239,8 @@ const Streams = () => {
           .streams-content { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
           .streams-post { overflow: visible !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
           .posts-container { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+          .modal-wrapper { padding: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; overflow-x: hidden !important; overflow-y: auto !important; }
+          .modal-box { width: 100% !important; max-width: 100vw !important; max-height: 100vh !important; margin: 0 !important; padding: 10px !important; border-radius: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; }
         }
       `}</style>
       <div className="streams" data-testid="streams">

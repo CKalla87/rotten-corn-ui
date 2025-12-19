@@ -164,9 +164,13 @@ const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, del
             )}
           </div>
         ))}
-        {typingUsers.length > 0 && typingUsers.map((username) => (
-          <TypingIndicator key={username} username={username} />
-        ))}
+        {typingUsers.length > 0 && (
+          <div className="message-chat" data-testid="typing-indicator-container">
+            {typingUsers.map((username) => (
+              <TypingIndicator key={username} username={username} />
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
