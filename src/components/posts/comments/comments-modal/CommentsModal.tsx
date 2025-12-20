@@ -93,6 +93,25 @@ const CommentListItem = memo(({
   const [gifLoaded, setGifLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
   
+  // Reset gifLoaded state when gifUrl changes
+  useEffect(() => {
+    setGifLoaded(false);
+    // If we have a ref to the image and it's already complete (cached), set loaded immediately
+    if (gifUrl && imgRef.current) {
+      const img = imgRef.current;
+      // Use a small timeout to check after React has set the src
+      const checkLoaded = () => {
+        if (img.complete && img.naturalHeight !== 0 && img.src === gifUrl) {
+          setGifLoaded(true);
+        }
+      };
+      // Check immediately and after a brief delay to handle cached images
+      checkLoaded();
+      const timeoutId = setTimeout(checkLoaded, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gifUrl]);
+  
   // Memoize ref callbacks to prevent recreation on every render
   // This prevents re-renders during scroll
   const commentRefCallback = useCallback((el: HTMLLIElement | null) => {
@@ -182,13 +201,19 @@ const CommentListItem = memo(({
                     transition: 'opacity 0.3s ease-in-out'
                   }}
                   onLoad={(e) => {
-                    setGifLoaded(true);
                     const target = e.target as HTMLImageElement;
-                    target.style.opacity = '1';
+                    // Verify the image actually loaded successfully
+                    if (target.complete && target.naturalHeight !== 0) {
+                      setGifLoaded(true);
+                      target.style.opacity = '1';
+                    }
                   }}
                   onError={(e) => {
+                    // Hide the image on error and stop showing loading message
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
+                    // Set gifLoaded to true to hide the "Loading GIF..." message
+                    setGifLoaded(true);
                   }}
                 />
                 {!gifLoaded && (
