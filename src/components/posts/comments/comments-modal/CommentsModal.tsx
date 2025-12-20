@@ -656,7 +656,7 @@ const CommentsModal = () => {
       }
       setPostComments([]);
     }
-  }, [dispatch]);
+  }, [dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getPostComments = useCallback(async (postIdToFetch?: string) => {
     try {
@@ -701,7 +701,7 @@ const CommentsModal = () => {
       }
       setPostComments([]);
     }
-  }, [postId, processCommentsResponse, dispatch]);
+  }, [postId, processCommentsResponse, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeCommentsModal = () => {
     dispatch(closeModal());
@@ -786,59 +786,8 @@ const CommentsModal = () => {
       const currentUserReaction = getUserReaction(commentBeforeUpdate);
       const isRemoving = currentUserReaction === reaction;
       
-      // If scrolling, defer the optimistic update until scroll ends
-      if (isScrollingRef.current) {
-        // Queue the update for after scrolling
-        const applyUpdate = () => {
-          if (!isScrollingRef.current) {
-            // Apply optimistic update now that scrolling has stopped (use startTransition for smooth UI)
-            startTransition(() => {
-              setPostComments((prevComments) => prevComments.map((comment) => {
-              if (comment._id === commentId) {
-                const updatedComment = cloneDeep(comment);
-                const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
-                
-                if (isRemoving) {
-                  updatedComment.reaction = currentReactions.filter(
-                    (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
-                  );
-                  updatedComment.userReaction = '';
-                } else {
-                  const existingReactionIndex = currentReactions.findIndex(
-                    (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
-                  );
-                  
-                  const newReaction: CommentReaction = {
-                    senderName: profile?.username || '',
-                    username: profile?.username || '',
-                    type: reaction
-                  };
-                  
-                  if (existingReactionIndex > -1) {
-                    const updatedReactions = [...currentReactions];
-                    updatedReactions[existingReactionIndex] = newReaction;
-                    updatedComment.reaction = updatedReactions;
-                  } else {
-                    updatedComment.reaction = [...currentReactions, newReaction];
-                  }
-                  updatedComment.userReaction = reaction;
-                }
-                
-                return updatedComment;
-              }
-              return comment;
-              }));
-            });
-          } else {
-            // Still scrolling, check again
-            setTimeout(applyUpdate, 100);
-          }
-        };
-        setTimeout(applyUpdate, 100);
-      } else {
-        // Not scrolling - apply optimistic update immediately with startTransition
-        startTransition(() => {
-          setPostComments((prevComments) => prevComments.map((comment) => {
+      // Apply optimistic update immediately (no deferral during scroll for reactions)
+      setPostComments((prevComments) => prevComments.map((comment) => {
         if (comment._id === commentId) {
           const updatedComment = cloneDeep(comment);
           
@@ -879,8 +828,6 @@ const CommentsModal = () => {
         }
         return comment;
       }));
-      });
-      }
       
       // Call API to save reaction using the post reaction endpoint with commentId
       try {
@@ -900,6 +847,70 @@ const CommentsModal = () => {
           }
           
           console.log('✅ Comment reaction removed:', removeResponse.data);
+          
+          // Update comment state with API response if it contains updated comment data
+          if (removeResponse.data?.comment) {
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = { ...comment };
+                // Update reaction array from API response
+                if (removeResponse.data.comment.reaction) {
+                  updatedComment.reaction = Array.isArray(removeResponse.data.comment.reaction)
+                    ? removeResponse.data.comment.reaction
+                    : [];
+                }
+                // Update userReaction from API response or derive from reaction array
+                if (removeResponse.data.comment.userReaction !== undefined) {
+                  updatedComment.userReaction = removeResponse.data.comment.userReaction;
+                } else if (Array.isArray(updatedComment.reaction) && profile?.username) {
+                  // Derive userReaction from reaction array if not provided
+                  const userReaction = updatedComment.reaction.find(
+                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                  );
+                  updatedComment.userReaction = userReaction?.type || '';
+                }
+                return updatedComment;
+              }
+              return comment;
+            }));
+          } else if (removeResponse.data?.reactions) {
+            // If API returns reactions directly, update the comment
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = { ...comment };
+                // Update reaction array from API response
+                if (Array.isArray(removeResponse.data.reactions)) {
+                  updatedComment.reaction = removeResponse.data.reactions;
+                }
+                // Find user's reaction
+                const userReaction = removeResponse.data.reactions.find(
+                  (r: CommentReaction) => r.username === profile?.username || r.senderName === profile?.username
+                );
+                updatedComment.userReaction = userReaction?.type || '';
+                return updatedComment;
+              }
+              return comment;
+            }));
+          } else {
+            // If API doesn't return comment data, ensure userReaction is cleared
+            // This ensures the icon is removed even if API response doesn't include full comment data
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = { ...comment };
+                // Ensure userReaction is cleared if user has no reaction
+                if (Array.isArray(updatedComment.reaction) && profile?.username) {
+                  const userReaction = updatedComment.reaction.find(
+                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                  );
+                  updatedComment.userReaction = userReaction?.type || '';
+                } else {
+                  updatedComment.userReaction = '';
+                }
+                return updatedComment;
+              }
+              return comment;
+            }));
+          }
         } else {
           // Add/update reaction - use POST endpoint with commentId
           const userTo = postData?.userId || '';
@@ -928,6 +939,68 @@ const CommentsModal = () => {
           }
           
           console.log('✅ Comment reaction saved:', apiResponse.data);
+          
+          // Update comment state with API response if it contains updated comment data
+          if (apiResponse.data?.comment) {
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = { ...comment };
+                // Update reaction array from API response
+                if (apiResponse.data.comment.reaction) {
+                  updatedComment.reaction = Array.isArray(apiResponse.data.comment.reaction)
+                    ? apiResponse.data.comment.reaction
+                    : [];
+                }
+                // Update userReaction from API response or derive from reaction array
+                if (apiResponse.data.comment.userReaction !== undefined) {
+                  updatedComment.userReaction = apiResponse.data.comment.userReaction;
+                } else if (Array.isArray(updatedComment.reaction) && profile?.username) {
+                  // Derive userReaction from reaction array if not provided
+                  const userReaction = updatedComment.reaction.find(
+                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                  );
+                  updatedComment.userReaction = userReaction?.type || '';
+                }
+                return updatedComment;
+              }
+              return comment;
+            }));
+          } else if (apiResponse.data?.reactions) {
+            // If API returns reactions directly, update the comment
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = { ...comment };
+                // Update reaction array from API response
+                if (Array.isArray(apiResponse.data.reactions)) {
+                  updatedComment.reaction = apiResponse.data.reactions;
+                }
+                // Find user's reaction
+                const userReaction = apiResponse.data.reactions.find(
+                  (r: CommentReaction) => r.username === profile?.username || r.senderName === profile?.username
+                );
+                updatedComment.userReaction = userReaction?.type || '';
+                return updatedComment;
+              }
+              return comment;
+            }));
+          } else {
+            // If API doesn't return comment data, ensure userReaction is set from our optimistic update
+            // This ensures the icon displays even if API response doesn't include full comment data
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === commentId) {
+                const updatedComment = { ...comment };
+                // Ensure userReaction is set from reaction array if not already set
+                if (!updatedComment.userReaction && Array.isArray(updatedComment.reaction) && profile?.username) {
+                  const userReaction = updatedComment.reaction.find(
+                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                  );
+                  updatedComment.userReaction = userReaction?.type || '';
+                }
+                return updatedComment;
+              }
+              return comment;
+            }));
+          }
         }
         
         // Emit socket event for real-time updates
@@ -937,9 +1010,6 @@ const CommentsModal = () => {
           reaction: isRemoving ? '' : reaction,
           username: profile?.username
         });
-        
-        // Verify the reaction was saved by checking the updated comment state
-        // Don't reload all comments, just ensure our optimistic update matches reality
       } catch (apiError) {
         // Remove from saving set on error
         savingReactionsRef.current.delete(commentId);
@@ -984,7 +1054,7 @@ const CommentsModal = () => {
       // Reload comments on error
       getPostComments();
     }
-  }, [postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]);
+  }, [postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleReactionsForComment = useCallback((commentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1548,16 +1618,120 @@ const CommentsModal = () => {
     
     const handler = handleCommentUpdateRef.current;
     
-    // Listen to both socket events
+    // Handle comment reaction updates from socket
+    const handleCommentReaction = (data: { commentId: string; reaction: string; username: string }) => {
+      if (!data.commentId || !postId) return;
+      
+      // Don't update if user is scrolling - defer until scroll ends
+      if (isScrollingRef.current) {
+        const applyUpdate = () => {
+          if (!isScrollingRef.current) {
+            setPostComments((prevComments) => prevComments.map((comment) => {
+              if (comment._id === data.commentId) {
+                const updatedComment = cloneDeep(comment);
+                const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
+                
+                if (!data.reaction || data.reaction === '') {
+                  // Remove reaction
+                  updatedComment.reaction = currentReactions.filter(
+                    (r: CommentReaction) => r.username !== data.username && r.senderName !== data.username
+                  );
+                  if (data.username === profile?.username) {
+                    updatedComment.userReaction = '';
+                  }
+                } else {
+                  // Add or update reaction
+                  const existingIndex = currentReactions.findIndex(
+                    (r: CommentReaction) => r.username === data.username || r.senderName === data.username
+                  );
+                  
+                  const newReaction: CommentReaction = {
+                    senderName: data.username,
+                    username: data.username,
+                    type: data.reaction
+                  };
+                  
+                  if (existingIndex > -1) {
+                    const updatedReactions = [...currentReactions];
+                    updatedReactions[existingIndex] = newReaction;
+                    updatedComment.reaction = updatedReactions;
+                  } else {
+                    updatedComment.reaction = [...currentReactions, newReaction];
+                  }
+                  
+                  if (data.username === profile?.username) {
+                    updatedComment.userReaction = data.reaction;
+                  }
+                }
+                
+                return updatedComment;
+              }
+              return comment;
+            }));
+          } else {
+            setTimeout(applyUpdate, 100);
+          }
+        };
+        setTimeout(applyUpdate, 100);
+      } else {
+        // Not scrolling - apply update immediately
+        setPostComments((prevComments) => prevComments.map((comment) => {
+          if (comment._id === data.commentId) {
+            const updatedComment = cloneDeep(comment);
+            const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
+            
+            if (!data.reaction || data.reaction === '') {
+              // Remove reaction
+              updatedComment.reaction = currentReactions.filter(
+                (r: CommentReaction) => r.username !== data.username && r.senderName !== data.username
+              );
+              if (data.username === profile?.username) {
+                updatedComment.userReaction = '';
+              }
+            } else {
+              // Add or update reaction
+              const existingIndex = currentReactions.findIndex(
+                (r: CommentReaction) => r.username === data.username || r.senderName === data.username
+              );
+              
+              const newReaction: CommentReaction = {
+                senderName: data.username,
+                username: data.username,
+                type: data.reaction
+              };
+              
+              if (existingIndex > -1) {
+                const updatedReactions = [...currentReactions];
+                updatedReactions[existingIndex] = newReaction;
+                updatedComment.reaction = updatedReactions;
+              } else {
+                updatedComment.reaction = [...currentReactions, newReaction];
+              }
+              
+              if (data.username === profile?.username) {
+                updatedComment.userReaction = data.reaction;
+              }
+            }
+            
+            return updatedComment;
+          }
+          return comment;
+        }));
+      }
+    };
+    
+    // Listen to socket events
     socket.on('update comment', handler);
     socket.on('comment', handler);
+    socket.on('comment reaction', handleCommentReaction);
     
     return () => {
       socket.off('update comment', handler);
       socket.off('comment', handler);
+      socket.off('comment reaction', handleCommentReaction);
     };
     // Only recreate when modal opens/closes or postId changes, not on every render
-  }, [commentsModalIsOpen, postId]);
+  }, [commentsModalIsOpen, postId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Memoize onCommentAdded callback to prevent CommentInputBox re-renders
   const handleCommentAdded = useCallback((comment: CommentData) => {
@@ -1687,7 +1861,7 @@ const CommentsModal = () => {
         return updated;
       });
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track previous comments length to detect new comments without causing re-renders
   const prevCommentsLengthRef = useRef<number>(0);

@@ -163,6 +163,7 @@ const axiosInstance = axios.create({
 // Wrap axios methods to add request deduplication for GET requests
 // Exclude comment endpoints from deduplication as they need to update during scrolling
 const originalGet = axiosInstance.get.bind(axiosInstance);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 axiosInstance.get = function<T = any, R = AxiosResponse<T>, D = any>(url: string, config?: InternalAxiosRequestConfig<D>): Promise<R> {
   // Check if this is a comment endpoint - don't deduplicate these as they need real-time updates
   const isCommentEndpoint = url?.includes('/post/comments/') || url?.includes('/post/commentsnames/');
