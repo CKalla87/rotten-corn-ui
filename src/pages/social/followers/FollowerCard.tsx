@@ -11,7 +11,7 @@ import { FollowersUtils } from '@services/utils/followers-utils.service';
 import { ProfileUtils } from '@services/utils/profile-utils.service';
 import { Utils } from '@services/utils/utils.service';
 import useEffectOnce from '@hooks/useEffectOnce';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import type { RootState, AppDispatch } from '@redux/store';
 import './Followers.scss';
 
@@ -31,7 +31,9 @@ interface FollowerCardProps {
 
 const FollowerCard = ({ userData }: FollowerCardProps) => {
   const [followers, setFollowers] = useState<UserData[]>([]);
-  const [user, setUser] = useState<UserData | undefined>(userData);
+  // Use userData prop if available, otherwise use state
+  const [internalUser, setInternalUser] = useState<UserData | undefined>(undefined);
+  const user = userData || internalUser;
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch<AppDispatch>();
   const [searchParams] = useSearchParams();
@@ -39,25 +41,41 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
   const { profile, token } = useSelector((state: RootState) => state.user);
   const navigate = useNavigate();
 
-  const getUserFollowers = async () => {
+  const getUserFollowers = useCallback(async (userId: string) => {
     try {
-      const response = await followerService.getUserFollowers(searchParams.get('id') || '');
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      const response = await followerService.getUserFollowers(userId);
       setFollowers(response.data.followers);
       setLoading(false);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      setLoading(false);
     }
-  };
+  }, [dispatch]);
 
   const getUserProfileByUsername = async () => {
     try {
+      // If we already have userData prop, don't fetch
+      if (userData && userData._id && userData.username) {
+        return;
+      }
+      // Otherwise, fetch from API using URL params
+      const userId = searchParams.get('id') || '';
+      const userUId = searchParams.get('uId') || '';
+      const usernameToUse = username || '';
+      if (!usernameToUse) {
+        return;
+      }
       const response = await userService.getUserProfileByUsername(
-        username || '',
-        searchParams.get('id') || '',
-        searchParams.get('uId') || ''
+        usernameToUse,
+        userId,
+        userUId
       );
-      setUser(response.data.user);
+      setInternalUser(response.data.user);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
@@ -68,10 +86,10 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
     try {
       socketService?.socket?.emit('block user', { blockedUser: userInfo._id, blockedBy: user?._id });
       await FollowersUtils.blockUser(userInfo, dispatch);
-      // Update local state immediately
-      if (user) {
-        const updatedBlocked = [...((user.blocked as string[]) || []), userInfo._id || ''];
-        setUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
+      // Update local state immediately (only if we have internal user state)
+      if (internalUser) {
+        const updatedBlocked = [...((internalUser.blocked as string[]) || []), userInfo._id || ''];
+        setInternalUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
@@ -83,10 +101,10 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
     try {
       socketService?.socket?.emit('unblock user', { blockedUser: userInfo._id, blockedBy: user?._id });
       await FollowersUtils.unblockUser(userInfo, dispatch);
-      // Update local state immediately
-      if (user) {
-        const updatedBlocked = Utils.removeUserFromList((user.blocked as string[]) || [], userInfo._id || '');
-        setUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
+      // Update local state immediately (only if we have internal user state)
+      if (internalUser) {
+        const updatedBlocked = Utils.removeUserFromList((internalUser.blocked as string[]) || [], userInfo._id || '');
+        setInternalUser((prevUser) => ({ ...prevUser, blocked: updatedBlocked } as UserData));
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
@@ -96,13 +114,37 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
 
   useEffectOnce(() => {
     getUserProfileByUsername();
-    getUserFollowers();
+    // Fetch followers after getting user profile
+    const fetchFollowers = async () => {
+      const userId = userData?._id || searchParams.get('id') || '';
+      if (userId) {
+        await getUserFollowers(userId);
+      }
+    };
+    // Use setTimeout to avoid calling setState synchronously
+    setTimeout(() => {
+      void fetchFollowers();
+    }, 0);
   });
+
+  // Fetch followers when user/userData becomes available (for when userData prop changes)
+  useEffect(() => {
+    const userId = user?._id;
+    if (userId) {
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        void getUserFollowers(userId);
+      }, 0);
+    }
+  }, [user?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (user && token) {
       FollowersUtils.socketIOBlockAndUnblockCard(user, token, (blocked: string[]) => {
-        setUser((prevUser) => ({ ...prevUser, blocked } as UserData));
+        // Only update internal user state if we have it
+        if (internalUser) {
+          setInternalUser((prevUser) => ({ ...prevUser, blocked } as UserData));
+        }
       }, dispatch);
     }
     // Cleanup socket listeners on unmount
@@ -112,7 +154,7 @@ const FollowerCard = ({ userData }: FollowerCardProps) => {
         socketService.socket.off('unblocked user id');
       }
     };
-  }, [user, token, dispatch]);
+  }, [user, token, dispatch, internalUser]);
 
   return (
     <div data-testid="followers-card">
