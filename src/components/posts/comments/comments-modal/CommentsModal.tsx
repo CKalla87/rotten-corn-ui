@@ -289,7 +289,6 @@ const CommentsModal = () => {
   const lastLoadedPostIdRef = useRef<string | undefined>(undefined); // Track last postId we loaded comments for
   const postCommentsRef = useRef<CommentData[]>([]); // Ref to access latest postComments without causing re-renders
   const isScrollingRef = useRef<boolean>(false); // Track if user is currently scrolling
-  const previousMemoizedCommentsRef = useRef<React.ReactElement[]>([]); // Store previous memoized comments to prevent updates during scroll
   
   // Memoize image/video URLs to prevent recalculation on every render during scrolling
   // This prevents repeated calls to getCloudName() and getBaseUrl() during scroll
@@ -1301,26 +1300,9 @@ const CommentsModal = () => {
   
   // Memoize comments list - only recalculate when commentsKey changes
   // This prevents recalculation during scroll or other unrelated state updates
-  // Use a very strict dependency to prevent any recalculation during scroll
   const memoizedComments = useMemo(() => {
-    // Only use previous comments if:
-    // 1. We're actively scrolling
-    // 2. We have previous comments stored
-    // 3. The comment count matches (to allow new comments to show)
-    // 4. We actually have comments (don't block empty state)
-    // This prevents blocking initial render or new comments
-    const shouldUsePrevious = isScrollingRef.current && 
-                              previousMemoizedCommentsRef.current.length > 0 &&
-                              previousMemoizedCommentsRef.current.length === postComments.length &&
-                              postComments.length > 0;
-    
-    if (shouldUsePrevious) {
-      return previousMemoizedCommentsRef.current;
-    }
-    
-    // Always render comments if we're not scrolling or if comment count changed
-    // This ensures comments always show up initially
-    
+    // Always render comments - don't block rendering
+    // The scroll lock only defers state updates, it doesn't block rendering
     const newComments = postComments.map((commentData) => {
       const commentId = commentData?._id || '';
       const userReaction = getUserReaction(commentData);
@@ -1345,9 +1327,6 @@ const CommentsModal = () => {
         />
       );
     });
-    
-    // Store the new comments in ref for use during scroll
-    previousMemoizedCommentsRef.current = newComments;
     
     return newComments;
     // Only depend on commentsKey - this is a stable string that only changes when comments/reactions actually change
