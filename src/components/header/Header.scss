@@ -430,15 +430,15 @@ ul .dropdown-ul {
           position: relative;
           z-index: 1;
 
-        .header-list-name {
-          display: contents;
+          .header-list-name {
+            display: contents;
 
-          .header-list-icon {
-            width: 20px !important;
-            height: 20px !important;
-            font-size: 18px;
-            flex-shrink: 0;
-          }
+            .header-list-icon {
+              width: 20px !important;
+              height: 20px !important;
+              font-size: 18px;
+              flex-shrink: 0;
+            }
 
             &.profile-image {
               display: flex;

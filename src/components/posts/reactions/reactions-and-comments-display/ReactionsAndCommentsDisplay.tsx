@@ -158,7 +158,7 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
     // Only set reactions from post.reactions if we have valid counts
     // Otherwise, getPostReactions will fetch and set them
     if (Object.keys(normalizedReactions).length > 0) {
-      const formattedReactions = Utils.formattedReactions(normalizedReactions);
+    const formattedReactions = Utils.formattedReactions(normalizedReactions);
       // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => {
         setReactions(formattedReactions);

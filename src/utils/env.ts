@@ -49,38 +49,38 @@ export function getCloudName(): string | undefined {
   
   // Error logging for missing cloud name (only log once)
   if (!cloudNameLogged) {
-    const buildTimeEnv = import.meta.env.VITE_CLOUD_NAME;
-    const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__?.VITE_CLOUD_NAME : undefined;
+  const buildTimeEnv = import.meta.env.VITE_CLOUD_NAME;
+  const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__?.VITE_CLOUD_NAME : undefined;
+  
+  console.error('⚠️ CRITICAL: VITE_CLOUD_NAME is not set! Image/video uploads will not work.');
+  console.error('Build-time env:', buildTimeEnv);
+  console.error('Runtime env:', runtimeEnv);
+  
+  // Diagnostic information
+  if (typeof window !== 'undefined') {
+    const hasWindowEnv = !!window.__ENV__;
+    const envKeys = window.__ENV__ ? Object.keys(window.__ENV__) : [];
+    console.error('Diagnostic info:', {
+      hasWindowEnv,
+      envKeys,
+      windowEnvType: typeof window.__ENV__,
+      allEnvVars: window.__ENV__ || 'undefined'
+    });
     
-    console.error('⚠️ CRITICAL: VITE_CLOUD_NAME is not set! Image/video uploads will not work.');
-    console.error('Build-time env:', buildTimeEnv);
-    console.error('Runtime env:', runtimeEnv);
-    
-    // Diagnostic information
-    if (typeof window !== 'undefined') {
-      const hasWindowEnv = !!window.__ENV__;
-      const envKeys = window.__ENV__ ? Object.keys(window.__ENV__) : [];
-      console.error('Diagnostic info:', {
-        hasWindowEnv,
-        envKeys,
-        windowEnvType: typeof window.__ENV__,
-        allEnvVars: window.__ENV__ || 'undefined'
-      });
-      
-      if (!hasWindowEnv) {
-        console.error('❌ window.__ENV__ does not exist! The injection script may not have run.');
-        console.error('   Check the HTML source for a <script> tag with window.__ENV__ initialization.');
-      } else if (envKeys.length === 0) {
-        console.error('❌ window.__ENV__ exists but is empty! No variables were injected.');
-        console.error('   This likely means the .env file was not found or had no valid VITE_ variables.');
-      } else {
-        console.error(`⚠️ window.__ENV__ has ${envKeys.length} variable(s) but VITE_CLOUD_NAME is missing.`);
-        console.error('   Variables found:', envKeys.join(', '));
-        console.error('   Check that .env.develop contains: VITE_CLOUD_NAME=your-actual-cloud-name');
-      }
+    if (!hasWindowEnv) {
+      console.error('❌ window.__ENV__ does not exist! The injection script may not have run.');
+      console.error('   Check the HTML source for a <script> tag with window.__ENV__ initialization.');
+    } else if (envKeys.length === 0) {
+      console.error('❌ window.__ENV__ exists but is empty! No variables were injected.');
+      console.error('   This likely means the .env file was not found or had no valid VITE_ variables.');
+    } else {
+      console.error(`⚠️ window.__ENV__ has ${envKeys.length} variable(s) but VITE_CLOUD_NAME is missing.`);
+      console.error('   Variables found:', envKeys.join(', '));
+      console.error('   Check that .env.develop contains: VITE_CLOUD_NAME=your-actual-cloud-name');
     }
-    
-    console.error('Please ensure VITE_CLOUD_NAME is set during build or injected at runtime via window.__ENV__.VITE_CLOUD_NAME');
+  }
+  
+  console.error('Please ensure VITE_CLOUD_NAME is set during build or injected at runtime via window.__ENV__.VITE_CLOUD_NAME');
     cloudNameLogged = true;
   }
   

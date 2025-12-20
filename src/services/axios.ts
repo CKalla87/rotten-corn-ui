@@ -32,19 +32,19 @@ function getBaseUrl(): string {
     if (hostname.includes('dev.chatappserver.space') || hostname.includes('.dev.')) {
       currentEnv = 'development';
       if (!baseUrlLogged) {
-        console.log('🌐 Detected develop environment from hostname:', hostname);
+      console.log('🌐 Detected develop environment from hostname:', hostname);
         baseUrlLogged = true;
       }
     } else if (hostname.includes('staging.chatappserver.space') || hostname.includes('.staging.')) {
       currentEnv = 'staging';
       if (!baseUrlLogged) {
-        console.log('🌐 Detected staging environment from hostname:', hostname);
+      console.log('🌐 Detected staging environment from hostname:', hostname);
         baseUrlLogged = true;
       }
     } else if (hostname.includes('chatappserver.space') && !hostname.includes('dev.') && !hostname.includes('staging.')) {
       currentEnv = 'production';
       if (!baseUrlLogged) {
-        console.log('🌐 Detected production environment from hostname:', hostname);
+      console.log('🌐 Detected production environment from hostname:', hostname);
         baseUrlLogged = true;
       }
     }
@@ -69,7 +69,7 @@ function getBaseUrl(): string {
     endpoint = window.__ENV__.VITE_BASE_ENDPOINT;
     // Only log once to avoid console spam during scrolling
     if (!baseUrlLogged) {
-      console.log('🌐 Using runtime VITE_BASE_ENDPOINT:', endpoint);
+    console.log('🌐 Using runtime VITE_BASE_ENDPOINT:', endpoint);
       baseUrlLogged = true;
     }
   }

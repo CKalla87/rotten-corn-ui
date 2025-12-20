@@ -341,8 +341,8 @@ const CommentsModal = () => {
   // Memoize current post lookup to prevent recalculation on every render
   const currentPost = useMemo(() => {
     let post: PostData | null = (modalData?.post as PostData) || (postFromRedux as unknown as PostData | null) || null;
-    
-    // If we have postId but no post data, try to find it from allPosts
+  
+  // If we have postId but no post data, try to find it from allPosts
     if (!post && postId && allPosts && Array.isArray(allPosts)) {
       post = (allPosts as unknown as PostData[]).find((p: PostData) => p._id === postId || p.id === postId) || null;
     }
@@ -420,7 +420,7 @@ const CommentsModal = () => {
       
       // Use startTransition for non-urgent updates to prevent blocking the UI during scroll
       startTransition(() => {
-        setPostComments(processedComments);
+      setPostComments(processedComments);
       });
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string }; status?: number } };
@@ -606,7 +606,7 @@ const CommentsModal = () => {
         // Not scrolling - apply optimistic update immediately with startTransition
         startTransition(() => {
           setPostComments((prevComments) => prevComments.map((comment) => {
-            if (comment._id === commentId) {
+        if (comment._id === commentId) {
           const updatedComment = cloneDeep(comment);
           
           // Ensure reaction is an array (like chat messages)
@@ -646,7 +646,7 @@ const CommentsModal = () => {
         }
         return comment;
       }));
-        });
+      });
       }
       
       // Call API to save reaction using the post reaction endpoint with commentId
@@ -725,13 +725,13 @@ const CommentsModal = () => {
         
         // Revert to the state before the optimistic update
         startTransition(() => {
-          setPostComments((prev) => {
-            return prev.map((comment) => {
-              if (comment._id === commentId) {
-                // Restore the original comment state
-                return originalComment;
-              }
-              return comment;
+        setPostComments((prev) => {
+          return prev.map((comment) => {
+            if (comment._id === commentId) {
+              // Restore the original comment state
+              return originalComment;
+            }
+            return comment;
             });
           });
         });
@@ -786,11 +786,11 @@ const CommentsModal = () => {
   useEffect(() => {
     if (commentsModalIsOpen && currentPost) {
       startTransition(() => {
-        setPostData(currentPost);
+      setPostData(currentPost);
       });
     } else {
       startTransition(() => {
-        setPostData(null);
+      setPostData(null);
       });
     }
   }, [commentsModalIsOpen, currentPost]);
@@ -848,9 +848,10 @@ const CommentsModal = () => {
           
           // Only after scroll completely ends, allow React updates
           // This ensures zero re-renders during active scrolling
+          // Force a re-render after scroll ends to show any pending updates
           scrollTimeout = null;
           rafId = null;
-        }, 400); // Longer debounce to ensure scroll has truly ended
+        }, 200); // Reduced debounce to allow updates sooner after scroll ends
       });
     };
 
@@ -921,8 +922,8 @@ const CommentsModal = () => {
     // Create handler once and reuse it
     if (!handleCommentUpdateRef.current) {
       handleCommentUpdateRef.current = (commentData: unknown) => {
-        // Handle both 'comment' event (from backend) and 'update comment' event
-        // Backend emits 'comment' with the comment object directly
+      // Handle both 'comment' event (from backend) and 'update comment' event
+      // Backend emits 'comment' with the comment object directly
       let actualComment: CommentData | undefined;
       let actualPostId: string | undefined;
       
@@ -1072,53 +1073,53 @@ const CommentsModal = () => {
         });
         
         startTransition(() => {
-          setPostComments((prev) => {
-            // First check: does this comment ID already exist?
-            const existsById = prev.some((c) => c._id === actualComment!._id);
-            if (existsById) {
-              console.log('⚠️ Comment already exists by ID from socket, skipping:', actualComment._id);
-              return prev;
-            }
+        setPostComments((prev) => {
+          // First check: does this comment ID already exist?
+          const existsById = prev.some((c) => c._id === actualComment!._id);
+          if (existsById) {
+            console.log('⚠️ Comment already exists by ID from socket, skipping:', actualComment._id);
+            return prev;
+          }
+          
+          // For GIFs, ALWAYS check if we have an existing comment with same GIF + user
+          // If same GIF URL and same username, it's the same comment - replace it
+          if (actualComment.gifUrl) {
+            // Find ANY comment with same GIF URL and same username
+            // This catches both optimistic updates and any duplicates
+            const existingIndex = prev.findIndex((c) => {
+              return c.gifUrl === actualComment!.gifUrl && c.username === actualComment!.username;
+            });
             
-            // For GIFs, ALWAYS check if we have an existing comment with same GIF + user
-            // If same GIF URL and same username, it's the same comment - replace it
-            if (actualComment.gifUrl) {
-              // Find ANY comment with same GIF URL and same username
-              // This catches both optimistic updates and any duplicates
-              const existingIndex = prev.findIndex((c) => {
-                return c.gifUrl === actualComment!.gifUrl && c.username === actualComment!.username;
+            if (existingIndex !== -1) {
+              // Replace existing comment with real one from socket
+              // This prevents duplicates - same GIF + same user = same comment
+              console.log('✅ Replacing existing GIF comment (same GIF + user):', {
+                oldId: prev[existingIndex]._id,
+                newId: actualComment._id,
+                gifUrl: actualComment.gifUrl,
+                username: actualComment.username
               });
-              
-              if (existingIndex !== -1) {
-                // Replace existing comment with real one from socket
-                // This prevents duplicates - same GIF + same user = same comment
-                console.log('✅ Replacing existing GIF comment (same GIF + user):', {
-                  oldId: prev[existingIndex]._id,
-                  newId: actualComment._id,
-                  gifUrl: actualComment.gifUrl,
-                  username: actualComment.username
-                });
-                const updated = [...prev];
-                updated[existingIndex] = {
-                  ...actualComment,
-                  gifUrl: actualComment.gifUrl
-                };
-                updated.sort((a, b) => {
-                  const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
-                    ? new Date(a.createdAt).getTime() 
-                    : Date.now();
-                  const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
-                    ? new Date(b.createdAt).getTime() 
-                    : Date.now();
-                  return aTime - bTime;
-                });
-                if (actualComment._id) {
-                  lastAddedCommentId.current = actualComment._id;
+              const updated = [...prev];
+              updated[existingIndex] = {
+                ...actualComment,
+                gifUrl: actualComment.gifUrl
+              };
+              updated.sort((a, b) => {
+                const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
+                  ? new Date(a.createdAt).getTime() 
+                  : Date.now();
+                const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
+                  ? new Date(b.createdAt).getTime() 
+                  : Date.now();
+                return aTime - bTime;
+              });
+              if (actualComment._id) {
+                lastAddedCommentId.current = actualComment._id;
                   shouldScrollToCommentRef.current = actualComment._id;
-                }
-                return updated; // Return early - don't add as new comment
               }
+              return updated; // Return early - don't add as new comment
             }
+          }
           
           // For text comments, check for duplicates
           if (!actualComment.gifUrl) {
@@ -1170,7 +1171,7 @@ const CommentsModal = () => {
         });
         });
       }
-      };
+    };
     }
     
     const handler = handleCommentUpdateRef.current;
@@ -1275,15 +1276,15 @@ const CommentsModal = () => {
     if (commentIdToScroll && commentsLengthIncreased) {
       // Use requestAnimationFrame for better performance
       requestAnimationFrame(() => {
-        setTimeout(() => {
+      setTimeout(() => {
           const commentElement = commentRefs.current[commentIdToScroll];
-          if (commentElement && commentsContainerRef.current) {
-            commentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (commentElement && commentsContainerRef.current) {
+          commentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             // Reset refs after scrolling
-            lastAddedCommentId.current = null;
+          lastAddedCommentId.current = null;
             shouldScrollToCommentRef.current = null;
-          }
-        }, 100);
+        }
+      }, 100);
       });
     }
     
@@ -1302,10 +1303,23 @@ const CommentsModal = () => {
   // This prevents recalculation during scroll or other unrelated state updates
   // Use a very strict dependency to prevent any recalculation during scroll
   const memoizedComments = useMemo(() => {
-    // If currently scrolling, return previous memoized value to completely prevent updates
-    if (isScrollingRef.current && previousMemoizedCommentsRef.current.length > 0) {
+    // Only use previous comments if:
+    // 1. We're actively scrolling
+    // 2. We have previous comments stored
+    // 3. The comment count matches (to allow new comments to show)
+    // 4. We actually have comments (don't block empty state)
+    // This prevents blocking initial render or new comments
+    const shouldUsePrevious = isScrollingRef.current && 
+                              previousMemoizedCommentsRef.current.length > 0 &&
+                              previousMemoizedCommentsRef.current.length === postComments.length &&
+                              postComments.length > 0;
+    
+    if (shouldUsePrevious) {
       return previousMemoizedCommentsRef.current;
     }
+    
+    // Always render comments if we're not scrolling or if comment count changed
+    // This ensures comments always show up initially
     
     const newComments = postComments.map((commentData) => {
       const commentId = commentData?._id || '';
