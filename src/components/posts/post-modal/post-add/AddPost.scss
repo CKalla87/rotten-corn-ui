@@ -146,6 +146,7 @@
   &-button {
     margin-top: 10px;
     padding: 10px;
+    position: relative;
 
     @media (max-width: 768px) {
       position: sticky;
@@ -512,24 +513,28 @@ hr {
     z-index: 15;
     margin-right: 0;
     margin-bottom: 0;
-    position: fixed;
-    bottom: calc(44px + 20px + env(safe-area-inset-bottom, 0px) + 8px);
+    position: absolute;
+    bottom: 70px;
     right: 15px;
     left: auto;
     background-color: var(--white-1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 4px 8px;
     border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
   }
 
   // Ensure character count is visible on streams page mobile
   @media (max-width: 768px) {
     body:has(.streams:not([style*="display: none"])) & {
-      position: fixed;
-      bottom: calc(44px + 20px + env(safe-area-inset-bottom, 0px) + 8px);
+      position: absolute;
+      bottom: 70px;
       right: 15px;
       left: auto;
       z-index: 20;
+      white-space: nowrap;
+      pointer-events: none;
     }
   }
 }

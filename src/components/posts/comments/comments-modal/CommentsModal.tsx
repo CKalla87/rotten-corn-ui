@@ -219,7 +219,7 @@ const CommentListItem = memo(({
                 {userReaction ? (
                   <img 
                     className="reaction-img" 
-                    src={reactionsMap[userReaction] || reactionsMap.like} 
+                    src={reactionsMap[userReaction === 'happy' ? 'haha' : userReaction] || reactionsMap.like} 
                     alt={userReaction} 
                     onError={(e) => {
                       // Fallback if image fails to load - try like icon
@@ -643,12 +643,17 @@ const CommentsModal = () => {
           }
         }
         
+        // Convert 'happy' to 'haha' to match reactionsMap key (reactionsMap uses 'haha' not 'happy')
+        if (userReaction === 'happy') {
+          userReaction = 'haha';
+        }
+        
         const processedComment: CommentData = {
           ...comment,
           comment: commentText, // Ensure comment field is set as string
           reaction: reactionArray,
           gifUrl: gifUrl,
-          userReaction: userReaction // Ensure userReaction is set for icon display (normalized to lowercase)
+          userReaction: userReaction // Ensure userReaction is set for icon display (normalized to lowercase, 'happy' -> 'haha')
         } as CommentData;
         
         // Processed comment
