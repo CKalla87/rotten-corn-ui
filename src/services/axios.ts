@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 
 // Support both VITE_APP_ENVIRONMENT and REACT_APP_ENVIRONMENT for compatibility
 // Also check runtime environment variables injected via window.__ENV__
@@ -140,7 +140,13 @@ const requestCache = new Map<string, { data: unknown; timestamp: number; respons
 const CACHE_DURATION = 2000; // 2 seconds cache for GET requests in hosted envs
 
 // Request deduplication - prevent duplicate simultaneous requests
-const pendingRequests = new Map<string, Promise<unknown>>();
+// Maps request key to { promise, timestamp }
+interface PendingRequest {
+  promise: Promise<unknown>;
+  timestamp: number;
+}
+const pendingRequests = new Map<string, PendingRequest>();
+const DEDUP_WINDOW_MS = 100; // Only deduplicate requests within 100ms of each other
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -154,6 +160,57 @@ const axiosInstance = axios.create({
   decompress: true // Enable response decompression
 });
 
+// Wrap axios methods to add request deduplication for GET requests
+// Exclude comment endpoints from deduplication as they need to update during scrolling
+const originalGet = axiosInstance.get.bind(axiosInstance);
+axiosInstance.get = function<T = any, R = AxiosResponse<T>, D = any>(url: string, config?: InternalAxiosRequestConfig<D>): Promise<R> {
+  // Check if this is a comment endpoint - don't deduplicate these as they need real-time updates
+  const isCommentEndpoint = url?.includes('/post/comments/') || url?.includes('/post/commentsnames/');
+  
+  // Only deduplicate GET requests that are NOT comment endpoints
+  if (!isCommentEndpoint) {
+    const requestKey = `get:${url}:${JSON.stringify(config?.params || {})}`;
+    const now = Date.now();
+    
+    // Check if this exact request is already pending and within the deduplication window
+    const pendingRequest = pendingRequests.get(requestKey);
+    if (pendingRequest) {
+      const age = now - pendingRequest.timestamp;
+      if (age < DEDUP_WINDOW_MS) {
+        // Request is very recent (within dedup window), return existing promise
+        return pendingRequest.promise as Promise<R>;
+      } else {
+        // Request is old, clean it up and allow new request
+        pendingRequests.delete(requestKey);
+      }
+    }
+    
+    // Create the request promise and track it
+    const requestPromise = originalGet<T, R, D>(url, config)
+      .then((response) => {
+        // Remove from pending when resolved
+        pendingRequests.delete(requestKey);
+        return response;
+      })
+      .catch((error) => {
+        // Remove from pending when rejected
+        pendingRequests.delete(requestKey);
+        throw error;
+      });
+    
+    // Track the pending request with timestamp
+    pendingRequests.set(requestKey, {
+      promise: requestPromise,
+      timestamp: now
+    });
+    
+    return requestPromise;
+  }
+  
+  // For comment endpoints, just make the request normally (no deduplication)
+  return originalGet<T, R, D>(url, config);
+};
+
 // Request interceptor to add token to headers and handle caching/deduplication
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -166,8 +223,8 @@ axiosInstance.interceptors.request.use(
     // Set request-specific timeout (file uploads get longer timeout)
     config.timeout = getTimeout(config);
     
-    // Request caching and deduplication for hosted environments (GET requests only)
-    if (isHostedEnv() && config.method?.toLowerCase() === 'get') {
+    // Request caching and deduplication for GET requests (all environments)
+    if (config.method?.toLowerCase() === 'get') {
       const requestKey = `${config.method}:${config.url}:${JSON.stringify(config.params || {})}`;
       
       // Check cache first - if cached and fresh, mark to use cache
@@ -176,12 +233,11 @@ axiosInstance.interceptors.request.use(
         // Mark config to use cached response
         (config as InternalAxiosRequestConfig & { __fromCache?: boolean; __cachedResponse?: unknown }).__fromCache = true;
         (config as InternalAxiosRequestConfig & { __cachedResponse?: unknown }).__cachedResponse = cached.response;
+        return config;
       }
       
-      // Track pending requests for deduplication (cleanup happens in response interceptor)
-      if (!cached) {
-        // Will be tracked when response comes back
-      }
+      // Note: Request deduplication is handled at the axios method level (see wrapped get method above)
+      // This interceptor just handles caching
     }
     
     // Get token from localStorage
@@ -262,15 +318,15 @@ axiosInstance.interceptors.request.use(
 // Response interceptor to handle 401 errors, CORS errors, and caching
 axiosInstance.interceptors.response.use(
   (response) => {
-    const config = response.config as InternalAxiosRequestConfig & { __fromCache?: boolean; __cachedResponse?: unknown };
+    const config = response.config as InternalAxiosRequestConfig & { __fromCache?: boolean; __cachedResponse?: unknown; __usePendingRequest?: Promise<unknown> };
     
     // Handle cached responses - return cached response immediately (no network delay)
     if (config.__fromCache && config.__cachedResponse) {
       return config.__cachedResponse as typeof response;
     }
     
-    // Cache successful GET responses in hosted environments
-    if (isHostedEnv() && response.config.method?.toLowerCase() === 'get' && response.status === 200) {
+    // Cache successful GET responses (all environments)
+    if (response.config.method?.toLowerCase() === 'get' && response.status === 200) {
       const requestKey = `${response.config.method}:${response.config.url}:${JSON.stringify(response.config.params || {})}`;
       requestCache.set(requestKey, {
         data: response.data,

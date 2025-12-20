@@ -9,7 +9,6 @@ import Dialog from '@components/dialog/Dialog';
 import PostCommentSection from '@components/posts/post-comment-section/PostCommentSection';
 import CommentArea from '@components/posts/comment-area/CommentArea';
 import ReactionsModal from '@components/posts/reactions/reactions-modal/ReactionsModal';
-import CommentsModal from '@components/posts/comments/comments-modal/CommentsModal';
 import CommentInputBox from '@components/posts/comments/comment-input/CommentInputBox';
 import { postService } from '@services/api/post/post.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
@@ -56,7 +55,7 @@ interface PostProps {
 const Post = ({ post, showIcons = false }: PostProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { reactionModalIsOpen, commentsModalIsOpen, deleteDialogIsOpen } = useSelector((state: RootState) => state.modal);
+  const { reactionModalIsOpen, deleteDialogIsOpen } = useSelector((state: RootState) => state.modal);
   const { post: postFromRedux } = useSelector((state: RootState) => state.post);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
@@ -141,7 +140,6 @@ const Post = ({ post, showIcons = false }: PostProps) => {
   return (
     <>
       {reactionModalIsOpen && <ReactionsModal />}
-      {commentsModalIsOpen && <CommentsModal />}
       {showImageModal && (
         <ImageModal
           image={imageUrl}

@@ -136,11 +136,9 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
       reactions: reactionsArray as Array<Record<string, unknown>>
     };
     
-    console.log('📤 Setting post in Redux:', postData);
-    console.log('📤 Post _id:', postId);
-    
-    dispatch(updatePostItem(postData));
-    // Store post ID and full post data in modal for immediate access
+    // CRITICAL: Don't dispatch updatePostItem - it causes unnecessary Redux updates and re-renders
+    // The modal already receives the post data directly, so Redux update is not needed
+    // Only dispatch toggleCommentsModal with the post data
     dispatch(toggleCommentsModal({ isOpen: true, postId: postId as string, post: postData }));
   };
 

@@ -45,18 +45,34 @@
 .modal-comments-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  flex: 1 1 auto; // Allow flex to shrink and grow
+  min-height: 0; // Critical for flex scrolling
+  overflow: visible; // Changed from hidden to allow scrolling
   padding: 0;
+  position: relative;
+  height: 100%; // Take full available height
 }
 
 .modal-post-display {
-  flex-shrink: 0;
+  flex: 0 0 auto; // Don't shrink or grow, use natural size
   padding: 20px;
   border-bottom: 1px solid var(--white-3);
   background: var(--white-1);
   position: relative;
+  max-height: 40vh; // Limit post display height
+  overflow-y: auto; // Allow scrolling if post is very long
+
+  // Mobile responsive styles
+  @media (max-width: 768px) {
+    padding: 15px !important;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px !important;
+    max-height: 25vh;
+  }
 
   .modal-close-button {
     position: absolute;
@@ -147,63 +163,182 @@
 }
 
 .modal-comments-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 20px;
-  min-height: 0;
+  flex: 1 1 auto; // Allow flex to shrink and grow
+  overflow-y: auto !important; // Force scrolling
+  overflow-x: hidden; // Prevent horizontal scroll
+  padding: 25px 30px; // Increased padding for more space
+  min-height: 0; // Critical for flex scrolling - changed from 500px
+  max-height: none; // Remove max-height constraint
   // Performance optimizations for smooth scrolling
   will-change: scroll-position;
   transform: translateZ(0); // Force hardware acceleration
-  -webkit-overflow-scrolling: touch; // Smooth scrolling on iOS
+  -webkit-overflow-scrolling: touch; // Smooth scrolling on iOS (critical for mobile)
+  display: flex;
+  flex-direction: column;
+  opacity: 1 !important; // Ensure container is fully visible
+  visibility: visible !important; // Ensure container is visible
+  color: var(--black-1) !important; // Ensure default text color is visible
+  position: relative; // Ensure proper positioning
+  // Mobile-specific optimizations
+  -webkit-tap-highlight-color: transparent; // Remove tap highlight on mobile
+  touch-action: pan-y; // Allow vertical scrolling, prevent horizontal
+
+  // Mobile responsive styles
+  @media (max-width: 768px) {
+    padding: 15px 20px !important;
+    min-height: 0 !important;
+    max-height: none !important; // Remove constraint
+    flex: 1 1 auto;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px 15px !important;
+    max-height: none !important;
+  }
 
   &-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    // Aggressive performance optimization: strict containment prevents re-renders
-    contain: strict;
+    // Removed contain property as it may cause rendering issues
+    // contain: layout style;
     // Isolate rendering context
-    isolation: isolate;
+    // isolation: isolate; // Removed as it may cause visibility issues
+    opacity: 1 !important; // Ensure list is fully visible
+    visibility: visible !important; // Ensure list is visible
+    display: block !important; // Ensure list is displayed
 
     li {
-      padding: 15px 20px;
+      padding: 20px 25px; // Increased padding for more space
+      margin-bottom: 8px; // Add spacing between comments
       border-bottom: 1px solid var(--white-3);
-      transition: background-color 0.2s;
+      border-radius: 8px; // Add rounded corners
+      background-color: var(--white-1);
+      transition: background-color 0.2s; // Only transition background, not opacity
       // Prevent re-layout during scroll
-      will-change: auto;
-      transform: translateZ(0); // Force hardware acceleration
+      opacity: 1 !important; // Ensure full visibility - must be before hover
+      color: var(--black-1) !important; // Ensure text is visible
+      visibility: visible !important; // Ensure element is visible
+      display: block !important; // Ensure element is displayed
+      // Explicitly prevent any opacity transitions
+      transition-property: background-color !important; // Only transition background
+      overflow: visible !important; // Don't clip content
+      min-height: auto; // Allow natural height
+      height: auto !important; // Allow content to determine height
 
       &:hover {
         background-color: var(--white-2);
+        opacity: 1 !important; // Maintain visibility on hover
+        color: var(--black-1) !important; // Maintain text color on hover
+      }
+
+      // Mobile responsive styles
+      @media (max-width: 768px) {
+        padding: 15px 18px !important;
+        margin-bottom: 6px;
+        border-radius: 6px;
+      }
+
+      @media (max-width: 480px) {
+        padding: 12px 15px !important;
+        margin-bottom: 4px;
+        border-radius: 4px;
       }
     }
   }
 
   &-list-item-display {
-    display: flex;
-    gap: 15px;
+    display: flex !important; // Ensure display is always flex
+    gap: 20px; // Increased from 15px for more space
     align-items: flex-start;
+    opacity: 1 !important; // Ensure visibility
+    visibility: visible !important; // Ensure visibility
+    overflow: visible !important; // Don't clip content
+    min-width: 0; // Allow flex item to shrink below content size
+
+    // Mobile responsive styles
+    @media (max-width: 768px) {
+      gap: 15px !important;
+    }
+
+    @media (max-width: 480px) {
+      gap: 12px !important;
+    }
 
     .user-img {
       flex-shrink: 0;
+      opacity: 1 !important; // Ensure avatar is visible
+      visibility: visible !important;
+
+      // Mobile responsive styles
+      @media (max-width: 480px) {
+        // Avatar size will be controlled by Avatar component props
+      }
     }
 
     &-block {
       flex: 1;
+      min-width: 0; // Important for text wrapping in flex containers
+      opacity: 1 !important; // Ensure block is visible
+      visibility: visible !important;
+      overflow: visible !important; // Don't clip content
 
       .comment-data {
+        opacity: 1 !important; // Ensure comment data is visible
+        visibility: visible !important;
+        overflow: visible !important; // Don't clip content
+        width: 100%; // Take full width
+        max-width: 100%; // Don't exceed container width
         h1 {
-          margin: 0 0 5px 0;
-          font-size: 16px;
+          margin: 0 0 8px 0; // Increased margin
+          font-size: 18px; // Increased from 16px
           font-weight: 600;
-          color: var(--gray-8);
+          color: var(--black-1) !important; // White for maximum visibility
+          line-height: 1.4;
+          opacity: 1 !important; // Ensure full opacity
+          visibility: visible !important;
+          display: block !important;
+
+          // Mobile responsive styles
+          @media (max-width: 768px) {
+            font-size: 16px !important;
+            margin: 0 0 6px 0;
+          }
+
+          @media (max-width: 480px) {
+            font-size: 15px !important;
+            margin: 0 0 4px 0;
+          }
         }
 
         p {
           margin: 0;
-          font-size: 14px;
-          color: var(--gray-7);
-          line-height: 1.5;
+          font-size: 15px; // Increased from 14px
+          color: var(--black-2) !important; // Light gray for good visibility
+          line-height: 1.6; // Increased line height for readability
+          word-wrap: break-word;
+          overflow-wrap: break-word; // Ensure long words break
+          word-break: break-word; // Break long words if needed
+          white-space: normal; // Allow text to wrap
+          overflow: visible; // Don't clip text
+          text-overflow: clip; // Don't use ellipsis
+          opacity: 1 !important; // Ensure full opacity
+          visibility: visible !important;
+          display: block !important;
+          max-width: 100%; // Ensure text doesn't overflow container
+
+          // Mobile responsive styles
+          @media (max-width: 768px) {
+            font-size: 14px !important;
+            line-height: 1.5;
+          }
+
+          @media (max-width: 480px) {
+            font-size: 13px !important;
+            line-height: 1.4;
+          }
         }
 
         .comment-gif-container {
@@ -291,6 +426,15 @@
   :global(.comment-container) {
     margin: 0;
     padding: 0;
+  }
+
+  // Mobile responsive styles
+  @media (max-width: 768px) {
+    padding: 12px 15px !important;
+  }
+
+  @media (max-width: 480px) {
+    padding: 10px 12px !important;
   }
 }
 

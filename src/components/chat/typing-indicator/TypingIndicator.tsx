@@ -27,3 +27,4 @@ TypingIndicator.propTypes = {
 export default TypingIndicator;
 
 
+
