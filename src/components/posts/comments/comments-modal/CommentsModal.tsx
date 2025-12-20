@@ -219,8 +219,15 @@ const CommentListItem = memo(({
                 {userReaction ? (
                   <img 
                     className="reaction-img" 
-                    src={reactionsMap[userReaction.toLowerCase()] || reactionsMap.like} 
+                    src={reactionsMap[userReaction] || reactionsMap.like} 
                     alt={userReaction} 
+                    onError={(e) => {
+                      // Fallback if image fails to load - try like icon
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== reactionsMap.like && reactionsMap.like) {
+                        target.src = reactionsMap.like;
+                      }
+                    }}
                   />
                 ) : (
                   <span className="reaction-text">Like</span>
@@ -617,11 +624,31 @@ const CommentsModal = () => {
         // Ensure comment text exists - check multiple possible field names
         const commentText = comment.comment || comment.text || comment.message || '';
         
+        // Derive userReaction from reaction array if not provided
+        let userReaction = comment.userReaction;
+        // Normalize userReaction to lowercase string if it exists
+        if (userReaction && typeof userReaction === 'string') {
+          userReaction = userReaction.toLowerCase().trim();
+        } else {
+          userReaction = '';
+        }
+        
+        // If userReaction is not set, try to derive it from reaction array
+        if (!userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+          const userReactionObj = reactionArray.find(
+            (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+          );
+          if (userReactionObj?.type) {
+            userReaction = String(userReactionObj.type).toLowerCase().trim();
+          }
+        }
+        
         const processedComment: CommentData = {
           ...comment,
           comment: commentText, // Ensure comment field is set as string
           reaction: reactionArray,
-          gifUrl: gifUrl
+          gifUrl: gifUrl,
+          userReaction: userReaction // Ensure userReaction is set for icon display (normalized to lowercase)
         } as CommentData;
         
         // Processed comment
@@ -724,32 +751,33 @@ const CommentsModal = () => {
   };
 
   const getUserReaction = useCallback((comment: CommentData): string => {
+    let reactionType = '';
+    
     // First check userReaction field (backward compatibility)
     if (comment.userReaction && typeof comment.userReaction === 'string') {
-      return comment.userReaction;
+      reactionType = comment.userReaction;
     }
-    
     // Check reaction array (like chat messages) - find user's reaction
-    if (comment.reaction && Array.isArray(comment.reaction) && profile?.username) {
+    else if (comment.reaction && Array.isArray(comment.reaction) && profile?.username) {
       const userReaction = comment.reaction.find(
         (r: CommentReaction) => r.senderName === profile.username || r.username === profile.username
       );
       if (userReaction?.type) {
-        return userReaction.type;
+        reactionType = userReaction.type;
       }
     }
-    
     // Check reactions array (alternative field name)
-    if (comment.reactions && Array.isArray(comment.reactions) && profile?.username) {
+    else if (comment.reactions && Array.isArray(comment.reactions) && profile?.username) {
       const userReaction = comment.reactions.find(
         (r: CommentReaction) => r.senderName === profile.username || r.username === profile.username
       );
       if (userReaction?.type) {
-        return userReaction.type;
+        reactionType = userReaction.type;
       }
     }
     
-    return '';
+    // Normalize to lowercase and trim to match reactionsMap keys
+    return reactionType ? reactionType.toLowerCase().trim() : '';
   }, [profile?.username]);
   
 
@@ -783,51 +811,57 @@ const CommentsModal = () => {
       
       setShowReactionsForComment(null);
       
+      // Normalize reaction type to lowercase for consistent comparison
+      const normalizedReaction = reaction.toLowerCase().trim();
       const currentUserReaction = getUserReaction(commentBeforeUpdate);
-      const isRemoving = currentUserReaction === reaction;
+      const isRemoving = currentUserReaction === normalizedReaction;
       
       // Apply optimistic update immediately (no deferral during scroll for reactions)
-      setPostComments((prevComments) => prevComments.map((comment) => {
-        if (comment._id === commentId) {
-          const updatedComment = cloneDeep(comment);
+      // Use setPostCommentsInternal directly to bypass scroll check for reactions
+      const updateComment = (comment: CommentData): CommentData => {
+        if (comment._id !== commentId) return comment;
+        
+        const updatedComment = cloneDeep(comment);
+        const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
+        
+        if (isRemoving) {
+          // Remove user's reaction
+          updatedComment.reaction = currentReactions.filter(
+            (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
+          );
+          updatedComment.userReaction = ''; // Clear for backward compatibility
+        } else {
+          // Check if user already has ANY reaction (not just the same type)
+          const existingReactionIndex = currentReactions.findIndex(
+            (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
+          );
           
-          // Ensure reaction is an array (like chat messages)
-          const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
+          const newReaction: CommentReaction = {
+            senderName: profile?.username || '',
+            username: profile?.username || '',
+            type: normalizedReaction
+          };
           
-          if (isRemoving) {
-            // Remove user's reaction
-            updatedComment.reaction = currentReactions.filter(
-              (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
-            );
-            updatedComment.userReaction = ''; // Clear for backward compatibility
+          if (existingReactionIndex > -1) {
+            // User already has a reaction - replace it with the new one (like chat)
+            const updatedReactions = [...currentReactions];
+            updatedReactions[existingReactionIndex] = newReaction;
+            updatedComment.reaction = updatedReactions;
           } else {
-            // Check if user already has ANY reaction (not just the same type)
-            const existingReactionIndex = currentReactions.findIndex(
-              (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
-            );
-            
-            const newReaction: CommentReaction = {
-              senderName: profile?.username || '',
-              username: profile?.username || '',
-              type: reaction
-            };
-            
-            if (existingReactionIndex > -1) {
-              // User already has a reaction - replace it with the new one (like chat)
-              const updatedReactions = [...currentReactions];
-              updatedReactions[existingReactionIndex] = newReaction;
-              updatedComment.reaction = updatedReactions;
-            } else {
-              // User doesn't have a reaction yet - add the new one
-              updatedComment.reaction = [...currentReactions, newReaction];
-            }
-            updatedComment.userReaction = reaction; // For backward compatibility
+            // User doesn't have a reaction yet - add the new one
+            updatedComment.reaction = [...currentReactions, newReaction];
           }
-          
-          return updatedComment;
+          updatedComment.userReaction = normalizedReaction; // For backward compatibility
         }
-        return comment;
-      }));
+        
+        return updatedComment;
+      };
+      
+      // Update state immediately (bypassing scroll check)
+      setPostCommentsInternal((prevComments) => prevComments.map(updateComment));
+      
+      // Update ref immediately to keep it in sync
+      postCommentsRef.current = postCommentsRef.current.map(updateComment);
       
       // Call API to save reaction using the post reaction endpoint with commentId
       try {
@@ -849,8 +883,9 @@ const CommentsModal = () => {
           console.log('✅ Comment reaction removed:', removeResponse.data);
           
           // Update comment state with API response if it contains updated comment data
+          // Use setPostCommentsInternal directly to bypass scroll check for reactions
           if (removeResponse.data?.comment) {
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
                 // Update reaction array from API response
@@ -861,13 +896,16 @@ const CommentsModal = () => {
                 }
                 // Update userReaction from API response or derive from reaction array
                 if (removeResponse.data.comment.userReaction !== undefined) {
-                  updatedComment.userReaction = removeResponse.data.comment.userReaction;
+                  // Normalize userReaction from API response
+                  updatedComment.userReaction = typeof removeResponse.data.comment.userReaction === 'string'
+                    ? removeResponse.data.comment.userReaction.toLowerCase().trim()
+                    : '';
                 } else if (Array.isArray(updatedComment.reaction) && profile?.username) {
                   // Derive userReaction from reaction array if not provided
                   const userReaction = updatedComment.reaction.find(
                     (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
                   );
-                  updatedComment.userReaction = userReaction?.type || '';
+                  updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 }
                 return updatedComment;
               }
@@ -875,7 +913,8 @@ const CommentsModal = () => {
             }));
           } else if (removeResponse.data?.reactions) {
             // If API returns reactions directly, update the comment
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            // Use setPostCommentsInternal directly to bypass scroll check for reactions
+            setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
                 // Update reaction array from API response
@@ -886,7 +925,7 @@ const CommentsModal = () => {
                 const userReaction = removeResponse.data.reactions.find(
                   (r: CommentReaction) => r.username === profile?.username || r.senderName === profile?.username
                 );
-                updatedComment.userReaction = userReaction?.type || '';
+                updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 return updatedComment;
               }
               return comment;
@@ -894,7 +933,8 @@ const CommentsModal = () => {
           } else {
             // If API doesn't return comment data, ensure userReaction is cleared
             // This ensures the icon is removed even if API response doesn't include full comment data
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            // Use setPostCommentsInternal directly to bypass scroll check for reactions
+            setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
                 // Ensure userReaction is cleared if user has no reaction
@@ -902,7 +942,7 @@ const CommentsModal = () => {
                   const userReaction = updatedComment.reaction.find(
                     (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
                   );
-                  updatedComment.userReaction = userReaction?.type || '';
+                  updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 } else {
                   updatedComment.userReaction = '';
                 }
@@ -918,7 +958,7 @@ const CommentsModal = () => {
             userTo: userTo,
             postId: postId,
             commentId: commentId, // This tells backend it's a comment reaction
-            type: reaction,
+            type: normalizedReaction,
             previousReaction: currentUserReaction || '',
             postReactions: {},
             profilePicture: profile?.profilePicture || ''
@@ -941,8 +981,9 @@ const CommentsModal = () => {
           console.log('✅ Comment reaction saved:', apiResponse.data);
           
           // Update comment state with API response if it contains updated comment data
+          // Use setPostCommentsInternal directly to bypass scroll check for reactions
           if (apiResponse.data?.comment) {
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
                 // Update reaction array from API response
@@ -953,13 +994,16 @@ const CommentsModal = () => {
                 }
                 // Update userReaction from API response or derive from reaction array
                 if (apiResponse.data.comment.userReaction !== undefined) {
-                  updatedComment.userReaction = apiResponse.data.comment.userReaction;
+                  // Normalize userReaction from API response
+                  updatedComment.userReaction = typeof apiResponse.data.comment.userReaction === 'string'
+                    ? apiResponse.data.comment.userReaction.toLowerCase().trim()
+                    : '';
                 } else if (Array.isArray(updatedComment.reaction) && profile?.username) {
                   // Derive userReaction from reaction array if not provided
                   const userReaction = updatedComment.reaction.find(
                     (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
                   );
-                  updatedComment.userReaction = userReaction?.type || '';
+                  updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 }
                 return updatedComment;
               }
@@ -967,7 +1011,8 @@ const CommentsModal = () => {
             }));
           } else if (apiResponse.data?.reactions) {
             // If API returns reactions directly, update the comment
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            // Use setPostCommentsInternal directly to bypass scroll check for reactions
+            setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
                 // Update reaction array from API response
@@ -978,7 +1023,7 @@ const CommentsModal = () => {
                 const userReaction = apiResponse.data.reactions.find(
                   (r: CommentReaction) => r.username === profile?.username || r.senderName === profile?.username
                 );
-                updatedComment.userReaction = userReaction?.type || '';
+                updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 return updatedComment;
               }
               return comment;
@@ -986,7 +1031,8 @@ const CommentsModal = () => {
           } else {
             // If API doesn't return comment data, ensure userReaction is set from our optimistic update
             // This ensures the icon displays even if API response doesn't include full comment data
-            setPostComments((prevComments) => prevComments.map((comment) => {
+            // Use setPostCommentsInternal directly to bypass scroll check for reactions
+            setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
                 // Ensure userReaction is set from reaction array if not already set
@@ -1007,7 +1053,7 @@ const CommentsModal = () => {
         socketService?.socket?.emit('comment reaction', {
           commentId,
           postId,
-          reaction: isRemoving ? '' : reaction,
+          reaction: isRemoving ? '' : normalizedReaction,
           username: profile?.username
         });
       } catch (apiError) {
@@ -1027,15 +1073,14 @@ const CommentsModal = () => {
         Utils.dispatchNotification(errorMessage, 'error', dispatch);
         
         // Revert to the state before the optimistic update
-        startTransition(() => {
-        setPostComments((prev) => {
+        // Use setPostCommentsInternal directly to bypass scroll check
+        setPostCommentsInternal((prev) => {
           return prev.map((comment) => {
             if (comment._id === commentId) {
               // Restore the original comment state
               return originalComment;
             }
             return comment;
-            });
           });
         });
         
@@ -1054,7 +1099,7 @@ const CommentsModal = () => {
       // Reload comments on error
       getPostComments();
     }
-  }, [postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [postId, profile?.username, profile?.profilePicture, postData?.userId, getUserReaction, dispatch, getPostComments]);
 
   const toggleReactionsForComment = useCallback((commentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1622,6 +1667,9 @@ const CommentsModal = () => {
     const handleCommentReaction = (data: { commentId: string; reaction: string; username: string }) => {
       if (!data.commentId || !postId) return;
       
+      // Normalize reaction type from socket data
+      const normalizedSocketReaction = data.reaction ? data.reaction.toLowerCase().trim() : '';
+      
       // Don't update if user is scrolling - defer until scroll ends
       if (isScrollingRef.current) {
         const applyUpdate = () => {
@@ -1631,7 +1679,7 @@ const CommentsModal = () => {
                 const updatedComment = cloneDeep(comment);
                 const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
                 
-                if (!data.reaction || data.reaction === '') {
+                if (!normalizedSocketReaction || normalizedSocketReaction === '') {
                   // Remove reaction
                   updatedComment.reaction = currentReactions.filter(
                     (r: CommentReaction) => r.username !== data.username && r.senderName !== data.username
@@ -1648,7 +1696,7 @@ const CommentsModal = () => {
                   const newReaction: CommentReaction = {
                     senderName: data.username,
                     username: data.username,
-                    type: data.reaction
+                    type: normalizedSocketReaction
                   };
                   
                   if (existingIndex > -1) {
@@ -1660,7 +1708,7 @@ const CommentsModal = () => {
                   }
                   
                   if (data.username === profile?.username) {
-                    updatedComment.userReaction = data.reaction;
+                    updatedComment.userReaction = normalizedSocketReaction;
                   }
                 }
                 
