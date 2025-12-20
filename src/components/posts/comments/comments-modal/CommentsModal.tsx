@@ -92,18 +92,35 @@ const CommentListItem = memo(({
 }: CommentListItemProps) => {
   const [gifLoaded, setGifLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  
+  // Memoize ref callbacks to prevent recreation on every render
+  // This prevents re-renders during scroll
+  const commentRefCallback = useCallback((el: HTMLLIElement | null) => {
+    if (commentId && el) {
+      // eslint-disable-next-line react-hooks/immutability
+      commentRefs.current[commentId] = el;
+    } else if (commentId && !el) {
+      // Clean up ref when element is removed
+      delete commentRefs.current[commentId];
+    }
+  }, [commentId, commentRefs]);
+  
+  const reactionsRefCallback = useCallback((el: HTMLDivElement | null) => {
+    if (commentId && el) {
+      // eslint-disable-next-line react-hooks/immutability
+      reactionsRefs.current[commentId] = el;
+    } else if (commentId && !el) {
+      // Clean up ref when element is removed
+      delete reactionsRefs.current[commentId];
+    }
+  }, [commentId, reactionsRefs]);
 
   return (
     <li 
       className="modal-comments-container-list-item" 
       key={commentId} 
       data-testid="modal-list-item"
-      ref={(el) => {
-        if (commentId) {
-          // eslint-disable-next-line react-hooks/immutability
-          commentRefs.current[commentId] = el;
-        }
-      }}
+      ref={commentRefCallback}
     >
       <div className="modal-comments-container-list-item-display">
         <div className="user-img">
@@ -168,10 +185,7 @@ const CommentListItem = memo(({
             )}
           </div>
           <div className="comment-reactions-section">
-            <div className="comment-reactions-wrapper" ref={(el) => {
-              // eslint-disable-next-line react-hooks/immutability
-              reactionsRefs.current[commentId] = el;
-            }}>
+            <div className="comment-reactions-wrapper" ref={reactionsRefCallback}>
               <div 
                 className={`comment-reaction-button ${userReaction ? String(userReaction).toLowerCase() : ''}`}
                 onClick={(e) => toggleReactionsForComment(commentId, e)}
@@ -228,6 +242,8 @@ const CommentListItem = memo(({
     prevProps.totalReactions !== nextProps.totalReactions;
   
   // Return true if props are equal (skip re-render), false if different (re-render)
+  // Very strict comparison - only re-render if absolutely necessary
+  // Refs are excluded from comparison as they don't affect rendering
   return (
     prevProps.commentId === nextProps.commentId &&
     !commentDataChanged &&
@@ -235,7 +251,11 @@ const CommentListItem = memo(({
     !reactionDataChanged &&
     prevProps.gifUrl === nextProps.gifUrl &&
     prevProps.toggleReactionsForComment === nextProps.toggleReactionsForComment &&
-    prevProps.addCommentReaction === nextProps.addCommentReaction
+    prevProps.addCommentReaction === nextProps.addCommentReaction &&
+    // Ensure refs don't cause re-renders (they're stable references)
+    prevProps.commentRefs === nextProps.commentRefs &&
+    prevProps.reactionsRefs === nextProps.reactionsRefs &&
+    prevProps.reactionsMap === nextProps.reactionsMap
   );
 });
 
@@ -263,11 +283,13 @@ const CommentsModal = () => {
   const reactionsRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const commentRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const commentsContainerRef = useRef<HTMLDivElement | null>(null);
+  const commentsListRef = useRef<HTMLUListElement | null>(null); // Ref for the actual list element
   const lastAddedCommentId = useRef<string | null>(null);
   const savingReactionsRef = useRef<Set<string>>(new Set()); // Track comments currently saving reactions
   const lastLoadedPostIdRef = useRef<string | undefined>(undefined); // Track last postId we loaded comments for
   const postCommentsRef = useRef<CommentData[]>([]); // Ref to access latest postComments without causing re-renders
   const isScrollingRef = useRef<boolean>(false); // Track if user is currently scrolling
+  const previousMemoizedCommentsRef = useRef<React.ReactElement[]>([]); // Store previous memoized comments to prevent updates during scroll
   
   // Memoize image/video URLs to prevent recalculation on every render during scrolling
   // This prevents repeated calls to getCloudName() and getBaseUrl() during scroll
@@ -778,10 +800,11 @@ const CommentsModal = () => {
     postCommentsRef.current = postComments;
   }, [postComments]);
 
-  // Track scrolling to prevent unnecessary updates during scroll
-  // Use a more aggressive approach: completely prevent state updates during scroll
+  // Aggressive scroll lock: Completely prevent React updates during scroll
+  // This uses a combination of refs and requestAnimationFrame to avoid any React reconciliation
   useEffect(() => {
     const container = commentsContainerRef.current;
+    const list = commentsListRef.current;
     if (!container) return;
 
     let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -789,45 +812,67 @@ const CommentsModal = () => {
     let isScrolling = false;
     let lastScrollTime = 0;
     
+    // Completely passive scroll handler - no React state updates, only ref updates
     const handleScroll = () => {
       const now = performance.now();
       
-      // Throttle scroll detection - only update flag every 100ms
-      if (now - lastScrollTime < 100) {
+      // Aggressive throttling - only check every 150ms to reduce overhead
+      if (now - lastScrollTime < 150) {
         return;
       }
       lastScrollTime = now;
       
+      // Mark scrolling started (only update refs, never state)
       if (!isScrolling) {
         isScrolling = true;
         isScrollingRef.current = true;
       }
       
-      // Cancel any pending timeout
+      // Cancel any pending operations
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
+        scrollTimeout = null;
       }
       
-      // Cancel any pending RAF
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
+        rafId = null;
       }
       
-      // Use RAF to batch scroll events and debounce the end detection
+      // Use RAF to detect scroll end - completely outside React's render cycle
       rafId = requestAnimationFrame(() => {
-        // Reset scrolling flag after scroll ends (debounced)
+        // Debounce scroll end detection
         scrollTimeout = setTimeout(() => {
           isScrolling = false;
           isScrollingRef.current = false;
-        }, 300); // Increased debounce time
+          
+          // Only after scroll completely ends, allow React updates
+          // This ensures zero re-renders during active scrolling
+          scrollTimeout = null;
+          rafId = null;
+        }, 400); // Longer debounce to ensure scroll has truly ended
       });
     };
 
-    // Use passive listener for better performance
-    container.addEventListener('scroll', handleScroll, { passive: true, capture: false });
+    // Use passive listeners with no capture - maximum performance
+    // These handlers never trigger React updates, only update refs
+    container.addEventListener('scroll', handleScroll, { 
+      passive: true, 
+      capture: false 
+    });
+    
+    if (list) {
+      list.addEventListener('scroll', handleScroll, { 
+        passive: true, 
+        capture: false 
+      });
+    }
     
     return () => {
       container.removeEventListener('scroll', handleScroll);
+      if (list) {
+        list.removeEventListener('scroll', handleScroll);
+      }
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
       }
@@ -1255,8 +1300,14 @@ const CommentsModal = () => {
   
   // Memoize comments list - only recalculate when commentsKey changes
   // This prevents recalculation during scroll or other unrelated state updates
+  // Use a very strict dependency to prevent any recalculation during scroll
   const memoizedComments = useMemo(() => {
-    return postComments.map((commentData) => {
+    // If currently scrolling, return previous memoized value to completely prevent updates
+    if (isScrollingRef.current && previousMemoizedCommentsRef.current.length > 0) {
+      return previousMemoizedCommentsRef.current;
+    }
+    
+    const newComments = postComments.map((commentData) => {
       const commentId = commentData?._id || '';
       const userReaction = getUserReaction(commentData);
       // Use reaction array (like chat) or reactions object
@@ -1280,6 +1331,11 @@ const CommentsModal = () => {
         />
       );
     });
+    
+    // Store the new comments in ref for use during scroll
+    previousMemoizedCommentsRef.current = newComments;
+    
+    return newComments;
     // Only depend on commentsKey - this is a stable string that only changes when comments/reactions actually change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commentsKey]);
@@ -1411,7 +1467,7 @@ const CommentsModal = () => {
               No comments yet. Be the first to comment!
             </div>
           ) : (
-            <ul className="modal-comments-container-list">
+            <ul className="modal-comments-container-list" ref={commentsListRef}>
               {memoizedComments}
             </ul>
           )}

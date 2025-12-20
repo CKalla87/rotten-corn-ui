@@ -160,8 +160,10 @@
     list-style: none;
     padding: 0;
     margin: 0;
-    // Performance optimization: contain layout and paint
-    contain: layout style paint;
+    // Aggressive performance optimization: strict containment prevents re-renders
+    contain: strict;
+    // Isolate rendering context
+    isolation: isolate;
 
     li {
       padding: 15px 20px;

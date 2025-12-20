@@ -224,7 +224,7 @@ const Header = ({ onMenuToggle, isSidebarOpen = false }: HeaderProps) => {
               <img src={signalIcon} className="img-fluid" alt="" />
             </div>
             <div className="app-name">
-              Signal
+              Vibe
             </div>
           </div>
           <div className={`header-menu-toggle ${isSidebarOpen ? 'active' : ''}`} onClick={onMenuToggle}>
