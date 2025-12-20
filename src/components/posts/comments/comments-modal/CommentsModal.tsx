@@ -93,24 +93,41 @@ const CommentListItem = memo(({
   const [gifLoaded, setGifLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
   
+  // Check if image is already loaded (cached) when ref is set
+  const checkImageLoaded = useCallback((img: HTMLImageElement | null) => {
+    if (img && gifUrl && img.src === gifUrl) {
+      // Check if image is already complete (cached)
+      if (img.complete && img.naturalHeight !== 0) {
+        setGifLoaded(true);
+        return;
+      }
+    }
+  }, [gifUrl]);
+  
   // Reset gifLoaded state when gifUrl changes
   useEffect(() => {
     setGifLoaded(false);
-    // If we have a ref to the image and it's already complete (cached), set loaded immediately
-    if (gifUrl && imgRef.current) {
-      const img = imgRef.current;
-      // Use a small timeout to check after React has set the src
-      const checkLoaded = () => {
-        if (img.complete && img.naturalHeight !== 0 && img.src === gifUrl) {
-          setGifLoaded(true);
+    // Check if image is already cached after a brief delay
+    if (gifUrl) {
+      const timeoutId = setTimeout(() => {
+        if (imgRef.current) {
+          checkImageLoaded(imgRef.current);
         }
-      };
-      // Check immediately and after a brief delay to handle cached images
-      checkLoaded();
-      const timeoutId = setTimeout(checkLoaded, 100);
+      }, 50);
       return () => clearTimeout(timeoutId);
     }
-  }, [gifUrl]);
+  }, [gifUrl, checkImageLoaded]);
+  
+  // Also check when the ref is set
+  const imgRefCallback = useCallback((el: HTMLImageElement | null) => {
+    imgRef.current = el;
+    if (el && gifUrl) {
+      // Check immediately if image is cached
+      checkImageLoaded(el);
+      // Also check after image src is set (in case it's set after ref)
+      setTimeout(() => checkImageLoaded(el), 100);
+    }
+  }, [gifUrl, checkImageLoaded]);
   
   // Memoize ref callbacks to prevent recreation on every render
   // This prevents re-renders during scroll
@@ -184,7 +201,7 @@ const CommentListItem = memo(({
             {gifUrl && (
               <div className="comment-gif-container" style={{ minHeight: gifLoaded ? 'auto' : '150px' }}>
                 <img 
-                  ref={imgRef}
+                  ref={imgRefCallback}
                   src={gifUrl} 
                   alt="GIF" 
                   loading="lazy"

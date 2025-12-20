@@ -10,6 +10,7 @@ import ChangePassword from '@components/change-password/ChangePassword';
 import NotificationSettings from '@components/notification-settings/NotificationSettings';
 import ImageModal from '@components/image-modal/ImageModal';
 import Dialog from '@components/dialog/Dialog';
+import CommentsModal from '@components/posts/comments/comments-modal/CommentsModal';
 import { toggleDeleteDialog } from '@redux/reducers/modal/modalSlice';
 import { updateUserProfile } from '@redux/reducers/user/userSlice';
 import { userService } from '@services/api/user/user.service';
@@ -21,7 +22,7 @@ import './Profile.scss';
 
 const Profile = () => {
   const { profile } = useSelector((state: RootState) => state.user);
-  const { deleteDialogIsOpen, data } = useSelector((state: RootState) => state.modal);
+  const { deleteDialogIsOpen, data, commentsModalIsOpen } = useSelector((state: RootState) => state.modal);
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [rendered, setRendered] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -371,6 +372,8 @@ const Profile = () => {
 
   return (
     <>
+      {/* Render CommentsModal once at the Profile level, not inside each Post */}
+      {commentsModalIsOpen && <CommentsModal />}
       {showImageModal && (
         <ImageModal image={imageUrl} onCancel={() => setShowImageModal(!showImageModal)} showArrow={false} />
       )}
