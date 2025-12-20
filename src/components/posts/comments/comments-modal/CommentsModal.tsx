@@ -821,40 +821,40 @@ const CommentsModal = () => {
       const updateComment = (comment: CommentData): CommentData => {
         if (comment._id !== commentId) return comment;
         
-        const updatedComment = cloneDeep(comment);
-        const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
-        
-        if (isRemoving) {
-          // Remove user's reaction
-          updatedComment.reaction = currentReactions.filter(
-            (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
-          );
-          updatedComment.userReaction = ''; // Clear for backward compatibility
-        } else {
-          // Check if user already has ANY reaction (not just the same type)
-          const existingReactionIndex = currentReactions.findIndex(
-            (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
-          );
+          const updatedComment = cloneDeep(comment);
+          const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
           
-          const newReaction: CommentReaction = {
-            senderName: profile?.username || '',
-            username: profile?.username || '',
-            type: normalizedReaction
-          };
-          
-          if (existingReactionIndex > -1) {
-            // User already has a reaction - replace it with the new one (like chat)
-            const updatedReactions = [...currentReactions];
-            updatedReactions[existingReactionIndex] = newReaction;
-            updatedComment.reaction = updatedReactions;
+          if (isRemoving) {
+            // Remove user's reaction
+            updatedComment.reaction = currentReactions.filter(
+              (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
+            );
+            updatedComment.userReaction = ''; // Clear for backward compatibility
           } else {
-            // User doesn't have a reaction yet - add the new one
-            updatedComment.reaction = [...currentReactions, newReaction];
-          }
+            // Check if user already has ANY reaction (not just the same type)
+            const existingReactionIndex = currentReactions.findIndex(
+              (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
+            );
+            
+            const newReaction: CommentReaction = {
+              senderName: profile?.username || '',
+              username: profile?.username || '',
+            type: normalizedReaction
+            };
+            
+            if (existingReactionIndex > -1) {
+              // User already has a reaction - replace it with the new one (like chat)
+              const updatedReactions = [...currentReactions];
+              updatedReactions[existingReactionIndex] = newReaction;
+              updatedComment.reaction = updatedReactions;
+            } else {
+              // User doesn't have a reaction yet - add the new one
+              updatedComment.reaction = [...currentReactions, newReaction];
+            }
           updatedComment.userReaction = normalizedReaction; // For backward compatibility
-        }
-        
-        return updatedComment;
+          }
+          
+          return updatedComment;
       };
       
       // Update state immediately (bypassing scroll check)
@@ -1139,10 +1139,10 @@ const CommentsModal = () => {
       const checkAndApply = () => {
         if (!isScrollingRef.current) {
           // Scroll ended, apply update
-          if (commentsModalIsOpen && currentPost) {
-            setPostData(currentPost);
-          } else {
-            setPostData(null);
+    if (commentsModalIsOpen && currentPost) {
+      setPostData(currentPost);
+    } else {
+      setPostData(null);
           }
         } else {
           setTimeout(checkAndApply, 100);
@@ -1235,7 +1235,7 @@ const CommentsModal = () => {
               if (scrollTimeout) {
                 clearTimeout(scrollTimeout);
               }
-              scrollTimeout = setTimeout(() => {
+        scrollTimeout = setTimeout(() => {
                 isScrolling = false;
                 isScrollingRef.current = false;
                 scrollTimeout = null;
@@ -1245,13 +1245,13 @@ const CommentsModal = () => {
             }
             
             // Scroll has truly stopped
-            isScrolling = false;
-            isScrollingRef.current = false;
-            
-            // Only after scroll completely ends, allow React updates
-            // This ensures zero re-renders during active scrolling
-            scrollTimeout = null;
-            rafId = null;
+          isScrolling = false;
+          isScrollingRef.current = false;
+          
+          // Only after scroll completely ends, allow React updates
+          // This ensures zero re-renders during active scrolling
+          scrollTimeout = null;
+          rafId = null;
           });
         }, debounceDelay);
       });
@@ -1320,8 +1320,8 @@ const CommentsModal = () => {
     // Skip if modal is not open or no postId
     if (!commentsModalIsOpen || !postId) {
       if (commentsModalIsOpen === false || !postId) {
-        setPostComments([]);
-        lastLoadedPostIdRef.current = undefined;
+      setPostComments([]);
+      lastLoadedPostIdRef.current = undefined;
         isLoadingCommentsRef.current = false;
         currentFetchingPostIdRef.current = undefined;
         fetchTokenRef.current = 0;
@@ -1526,16 +1526,33 @@ const CommentsModal = () => {
             if (!isScrollingRef.current) {
               // Scroll has ended, apply the update
               const currentComments = postCommentsRef.current;
-              const existsById = currentComments.some((c) => c._id === actualComment!._id);
+              // Process comment to ensure userReaction is set
+              const processedComment: CommentData = { ...actualComment };
+              const reactionArray: CommentReaction[] = Array.isArray(actualComment.reaction) 
+                ? actualComment.reaction 
+                : [];
+              processedComment.reaction = reactionArray;
+              if (!processedComment.userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+                const userReactionObj = reactionArray.find(
+                  (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                );
+                if (userReactionObj?.type) {
+                  processedComment.userReaction = String(userReactionObj.type).toLowerCase().trim();
+                }
+              } else if (processedComment.userReaction && typeof processedComment.userReaction === 'string') {
+                processedComment.userReaction = processedComment.userReaction.toLowerCase().trim();
+              }
+              
+              const existsById = currentComments.some((c) => c._id === processedComment._id);
               if (!existsById) {
                 startTransition(() => {
                   setPostComments((prev) => {
                     // Use the same logic as below but check again for duplicates
-                    const stillExists = prev.some((c) => c._id === actualComment!._id);
+                    const stillExists = prev.some((c) => c._id === processedComment._id);
                     if (stillExists) return prev;
                     
                     // Add comment and sort (same logic as below)
-                    const updated = [...prev, actualComment];
+                    const updated = [...prev, processedComment];
                     updated.sort((a, b) => {
                       const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
                         ? new Date(a.createdAt).getTime() 
@@ -1545,9 +1562,9 @@ const CommentsModal = () => {
                         : Date.now();
                       return aTime - bTime;
                     });
-                    if (actualComment._id) {
-                      lastAddedCommentId.current = actualComment._id;
-                      shouldScrollToCommentRef.current = actualComment._id;
+                    if (processedComment._id) {
+                      lastAddedCommentId.current = processedComment._id;
+                      shouldScrollToCommentRef.current = processedComment._id;
                     }
                     return updated;
                   });
@@ -1562,12 +1579,34 @@ const CommentsModal = () => {
           return; // Skip immediate update during scroll
         }
         
+        // Process comment to ensure userReaction is set if reaction array exists
+        const processedSocketComment: CommentData = { ...actualComment };
+        
+        // Ensure reaction is an array
+        const reactionArray: CommentReaction[] = Array.isArray(actualComment.reaction) 
+          ? actualComment.reaction 
+          : [];
+        processedSocketComment.reaction = reactionArray;
+        
+        // Derive userReaction from reaction array if not provided
+        if (!processedSocketComment.userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+          const userReactionObj = reactionArray.find(
+            (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+          );
+          if (userReactionObj?.type) {
+            processedSocketComment.userReaction = String(userReactionObj.type).toLowerCase().trim();
+          }
+        } else if (processedSocketComment.userReaction && typeof processedSocketComment.userReaction === 'string') {
+          // Normalize existing userReaction
+          processedSocketComment.userReaction = processedSocketComment.userReaction.toLowerCase().trim();
+        }
+        
         // Removed logging to prevent re-renders during scroll
         
         startTransition(() => {
         setPostComments((prev) => {
           // First check: does this comment ID already exist?
-          const existsById = prev.some((c) => c._id === actualComment!._id);
+          const existsById = prev.some((c) => c._id === processedSocketComment!._id);
           if (existsById) {
             // Comment already exists, skip
             return prev;
@@ -1575,11 +1614,11 @@ const CommentsModal = () => {
           
           // For GIFs, ALWAYS check if we have an existing comment with same GIF + user
           // If same GIF URL and same username, it's the same comment - replace it
-          if (actualComment.gifUrl) {
+          if (processedSocketComment.gifUrl) {
             // Find ANY comment with same GIF URL and same username
             // This catches both optimistic updates and any duplicates
             const existingIndex = prev.findIndex((c) => {
-              return c.gifUrl === actualComment!.gifUrl && c.username === actualComment!.username;
+              return c.gifUrl === processedSocketComment!.gifUrl && c.username === processedSocketComment!.username;
             });
             
             if (existingIndex !== -1) {
@@ -1588,8 +1627,8 @@ const CommentsModal = () => {
               // Replacing existing GIF comment (same GIF + user)
               const updated = [...prev];
               updated[existingIndex] = {
-                ...actualComment,
-                gifUrl: actualComment.gifUrl
+                ...processedSocketComment,
+                gifUrl: processedSocketComment.gifUrl
               };
               updated.sort((a, b) => {
                 const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
@@ -1600,26 +1639,26 @@ const CommentsModal = () => {
                   : Date.now();
                 return aTime - bTime;
               });
-              if (actualComment._id) {
-                lastAddedCommentId.current = actualComment._id;
-                  shouldScrollToCommentRef.current = actualComment._id;
+              if (processedSocketComment._id) {
+                lastAddedCommentId.current = processedSocketComment._id;
+                  shouldScrollToCommentRef.current = processedSocketComment._id;
               }
               return updated; // Return early - don't add as new comment
             }
           }
           
           // For text comments, check for duplicates
-          if (!actualComment.gifUrl) {
+          if (!processedSocketComment.gifUrl) {
             const duplicateText = prev.some((c) => {
-              if (c._id === actualComment!._id) return true;
-              if (c.comment !== actualComment!.comment || c.username !== actualComment!.username) return false;
+              if (c._id === processedSocketComment!._id) return true;
+              if (c.comment !== processedSocketComment!.comment || c.username !== processedSocketComment!.username) return false;
               if (c.gifUrl) return false; // Different if one has GIF and other doesn't
               
               // Check timestamp
-              if (c.createdAt && actualComment.createdAt) {
+              if (c.createdAt && processedSocketComment.createdAt) {
                 try {
                   const timeDiff = Math.abs(
-                    new Date(c.createdAt).getTime() - new Date(actualComment.createdAt).getTime()
+                    new Date(c.createdAt).getTime() - new Date(processedSocketComment.createdAt).getTime()
                   );
                   return timeDiff < 5000; // Within 5 seconds
                 } catch {
@@ -1638,13 +1677,13 @@ const CommentsModal = () => {
           // Adding new comment from socket (removed logging to prevent re-renders)
           
           // Store ID for scrolling (use separate ref to avoid triggering effect unnecessarily)
-          if (actualComment._id) {
-            lastAddedCommentId.current = actualComment._id;
-            shouldScrollToCommentRef.current = actualComment._id;
+          if (processedSocketComment._id) {
+            lastAddedCommentId.current = processedSocketComment._id;
+            shouldScrollToCommentRef.current = processedSocketComment._id;
           }
           
           // Add comment and sort
-          const updated = [...prev, actualComment];
+          const updated = [...prev, processedSocketComment];
           updated.sort((a, b) => {
             const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
               ? new Date(a.createdAt).getTime() 
@@ -1784,94 +1823,51 @@ const CommentsModal = () => {
   // Memoize onCommentAdded callback to prevent CommentInputBox re-renders
   const handleCommentAdded = useCallback((comment: CommentData) => {
     // Add comment immediately (optimistic update) for both text and GIF comments
+    // Use setPostCommentsInternal directly to bypass scroll check for new comments
     
-    // Don't update if user is scrolling - defer until scroll ends
-    if (isScrollingRef.current) {
-      // Queue the optimistic update for after scrolling
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
-                       (window.innerWidth <= 768);
-      const scrollDebounceDelay = isMobile ? 500 : 300;
-      
-      const checkAndApply = () => {
-        if (!isScrollingRef.current) {
-          // Scroll has ended, apply the optimistic update
-          startTransition(() => {
-            setPostComments((prev) => {
-              const existsById = prev.some((c) => c._id === comment._id);
-              if (existsById) return prev;
-              
-              // Apply the same logic as below
-              if (comment.gifUrl) {
-                const recentDuplicate = prev.find((c) => {
-                  if (c.gifUrl !== comment.gifUrl || c.username !== comment.username) {
-                    return false;
-                  }
-                  if (c.createdAt && comment.createdAt) {
-                    try {
-                      const timeDiff = Math.abs(
-                        new Date(c.createdAt).getTime() - new Date(comment.createdAt).getTime()
-                      );
-                      return timeDiff < 5000;
-                    } catch {
-                      // If date parsing fails, don't block
-                    }
-                  }
-                  return false;
-                });
-                
-                if (recentDuplicate) {
-                  return prev;
-                }
-              }
-              
-              if (comment._id) {
-                lastAddedCommentId.current = comment._id;
-                shouldScrollToCommentRef.current = comment._id;
-              }
-              
-              const updated = [...prev, comment];
-              updated.sort((a, b) => {
-                const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
-                  ? new Date(a.createdAt).getTime() 
-                  : Date.now();
-                const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
-                  ? new Date(b.createdAt).getTime() 
-                  : Date.now();
-                return aTime - bTime;
-              });
-              return updated;
-            });
-          });
-        } else {
-          // Still scrolling, check again
-          setTimeout(checkAndApply, scrollDebounceDelay);
-        }
-      };
-      setTimeout(checkAndApply, scrollDebounceDelay);
-      return; // Skip immediate update during scroll
+    // Process comment to ensure userReaction is set if reaction array exists
+    const processedComment: CommentData = { ...comment };
+    
+    // Ensure reaction is an array
+    const reactionArray: CommentReaction[] = Array.isArray(comment.reaction) 
+      ? comment.reaction 
+      : [];
+    processedComment.reaction = reactionArray;
+    
+    // Derive userReaction from reaction array if not provided
+    if (!processedComment.userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+      const userReactionObj = reactionArray.find(
+        (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+      );
+      if (userReactionObj?.type) {
+        processedComment.userReaction = String(userReactionObj.type).toLowerCase().trim();
+      }
+    } else if (processedComment.userReaction && typeof processedComment.userReaction === 'string') {
+      // Normalize existing userReaction
+      processedComment.userReaction = processedComment.userReaction.toLowerCase().trim();
     }
     
-    startTransition(() => {
-      setPostComments((prev) => {
+    // Use setPostCommentsInternal directly to bypass scroll check
+    setPostCommentsInternal((prev) => {
         // Check by ID first
-        const existsById = prev.some((c) => c._id === comment._id);
+      const existsById = prev.some((c) => c._id === processedComment._id);
         if (existsById) {
-          // Comment already exists, skip
+        // Comment already exists, skip
           return prev;
         }
         
         // For GIFs, check if we already have this exact GIF from this user very recently
         // This prevents the optimistic update from adding if socket already added it
-        if (comment.gifUrl) {
+      if (processedComment.gifUrl) {
           const recentDuplicate = prev.find((c) => {
-            if (c.gifUrl !== comment.gifUrl || c.username !== comment.username) {
+          if (c.gifUrl !== processedComment.gifUrl || c.username !== processedComment.username) {
               return false;
             }
             // Check if it's within the last 5 seconds (increased window for socket events)
-            if (c.createdAt && comment.createdAt) {
+          if (c.createdAt && processedComment.createdAt) {
               try {
                 const timeDiff = Math.abs(
-                  new Date(c.createdAt).getTime() - new Date(comment.createdAt).getTime()
+                new Date(c.createdAt).getTime() - new Date(processedComment.createdAt).getTime()
                 );
                 return timeDiff < 5000; // Within 5 seconds
               } catch {
@@ -1882,21 +1878,19 @@ const CommentsModal = () => {
           });
           
           if (recentDuplicate) {
-            // Recent duplicate GIF comment in optimistic update, skipping
+          // Recent duplicate GIF comment in optimistic update, skipping
             return prev;
           }
         }
         
         // Store ID for scrolling
-        if (comment._id) {
-          lastAddedCommentId.current = comment._id;
-          shouldScrollToCommentRef.current = comment._id;
-        }
-        
-        // Adding comment optimistically (removed logging to prevent re-renders)
+      if (processedComment._id) {
+        lastAddedCommentId.current = processedComment._id;
+        shouldScrollToCommentRef.current = processedComment._id;
+      }
         
         // Add comment and sort
-        const updated = [...prev, comment];
+      const updated = [...prev, processedComment];
         updated.sort((a, b) => {
           const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
             ? new Date(a.createdAt).getTime() 
@@ -1908,8 +1902,18 @@ const CommentsModal = () => {
         });
         return updated;
       });
+    
+    // Update ref immediately to keep it in sync
+    postCommentsRef.current = [...postCommentsRef.current, processedComment].sort((a, b) => {
+      const aTime = a.createdAt && (typeof a.createdAt === 'string' || a.createdAt instanceof Date)
+        ? new Date(a.createdAt).getTime() 
+        : Date.now();
+      const bTime = b.createdAt && (typeof b.createdAt === 'string' || b.createdAt instanceof Date)
+        ? new Date(b.createdAt).getTime() 
+        : Date.now();
+      return aTime - bTime;
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile?.username]);
 
   // Track previous comments length to detect new comments without causing re-renders
   const prevCommentsLengthRef = useRef<number>(0);
@@ -1977,7 +1981,7 @@ const CommentsModal = () => {
       })
       .map((commentData) => {
         const commentId: string = String(commentData?._id || commentData?.id || '');
-        const userReaction = getUserReaction(commentData);
+      const userReaction = getUserReaction(commentData);
       // Use reaction array (like chat) or reactions object
       const totalReactions = getTotalReactionsCount(commentData.reaction || commentData.reactions);
       const gifUrl = commentData?.gifUrl && typeof commentData.gifUrl === 'string' ? commentData.gifUrl : null;
