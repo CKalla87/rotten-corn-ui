@@ -634,9 +634,15 @@ const CommentsModal = () => {
         }
         
         // If userReaction is not set, try to derive it from reaction array
+        // Use case-insensitive comparison for username matching
         if (!userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+          const profileUsernameLower = profile.username.toLowerCase().trim();
           const userReactionObj = reactionArray.find(
-            (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+            (r: CommentReaction) => {
+              const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+              const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+              return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+            }
           );
           if (userReactionObj?.type) {
             userReaction = String(userReactionObj.type).toLowerCase().trim();
@@ -763,18 +769,30 @@ const CommentsModal = () => {
       reactionType = comment.userReaction;
     }
     // Check reaction array (like chat messages) - find user's reaction
+    // Use case-insensitive comparison for username matching
     else if (comment.reaction && Array.isArray(comment.reaction) && profile?.username) {
+      const profileUsernameLower = profile.username.toLowerCase().trim();
       const userReaction = comment.reaction.find(
-        (r: CommentReaction) => r.senderName === profile.username || r.username === profile.username
+        (r: CommentReaction) => {
+          const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+          const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+          return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+        }
       );
       if (userReaction?.type) {
         reactionType = userReaction.type;
       }
     }
     // Check reactions array (alternative field name)
+    // Use case-insensitive comparison for username matching
     else if (comment.reactions && Array.isArray(comment.reactions) && profile?.username) {
+      const profileUsernameLower = profile.username.toLowerCase().trim();
       const userReaction = comment.reactions.find(
-        (r: CommentReaction) => r.senderName === profile.username || r.username === profile.username
+        (r: CommentReaction) => {
+          const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+          const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+          return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+        }
       );
       if (userReaction?.type) {
         reactionType = userReaction.type;
@@ -782,7 +800,9 @@ const CommentsModal = () => {
     }
     
     // Normalize to lowercase and trim to match reactionsMap keys
-    return reactionType ? reactionType.toLowerCase().trim() : '';
+    const normalized = reactionType ? reactionType.toLowerCase().trim() : '';
+    // Convert 'happy' to 'haha' to match reactionsMap key (reactionsMap uses 'haha' not 'happy')
+    return normalized === 'happy' ? 'haha' : normalized;
   }, [profile?.username]);
   
 
@@ -830,15 +850,25 @@ const CommentsModal = () => {
           const currentReactions = (updatedComment.reaction as CommentReaction[]) || [];
           
           if (isRemoving) {
-            // Remove user's reaction
+            // Remove user's reaction - use case-insensitive comparison
+            const profileUsernameLower = profile?.username ? profile.username.toLowerCase().trim() : '';
             updatedComment.reaction = currentReactions.filter(
-              (r: CommentReaction) => !(r.senderName === profile?.username || r.username === profile?.username)
+              (r: CommentReaction) => {
+                const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                return !(rUsername === profileUsernameLower || rSenderName === profileUsernameLower);
+              }
             );
             updatedComment.userReaction = ''; // Clear for backward compatibility
           } else {
-            // Check if user already has ANY reaction (not just the same type)
+            // Check if user already has ANY reaction (not just the same type) - use case-insensitive comparison
+            const profileUsernameLower = profile?.username ? profile.username.toLowerCase().trim() : '';
             const existingReactionIndex = currentReactions.findIndex(
-              (r: CommentReaction) => r.senderName === profile?.username || r.username === profile?.username
+              (r: CommentReaction) => {
+                const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+              }
             );
             
             const newReaction: CommentReaction = {
@@ -906,9 +936,14 @@ const CommentsModal = () => {
                     ? removeResponse.data.comment.userReaction.toLowerCase().trim()
                     : '';
                 } else if (Array.isArray(updatedComment.reaction) && profile?.username) {
-                  // Derive userReaction from reaction array if not provided
+                  // Derive userReaction from reaction array if not provided - use case-insensitive comparison
+                  const profileUsernameLower = profile.username.toLowerCase().trim();
                   const userReaction = updatedComment.reaction.find(
-                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                    (r: CommentReaction) => {
+                      const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                      const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                      return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                    }
                   );
                   updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 }
@@ -926,9 +961,14 @@ const CommentsModal = () => {
                 if (Array.isArray(removeResponse.data.reactions)) {
                   updatedComment.reaction = removeResponse.data.reactions;
                 }
-                // Find user's reaction
+                // Find user's reaction - use case-insensitive comparison
+                const profileUsernameLower = profile?.username ? profile.username.toLowerCase().trim() : '';
                 const userReaction = removeResponse.data.reactions.find(
-                  (r: CommentReaction) => r.username === profile?.username || r.senderName === profile?.username
+                  (r: CommentReaction) => {
+                    const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                    const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                    return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                  }
                 );
                 updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 return updatedComment;
@@ -942,10 +982,15 @@ const CommentsModal = () => {
             setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
-                // Ensure userReaction is cleared if user has no reaction
+                // Ensure userReaction is cleared if user has no reaction - use case-insensitive comparison
                 if (Array.isArray(updatedComment.reaction) && profile?.username) {
+                  const profileUsernameLower = profile.username.toLowerCase().trim();
                   const userReaction = updatedComment.reaction.find(
-                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                    (r: CommentReaction) => {
+                      const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                      const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                      return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                    }
                   );
                   updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 } else {
@@ -1004,9 +1049,14 @@ const CommentsModal = () => {
                     ? apiResponse.data.comment.userReaction.toLowerCase().trim()
                     : '';
                 } else if (Array.isArray(updatedComment.reaction) && profile?.username) {
-                  // Derive userReaction from reaction array if not provided
+                  // Derive userReaction from reaction array if not provided - use case-insensitive comparison
+                  const profileUsernameLower = profile.username.toLowerCase().trim();
                   const userReaction = updatedComment.reaction.find(
-                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                    (r: CommentReaction) => {
+                      const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                      const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                      return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                    }
                   );
                   updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 }
@@ -1024,9 +1074,14 @@ const CommentsModal = () => {
                 if (Array.isArray(apiResponse.data.reactions)) {
                   updatedComment.reaction = apiResponse.data.reactions;
                 }
-                // Find user's reaction
+                // Find user's reaction - use case-insensitive comparison
+                const profileUsernameLower = profile?.username ? profile.username.toLowerCase().trim() : '';
                 const userReaction = apiResponse.data.reactions.find(
-                  (r: CommentReaction) => r.username === profile?.username || r.senderName === profile?.username
+                  (r: CommentReaction) => {
+                    const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                    const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                    return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                  }
                 );
                 updatedComment.userReaction = userReaction?.type ? userReaction.type.toLowerCase().trim() : '';
                 return updatedComment;
@@ -1040,10 +1095,15 @@ const CommentsModal = () => {
             setPostCommentsInternal((prevComments) => prevComments.map((comment) => {
               if (comment._id === commentId) {
                 const updatedComment = { ...comment };
-                // Ensure userReaction is set from reaction array if not already set
+                // Ensure userReaction is set from reaction array if not already set - use case-insensitive comparison
                 if (!updatedComment.userReaction && Array.isArray(updatedComment.reaction) && profile?.username) {
+                  const profileUsernameLower = profile.username.toLowerCase().trim();
                   const userReaction = updatedComment.reaction.find(
-                    (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                    (r: CommentReaction) => {
+                      const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                      const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                      return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                    }
                   );
                   updatedComment.userReaction = userReaction?.type || '';
                 }
@@ -1538,8 +1598,13 @@ const CommentsModal = () => {
                 : [];
               processedComment.reaction = reactionArray;
               if (!processedComment.userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+                const profileUsernameLower = profile.username.toLowerCase().trim();
                 const userReactionObj = reactionArray.find(
-                  (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+                  (r: CommentReaction) => {
+                    const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+                    const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+                    return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+                  }
                 );
                 if (userReactionObj?.type) {
                   processedComment.userReaction = String(userReactionObj.type).toLowerCase().trim();
@@ -1593,10 +1658,15 @@ const CommentsModal = () => {
           : [];
         processedSocketComment.reaction = reactionArray;
         
-        // Derive userReaction from reaction array if not provided
+        // Derive userReaction from reaction array if not provided - use case-insensitive comparison
         if (!processedSocketComment.userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+          const profileUsernameLower = profile.username.toLowerCase().trim();
           const userReactionObj = reactionArray.find(
-            (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+            (r: CommentReaction) => {
+              const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+              const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+              return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+            }
           );
           if (userReactionObj?.type) {
             processedSocketComment.userReaction = String(userReactionObj.type).toLowerCase().trim();
@@ -1839,10 +1909,15 @@ const CommentsModal = () => {
       : [];
     processedComment.reaction = reactionArray;
     
-    // Derive userReaction from reaction array if not provided
+    // Derive userReaction from reaction array if not provided - use case-insensitive comparison
     if (!processedComment.userReaction && Array.isArray(reactionArray) && reactionArray.length > 0 && profile?.username) {
+      const profileUsernameLower = profile.username.toLowerCase().trim();
       const userReactionObj = reactionArray.find(
-        (r: CommentReaction) => r.username === profile.username || r.senderName === profile.username
+        (r: CommentReaction) => {
+          const rUsername = r.username ? String(r.username).toLowerCase().trim() : '';
+          const rSenderName = r.senderName ? String(r.senderName).toLowerCase().trim() : '';
+          return rUsername === profileUsernameLower || rSenderName === profileUsernameLower;
+        }
       );
       if (userReactionObj?.type) {
         processedComment.userReaction = String(userReactionObj.type).toLowerCase().trim();
