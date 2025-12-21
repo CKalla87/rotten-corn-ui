@@ -113,6 +113,7 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
     if (userProfileData) {
       // Check if userProfileData actually changed by comparing the user object's intro fields
       const currentUser = userProfileData.user as Record<string, unknown> | undefined;
+      
       const lastUser = lastUserProfileDataRef.current?.user as Record<string, unknown> | undefined;
       
       const currentQuote = cleanText(currentUser?.quote as string | undefined);
@@ -137,12 +138,16 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
       if (!currentSocial && profile?.social) {
         currentSocial = profile.social as Record<string, unknown>;
       }
+      
+      
       const lastSocial = (lastUser as { social?: Record<string, unknown> })?.social;
       
-      const currentInstagram = String(currentSocial?.instagram || '');
-      const currentTwitter = String(currentSocial?.twitter || '');
-      const currentFacebook = String(currentSocial?.facebook || '');
-      const currentYoutube = String(currentSocial?.youtube || '');
+      // Extract social links, handling null, undefined, and empty string cases
+      // The backend might return null for empty links, so we need to handle that
+      const currentInstagram = currentSocial?.instagram != null ? String(currentSocial.instagram).trim() : '';
+      const currentTwitter = currentSocial?.twitter != null ? String(currentSocial.twitter).trim() : '';
+      const currentFacebook = currentSocial?.facebook != null ? String(currentSocial.facebook).trim() : '';
+      const currentYoutube = currentSocial?.youtube != null ? String(currentSocial.youtube).trim() : '';
       
       const lastInstagram = String(lastSocial?.instagram || '');
       const lastTwitter = String(lastSocial?.twitter || '');
@@ -197,30 +202,56 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
         // Check if this is the first time we're loading userProfileData (page refresh scenario)
         const isFirstLoad = lastUserProfileDataRef.current === null;
         
-        // Always initialize on first load, or when social data changed and doesn't match saved inputs
-        // On first load (page refresh), always initialize if we have social data or haven't initialized yet
+        // Always initialize on first load (page refresh), or when social data changed and doesn't match saved inputs
+        // On first load, always initialize regardless of whether currentSocial exists
         const shouldInitialize = !editableSocialInputsInitializedRef.current || 
-          (isFirstLoad && currentSocial) ||
+          isFirstLoad ||
           (socialDataChanged && editableSocialInputsInitializedRef.current && !savedSocialMatchesCurrent);
         
         if (shouldInitialize) {
-          const socialData = currentSocial;
-          if (socialData && typeof socialData === 'object') {
-            setEditableSocialInputs({
-              instagram: currentInstagram,
-              twitter: currentTwitter,
-              facebook: currentFacebook,
-              youtube: currentYoutube
-            });
-          } else if (!editableSocialInputsInitializedRef.current) {
-            // Only set to empty on first initialization if there's no social data
-            setEditableSocialInputs({
-              instagram: '',
-              twitter: '',
-              facebook: '',
-              youtube: ''
-            });
+          // Check if backend returned all empty strings
+          const allEmpty = !currentInstagram && !currentTwitter && !currentFacebook && !currentYoutube;
+          
+          // If backend returns all empty but we have saved values, use saved values instead
+          // This prevents overwriting saved social links when backend hasn't persisted them yet
+          let finalInstagram = currentInstagram;
+          let finalTwitter = currentTwitter;
+          let finalFacebook = currentFacebook;
+          let finalYoutube = currentYoutube;
+          
+          // If backend returns all empty but we have saved values, use saved values instead
+          // This prevents overwriting saved social links when backend hasn't persisted them yet
+          if (allEmpty && savedSocialInputsRef.current) {
+            finalInstagram = savedSocialInputsRef.current.instagram;
+            finalTwitter = savedSocialInputsRef.current.twitter;
+            finalFacebook = savedSocialInputsRef.current.facebook;
+            finalYoutube = savedSocialInputsRef.current.youtube;
           }
+          // Also check if we have values in Redux profile that aren't empty
+          else if (allEmpty && profile?.social) {
+            const profileSocial = profile.social as Record<string, unknown>;
+            if (profileSocial.instagram && String(profileSocial.instagram).trim()) {
+              finalInstagram = String(profileSocial.instagram).trim();
+            }
+            if (profileSocial.twitter && String(profileSocial.twitter).trim()) {
+              finalTwitter = String(profileSocial.twitter).trim();
+            }
+            if (profileSocial.facebook && String(profileSocial.facebook).trim()) {
+              finalFacebook = String(profileSocial.facebook).trim();
+            }
+            if (profileSocial.youtube && String(profileSocial.youtube).trim()) {
+              finalYoutube = String(profileSocial.youtube).trim();
+            }
+          }
+          
+          const newSocialInputs = {
+            instagram: finalInstagram,
+            twitter: finalTwitter,
+            facebook: finalFacebook,
+            youtube: finalYoutube
+          };
+          
+          setEditableSocialInputs(newSocialInputs);
           editableSocialInputsInitializedRef.current = true;
           // Clear saved social inputs ref after updating from backend
           if (savedSocialMatchesCurrent) {

@@ -52,12 +52,16 @@ class UserService {
   }
 
   async updateSocialLinks(links: unknown) {
-    // Try using basic-info endpoint - social links might be updated through basic info
-    // If this doesn't work, backend might need a separate endpoint created
-    // Log the request to help debug
-    console.log('Updating social links with payload:', JSON.stringify(links, null, 2));
-    const response = await axios.put('/user/profile/basic-info', links);
-    console.log('Social links update response:', response.status, response.data);
+    // Extract social links from the nested structure if needed
+    // Backend expects: { instagram: '', twitter: '', facebook: '', youtube: '' }
+    // Frontend might send: { social: { instagram: '', ... } }
+    let socialLinks = links;
+    if (links && typeof links === 'object' && 'social' in links) {
+      socialLinks = (links as { social: unknown }).social;
+    }
+    
+    // Use the correct endpoint for social links
+    const response = await axios.put('/user/profile/social-links', socialLinks);
     return response;
   }
 }

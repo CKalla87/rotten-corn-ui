@@ -72,6 +72,7 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
     try {
       // Ensure we're sending clean data
       // Build the social object with proper field names
+      // Backend expects flat structure: { instagram: '', twitter: '', facebook: '', youtube: '' }
       const socialData: Record<string, string> = {
         instagram: editableSocialInputs?.instagram ? String(editableSocialInputs.instagram).trim() : '',
         twitter: editableSocialInputs?.twitter ? String(editableSocialInputs.twitter).trim() : '',
@@ -79,13 +80,9 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
         youtube: editableSocialInputs?.youtube ? String(editableSocialInputs.youtube).trim() : ''
       };
       
-      // Try both formats: nested (current) and flat (alternative)
-      // Backend might expect nested structure based on how data is returned
-      const cleanData = { social: socialData };
-      
-      console.log('Saving social links:', cleanData);
-      const response = await userService.updateSocialLinks(cleanData);
-      console.log('Social links save response:', response.status, response.data);
+      // Send social links directly (not wrapped in 'social' object)
+      // Backend endpoint /user/profile/social-links expects flat structure
+      const response = await userService.updateSocialLinks(socialData);
       
       // Verify the response indicates success
       if (response.status === 200 || response.status === 201) {
@@ -101,19 +98,18 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
       // Extract social links from cleanData for state updates
       const savedSocialLinks = socialData;
       
+      const savedValues = {
+        instagram: String(savedSocialLinks.instagram || ''),
+        twitter: String(savedSocialLinks.twitter || ''),
+        facebook: String(savedSocialLinks.facebook || ''),
+        youtube: String(savedSocialLinks.youtube || '')
+      };
+      
       // Immediately update the local state with saved values to show them in the UI
       // This ensures the UI updates right away without waiting for profile refresh
       if (setEditableSocialInputs) {
-        // Create a new object to ensure React sees it as a state change
-        // Convert null back to empty string for display
-        const newInputs = {
-          instagram: String(savedSocialLinks.instagram || ''),
-          twitter: String(savedSocialLinks.twitter || ''),
-          facebook: String(savedSocialLinks.facebook || ''),
-          youtube: String(savedSocialLinks.youtube || '')
-        };
         requestAnimationFrame(() => {
-          setEditableSocialInputs(newInputs);
+          setEditableSocialInputs(savedValues);
         });
       }
       
@@ -123,10 +119,10 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
           ...profile,
           social: {
             ...((profile.social as Record<string, unknown>) || {}),
-            instagram: savedSocialLinks.instagram || '',
-            twitter: savedSocialLinks.twitter || '',
-            facebook: savedSocialLinks.facebook || '',
-            youtube: savedSocialLinks.youtube || ''
+            instagram: savedValues.instagram,
+            twitter: savedValues.twitter,
+            facebook: savedValues.facebook,
+            youtube: savedValues.youtube
           }
         };
         dispatch(updateUserProfile(updatedProfile));
@@ -135,14 +131,7 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
       // Call callback to refresh profile data if provided (for consistency with backend)
       // Pass the saved values so they can be stored to prevent overwriting during refresh
       if (onUpdateSuccess) {
-        const savedValues = {
-          instagram: String(savedSocialLinks.instagram || ''),
-          twitter: String(savedSocialLinks.twitter || ''),
-          facebook: String(savedSocialLinks.facebook || ''),
-          youtube: String(savedSocialLinks.youtube || '')
-        };
         // Wait a bit for the backend to persist the changes before refreshing
-        // This ensures the backend has time to save the data before we fetch it again
         setTimeout(async () => {
           await onUpdateSuccess(savedValues);
         }, 1000);

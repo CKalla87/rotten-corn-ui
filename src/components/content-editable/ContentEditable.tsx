@@ -160,6 +160,7 @@ const ContentEditable = ({
             ref.current.style.pointerEvents = 'none';
             ref.current.style.userSelect = 'none';
             ref.current.style.cursor = 'default';
+            ref.current.style.touchAction = 'none';
           } else {
             ref.current.contentEditable = 'true';
             ref.current.setAttribute('contenteditable', 'true');
@@ -169,6 +170,10 @@ const ContentEditable = ({
             ref.current.style.pointerEvents = 'auto';
             ref.current.style.userSelect = 'text';
             ref.current.style.cursor = 'text';
+            // Enable touch interactions on mobile
+            ref.current.style.touchAction = 'manipulation';
+            // Ensure the element can receive focus on mobile
+            ref.current.setAttribute('tabindex', '0');
             // Force a reflow to ensure the attribute is applied
             void ref.current.offsetHeight;
           }
@@ -195,6 +200,44 @@ const ContentEditable = ({
     if (disabled) return; // Don't handle focus if disabled
     isEditingRef.current = true;
     isFocusedRef.current = true;
+    // On mobile, ensure the element is properly focused and keyboard appears
+    if (ref.current) {
+      // Force focus on mobile devices
+      ref.current.focus();
+    }
+  };
+
+  // Handle touch events on mobile to ensure proper focus
+  const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    if (disabled) return;
+    // On mobile, prevent default scrolling but allow focus
+    e.stopPropagation();
+    if (ref.current && !isFocusedRef.current) {
+      // Small delay to ensure the element is ready
+      setTimeout(() => {
+        if (ref.current) {
+          ref.current.focus();
+          // On mobile, we might need to explicitly set selection
+          const range = document.createRange();
+          const sel = window.getSelection();
+          if (sel && ref.current) {
+            range.selectNodeContents(ref.current);
+            range.collapse(false); // Move to end
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      }, 10);
+    }
+  };
+
+  // Also handle click for better compatibility
+  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+    if (disabled) return;
+    e.stopPropagation();
+    if (ref.current && !isFocusedRef.current) {
+      ref.current.focus();
+    }
   };
 
   const handleBlur = () => {
@@ -218,6 +261,8 @@ const ContentEditable = ({
       onInput={handleInput as React.FormEventHandler<HTMLElement>}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick}
       className={className}
       style={{ 
         color: 'var(--black-1)', 
@@ -225,7 +270,12 @@ const ContentEditable = ({
         ...(disabled ? {} : {
           cursor: 'text',
           pointerEvents: 'auto',
-          userSelect: 'text'
+          userSelect: 'text',
+          touchAction: 'manipulation', // Enable touch interactions on mobile
+          WebkitUserSelect: 'text', // Safari support
+          WebkitTouchCallout: 'default', // Enable text selection on iOS
+          // Ensure it's interactive on mobile
+          WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)' // Show tap feedback on iOS
         })
       }}
       data-testid={dataTestId}
