@@ -132,7 +132,11 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
         currentLocation !== lastLocation;
       
       // Check if social data changed
-      const currentSocial = (currentUser as { social?: Record<string, unknown> })?.social;
+      // First try to get social from currentUser, then fall back to Redux profile
+      let currentSocial = (currentUser as { social?: Record<string, unknown> })?.social;
+      if (!currentSocial && profile?.social) {
+        currentSocial = profile.social as Record<string, unknown>;
+      }
       const lastSocial = (lastUser as { social?: Record<string, unknown> })?.social;
       
       const currentInstagram = String(currentSocial?.instagram || '');
@@ -190,7 +194,16 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
           savedSocialInputsRef.current.facebook === currentFacebook &&
           savedSocialInputsRef.current.youtube === currentYoutube;
         
-        if (!editableSocialInputsInitializedRef.current || (socialDataChanged && editableSocialInputsInitializedRef.current && !savedSocialMatchesCurrent)) {
+        // Check if this is the first time we're loading userProfileData (page refresh scenario)
+        const isFirstLoad = lastUserProfileDataRef.current === null;
+        
+        // Always initialize on first load, or when social data changed and doesn't match saved inputs
+        // On first load (page refresh), always initialize if we have social data or haven't initialized yet
+        const shouldInitialize = !editableSocialInputsInitializedRef.current || 
+          (isFirstLoad && currentSocial) ||
+          (socialDataChanged && editableSocialInputsInitializedRef.current && !savedSocialMatchesCurrent);
+        
+        if (shouldInitialize) {
           const socialData = currentSocial;
           if (socialData && typeof socialData === 'object') {
             setEditableSocialInputs({
@@ -199,7 +212,8 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
               facebook: currentFacebook,
               youtube: currentYoutube
             });
-          } else {
+          } else if (!editableSocialInputsInitializedRef.current) {
+            // Only set to empty on first initialization if there's no social data
             setEditableSocialInputs({
               instagram: '',
               twitter: '',
@@ -220,7 +234,7 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
         hasInitializedRef.current = true;
       }, 0);
     }
-  }, [userProfileData]);
+  }, [userProfileData, profile?.social]);
 
   const postsRef = useRef(posts);
   const hasSetupSocketRef = useRef(false);
