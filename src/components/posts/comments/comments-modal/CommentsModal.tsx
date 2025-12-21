@@ -92,42 +92,89 @@ const CommentListItem = memo(({
 }: CommentListItemProps) => {
   const [gifLoaded, setGifLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Fix the gifUrl if needed (handles Cloudinary URL fixes, but also works for Giphy URLs)
+  const fixedGifUrl = useMemo(() => {
+    if (!gifUrl) return null;
+    // Fix Cloudinary URLs if needed, but preserve Giphy URLs as-is
+    return Utils.fixCloudinaryUrl(gifUrl);
+  }, [gifUrl]);
   
   // Check if image is already loaded (cached) when ref is set
   const checkImageLoaded = useCallback((img: HTMLImageElement | null) => {
-    if (img && gifUrl && img.src === gifUrl) {
+    if (img && fixedGifUrl && img.src === fixedGifUrl) {
       // Check if image is already complete (cached)
       if (img.complete && img.naturalHeight !== 0) {
         setGifLoaded(true);
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
         return;
       }
     }
-  }, [gifUrl]);
+  }, [fixedGifUrl]);
   
   // Reset gifLoaded state when gifUrl changes
   useEffect(() => {
     setGifLoaded(false);
+    // Clear any existing timeout
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+    
     // Check if image is already cached after a brief delay
-    if (gifUrl) {
+    if (fixedGifUrl) {
       const timeoutId = setTimeout(() => {
         if (imgRef.current) {
           checkImageLoaded(imgRef.current);
         }
       }, 50);
-      return () => clearTimeout(timeoutId);
+      
+      // Set a fallback timeout to hide loading message after 10 seconds
+      loadingTimeoutRef.current = setTimeout(() => {
+        // If still not loaded after 10 seconds, show the image anyway (might be slow network)
+        // or hide loading message if image failed
+        if (imgRef.current) {
+          if (imgRef.current.complete && imgRef.current.naturalHeight === 0) {
+            // Image failed to load
+            setGifLoaded(true); // Hide loading message
+          } else if (imgRef.current.complete && imgRef.current.naturalHeight > 0) {
+            // Image loaded but onLoad didn't fire
+            setGifLoaded(true);
+          }
+        } else {
+          // No image ref, just hide loading message
+          setGifLoaded(true);
+        }
+      }, 10000);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
+      };
     }
-  }, [gifUrl, checkImageLoaded]);
+  }, [fixedGifUrl, checkImageLoaded]);
   
   // Also check when the ref is set
   const imgRefCallback = useCallback((el: HTMLImageElement | null) => {
     imgRef.current = el;
-    if (el && gifUrl) {
+    if (el && fixedGifUrl) {
+      // Set the src immediately
+      if (el.src !== fixedGifUrl) {
+        el.src = fixedGifUrl;
+      }
       // Check immediately if image is cached
       checkImageLoaded(el);
       // Also check after image src is set (in case it's set after ref)
       setTimeout(() => checkImageLoaded(el), 100);
     }
-  }, [gifUrl, checkImageLoaded]);
+  }, [fixedGifUrl, checkImageLoaded]);
   
   // Memoize ref callbacks to prevent recreation on every render
   // This prevents re-renders during scroll
@@ -198,11 +245,11 @@ const CommentListItem = memo(({
               overflow: 'visible',
               maxWidth: '100%'
             }}>{commentData?.comment || ''}</p>
-            {gifUrl && (
+            {fixedGifUrl && (
               <div className="comment-gif-container" style={{ minHeight: gifLoaded ? 'auto' : '150px' }}>
                 <img 
                   ref={imgRefCallback}
-                  src={gifUrl} 
+                  src={fixedGifUrl} 
                   alt="GIF" 
                   loading="lazy"
                   decoding="async"
@@ -223,6 +270,11 @@ const CommentListItem = memo(({
                     if (target.complete && target.naturalHeight !== 0) {
                       setGifLoaded(true);
                       target.style.opacity = '1';
+                      // Clear timeout if image loads successfully
+                      if (loadingTimeoutRef.current) {
+                        clearTimeout(loadingTimeoutRef.current);
+                        loadingTimeoutRef.current = null;
+                      }
                     }
                   }}
                   onError={(e) => {
@@ -231,6 +283,11 @@ const CommentListItem = memo(({
                     target.style.display = 'none';
                     // Set gifLoaded to true to hide the "Loading GIF..." message
                     setGifLoaded(true);
+                    // Clear timeout on error
+                    if (loadingTimeoutRef.current) {
+                      clearTimeout(loadingTimeoutRef.current);
+                      loadingTimeoutRef.current = null;
+                    }
                   }}
                 />
                 {!gifLoaded && (
