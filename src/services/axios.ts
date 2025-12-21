@@ -27,25 +27,32 @@ function getBaseUrl(): string {
   let currentEnv = getAppEnvironment();
   
   // Runtime hostname detection as fallback (for when env vars aren't set at build time)
-  if (typeof window !== 'undefined' && currentEnv === 'local' && !import.meta.env.DEV) {
-    const hostname = window.location.hostname;
-    if (hostname.includes('dev.chatappserver.space') || hostname.includes('.dev.')) {
-      currentEnv = 'development';
-      if (!baseUrlLogged) {
-      console.log('🌐 Detected develop environment from hostname:', hostname);
-        baseUrlLogged = true;
-      }
-    } else if (hostname.includes('staging.chatappserver.space') || hostname.includes('.staging.')) {
-      currentEnv = 'staging';
-      if (!baseUrlLogged) {
-      console.log('🌐 Detected staging environment from hostname:', hostname);
-        baseUrlLogged = true;
-      }
-    } else if (hostname.includes('chatappserver.space') && !hostname.includes('dev.') && !hostname.includes('staging.')) {
-      currentEnv = 'production';
-      if (!baseUrlLogged) {
-      console.log('🌐 Detected production environment from hostname:', hostname);
-        baseUrlLogged = true;
+  // Run hostname detection in production builds (when not in dev mode) to ensure correct environment detection
+  // This is especially important when environment variables aren't injected from S3
+  if (typeof window !== 'undefined' && !import.meta.env.DEV) {
+    // Use hostname detection if environment wasn't explicitly set via window.__ENV__
+    // This ensures correct environment detection even when env vars aren't injected at build/runtime
+    const envExplicitlySet = window.__ENV__?.VITE_APP_ENVIRONMENT;
+    if (!envExplicitlySet) {
+      const hostname = window.location.hostname;
+      if (hostname.includes('dev.chatappserver.space') || hostname.includes('.dev.')) {
+        currentEnv = 'development';
+        if (!baseUrlLogged) {
+          console.log('🌐 Detected develop environment from hostname:', hostname);
+          baseUrlLogged = true;
+        }
+      } else if (hostname.includes('staging.chatappserver.space') || hostname.includes('.staging.')) {
+        currentEnv = 'staging';
+        if (!baseUrlLogged) {
+          console.log('🌐 Detected staging environment from hostname:', hostname);
+          baseUrlLogged = true;
+        }
+      } else if (hostname.includes('chatappserver.space') && !hostname.includes('dev.') && !hostname.includes('staging.')) {
+        currentEnv = 'production';
+        if (!baseUrlLogged) {
+          console.log('🌐 Detected production environment from hostname:', hostname);
+          baseUrlLogged = true;
+        }
       }
     }
   }
