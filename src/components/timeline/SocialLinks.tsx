@@ -20,7 +20,7 @@ interface SocialLinksProps {
   profile?: Record<string, unknown>;
   loading?: boolean;
   setEditableSocialInputs?: (inputs: Record<string, unknown>) => void;
-  onUpdateSuccess?: () => Promise<void>;
+  onUpdateSuccess?: (savedValues?: { instagram: string; twitter: string; facebook: string; youtube: string }) => Promise<void>;
 }
 
 const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEditableSocialInputs, onUpdateSuccess }: SocialLinksProps) => {
@@ -135,8 +135,15 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
       }
       
       // Call callback to refresh profile data if provided (for consistency with backend)
+      // Pass the saved values so they can be stored to prevent overwriting during refresh
       if (onUpdateSuccess) {
-        await onUpdateSuccess();
+        const savedValues = {
+          instagram: String(savedSocialLinks.instagram || ''),
+          twitter: String(savedSocialLinks.twitter || ''),
+          facebook: String(savedSocialLinks.facebook || ''),
+          youtube: String(savedSocialLinks.youtube || '')
+        };
+        await onUpdateSuccess(savedValues);
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };

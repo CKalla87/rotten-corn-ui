@@ -38,12 +38,14 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
     location: ''
   });
   const savedInputsRef = useRef<{ quote: string; work: string; school: string; location: string } | null>(null);
+  const savedSocialInputsRef = useRef<{ instagram: string; twitter: string; facebook: string; youtube: string } | null>(null);
   const [editableSocialInputs, setEditableSocialInputs] = useState({
     instagram: '',
     twitter: '',
     facebook: '',
     youtube: ''
   });
+  const editableSocialInputsInitializedRef = useRef(false);
   const { username } = useParams<{ username: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const storedUsername = useLocalStorage<string>('username', 'get');
@@ -129,6 +131,26 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
         currentSchool !== lastSchool ||
         currentLocation !== lastLocation;
       
+      // Check if social data changed
+      const currentSocial = (currentUser as { social?: Record<string, unknown> })?.social;
+      const lastSocial = (lastUser as { social?: Record<string, unknown> })?.social;
+      
+      const currentInstagram = String(currentSocial?.instagram || '');
+      const currentTwitter = String(currentSocial?.twitter || '');
+      const currentFacebook = String(currentSocial?.facebook || '');
+      const currentYoutube = String(currentSocial?.youtube || '');
+      
+      const lastInstagram = String(lastSocial?.instagram || '');
+      const lastTwitter = String(lastSocial?.twitter || '');
+      const lastFacebook = String(lastSocial?.facebook || '');
+      const lastYoutube = String(lastSocial?.youtube || '');
+      
+      const socialDataChanged = 
+        currentInstagram !== lastInstagram ||
+        currentTwitter !== lastTwitter ||
+        currentFacebook !== lastFacebook ||
+        currentYoutube !== lastYoutube;
+      
       // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => {
         setPosts((userProfileData.posts as unknown[]) || []);
@@ -158,21 +180,38 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
           }
         }
         
-        const socialData = (userProfileData.user as { social?: Record<string, unknown> })?.social;
-        if (socialData && typeof socialData === 'object') {
-          setEditableSocialInputs({
-            instagram: (socialData.instagram as string) || '',
-            twitter: (socialData.twitter as string) || '',
-            facebook: (socialData.facebook as string) || '',
-            youtube: (socialData.youtube as string) || ''
-          });
-        } else {
-          setEditableSocialInputs({
-            instagram: '',
-            twitter: '',
-            facebook: '',
-            youtube: ''
-          });
+        // Only update editableSocialInputs on initial load or when social data actually changed
+        // This prevents overwriting user edits that haven't been saved yet
+        // Also, don't overwrite if we have saved social inputs that match what the user just saved
+        const hasSavedSocialInputs = savedSocialInputsRef.current !== null;
+        const savedSocialMatchesCurrent = hasSavedSocialInputs && savedSocialInputsRef.current !== null &&
+          savedSocialInputsRef.current.instagram === currentInstagram &&
+          savedSocialInputsRef.current.twitter === currentTwitter &&
+          savedSocialInputsRef.current.facebook === currentFacebook &&
+          savedSocialInputsRef.current.youtube === currentYoutube;
+        
+        if (!editableSocialInputsInitializedRef.current || (socialDataChanged && editableSocialInputsInitializedRef.current && !savedSocialMatchesCurrent)) {
+          const socialData = currentSocial;
+          if (socialData && typeof socialData === 'object') {
+            setEditableSocialInputs({
+              instagram: currentInstagram,
+              twitter: currentTwitter,
+              facebook: currentFacebook,
+              youtube: currentYoutube
+            });
+          } else {
+            setEditableSocialInputs({
+              instagram: '',
+              twitter: '',
+              facebook: '',
+              youtube: ''
+            });
+          }
+          editableSocialInputsInitializedRef.current = true;
+          // Clear saved social inputs ref after updating from backend
+          if (savedSocialMatchesCurrent) {
+            savedSocialInputsRef.current = null;
+          }
         }
         
         // Update the ref after processing
@@ -274,8 +313,20 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
               username={username}
               profile={profile || undefined}
               loading={loading}
-              onUpdateSuccess={async () => {
-                // Refresh profile data after social links update
+              onUpdateSuccess={async (savedValues) => {
+                // Store the saved social inputs so we don't overwrite them during refresh
+                // Use the savedValues passed from SocialLinks if available, otherwise fall back to current state
+                if (savedValues) {
+                  savedSocialInputsRef.current = savedValues;
+                } else {
+                  savedSocialInputsRef.current = {
+                    instagram: editableSocialInputs.instagram,
+                    twitter: editableSocialInputs.twitter,
+                    facebook: editableSocialInputs.facebook,
+                    youtube: editableSocialInputs.youtube
+                  };
+                }
+                // Refresh profile data in the background for consistency
                 if (onIntroUpdateSuccess) {
                   await onIntroUpdateSuccess();
                 }
