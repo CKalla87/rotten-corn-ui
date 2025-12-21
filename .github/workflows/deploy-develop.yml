@@ -1,0 +1,235 @@
+name: Deploy Develop (Direct Upload)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm direct deployment to develop'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  BUCKET_NAME: chatapp-client-develop-app-602951639614
+
+jobs:
+  deploy-file:
+    name: Deploy PostWrapper.scss to S3
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'deploy'
+    environment: develop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify S3 bucket exists
+        run: |
+          echo "Verifying S3 bucket: ${{ env.BUCKET_NAME }}"
+          if aws s3 ls "s3://${{ env.BUCKET_NAME }}" 2>&1 | grep -q 'NoSuchBucket'; then
+            echo "Error: S3 bucket does not exist"
+            exit 1
+          fi
+          echo "✓ S3 bucket verified"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync environment files from S3
+        run: |
+          rm -rf .env .env.develop .env.staging .env.production
+          ENV_PATH="frontend/develop"
+          echo "Syncing environment files from: s3://chattapplication1-env-files/$ENV_PATH"
+          aws s3 sync "s3://chattapplication1-env-files/$ENV_PATH" . --region ${{ env.AWS_REGION }} || exit 1
+          
+          # Rename .env to .env.develop if it exists (for develop environment)
+          if [ -f ".env" ]; then
+            echo "Renaming .env to .env.develop for develop environment"
+            mv .env .env.develop
+            echo "✓ Environment file ready as .env.develop"
+          elif [ -f ".env.develop" ]; then
+            echo "✓ .env.develop file found"
+          else
+            echo "Warning: No .env or .env.develop file found after sync"
+            echo "Listing files in current directory:"
+            ls -la | grep -E "\.env"
+          fi
+
+      - name: Verify environment file
+        run: |
+          echo "Verifying environment file before build..."
+          if [ -f ".env.develop" ]; then
+            echo "✓ .env.develop file found"
+            echo "File size: $(wc -c < .env.develop) bytes"
+            echo "Checking for VITE_CLOUD_NAME..."
+            if grep -q "VITE_CLOUD_NAME" .env.develop; then
+              CLOUD_NAME_VALUE=$(grep "^VITE_CLOUD_NAME=" .env.develop | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+              if [[ "$CLOUD_NAME_VALUE" == *"your-"* ]] || [[ "$CLOUD_NAME_VALUE" == "" ]]; then
+                echo "❌ ERROR: VITE_CLOUD_NAME has a placeholder value: $CLOUD_NAME_VALUE"
+                echo "❌ This value will be filtered out during injection and images will not work!"
+                echo "❌ Please update the .env file in S3 with your actual Cloudinary cloud name"
+                echo "❌ File location: s3://chattapplication1-env-files/frontend/develop/.env"
+                exit 1
+              else
+                echo "✓ VITE_CLOUD_NAME found with value: ${CLOUD_NAME_VALUE:0:10}..."
+              fi
+            else
+              echo "❌ ERROR: VITE_CLOUD_NAME not found in .env.develop"
+              echo "❌ Please add VITE_CLOUD_NAME=your-actual-cloud-name to the .env file in S3"
+              echo "❌ File location: s3://chattapplication1-env-files/frontend/develop/.env"
+              exit 1
+            fi
+          else
+            echo "❌ ERROR: .env.develop file not found!"
+            echo "Listing .env files:"
+            ls -la .env* 2>/dev/null || echo "No .env files found"
+            exit 1
+          fi
+
+      - name: Build project (compile SCSS)
+        run: |
+          echo "Building project to compile SCSS changes..."
+          npm run build
+          
+          if [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; then
+            echo "Error: Build failed or dist directory not found"
+            exit 1
+          fi
+          echo "✓ Build complete"
+          
+          # Verify injection worked
+          echo "Verifying environment variable injection..."
+          if grep -q "window.__ENV__" dist/index.html; then
+            echo "✓ window.__ENV__ script found in index.html"
+            if grep -q "VITE_CLOUD_NAME" dist/index.html; then
+              echo "✓ VITE_CLOUD_NAME found in injected script"
+            else
+              echo "⚠️ WARNING: VITE_CLOUD_NAME not found in injected script"
+              echo "This may mean the value was filtered out as a placeholder"
+            fi
+          else
+            echo "❌ ERROR: window.__ENV__ script not found in index.html!"
+            echo "The injection script may have failed"
+            exit 1
+          fi
+
+      - name: Upload build files to S3
+        run: |
+          echo "Uploading compiled files to S3..."
+          echo "Bucket: ${{ env.BUCKET_NAME }}"
+          
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if aws s3 sync dist/ "s3://${{ env.BUCKET_NAME }}" \
+              --region ${{ env.AWS_REGION }} \
+              --delete \
+              --exact-timestamps; then
+              echo "✓ Files uploaded successfully"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Upload failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+                sleep 5
+              else
+                echo "Error: Upload failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
+          
+          FILE_COUNT=$(aws s3 ls "s3://${{ env.BUCKET_NAME }}" --recursive --region ${{ env.AWS_REGION }} | wc -l | tr -d ' ')
+          echo "Files in S3: $FILE_COUNT"
+
+      - name: Get CloudFront distribution ID
+        run: |
+          echo "Getting CloudFront distribution ID from Terraform..."
+          
+          # Check if Terraform is available
+          if ! command -v terraform &> /dev/null; then
+            echo "Terraform not available, skipping CloudFront invalidation"
+            exit 0
+          fi
+          
+          cd infrastructure
+          terraform init -backend=false || terraform init
+          terraform workspace select develop || terraform workspace new develop
+          
+          if CLOUDFRONT_ID=$(terraform output -raw cloudfront_distribution_id 2>/dev/null | tr -d '"' | tr -d '\n'); then
+            if [ -n "$CLOUDFRONT_ID" ] && [ "$CLOUDFRONT_ID" != "null" ]; then
+              echo "CLOUDFRONT_ID=$CLOUDFRONT_ID" >> $GITHUB_ENV
+              echo "✓ CloudFront Distribution ID: $CLOUDFRONT_ID"
+            else
+              echo "Could not get CloudFront distribution ID"
+              exit 0
+            fi
+          else
+            echo "Could not get CloudFront distribution ID"
+            exit 0
+          fi
+
+      - name: Invalidate CloudFront cache
+        if: env.CLOUDFRONT_ID != ''
+        run: |
+          echo "Invalidating CloudFront cache..."
+          echo "Distribution ID: ${{ env.CLOUDFRONT_ID }}"
+          
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if INVALIDATION_ID=$(aws cloudfront create-invalidation \
+              --distribution-id "${{ env.CLOUDFRONT_ID }}" \
+              --paths "/*" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Invalidation.Id' \
+              --output text 2>&1); then
+              echo "✓ CloudFront invalidation created: $INVALIDATION_ID"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Invalidation failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+                sleep 10
+              else
+                echo "Invalidation failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Deployment Summary
+        run: |
+          echo "## Direct Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: develop" >> $GITHUB_STEP_SUMMARY
+          echo "- File: PostWrapper.scss" >> $GITHUB_STEP_SUMMARY
+          echo "- S3 Bucket: ${{ env.BUCKET_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+
+
+
+
+
+
+
+
+
+
+
+

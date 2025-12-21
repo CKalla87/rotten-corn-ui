@@ -1,0 +1,23 @@
+<svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outermost ring - darkest blue, muted slate-blue -->
+  <circle cx="20" cy="20" r="18" fill="none" stroke="#475569" stroke-width="2"/>
+  <!-- Middle ring - medium-dark blue, slightly desaturated -->
+  <circle cx="20" cy="20" r="12" fill="none" stroke="#60A5FA" stroke-width="1.5"/>
+  <!-- Innermost ring - slightly darker but clear blue -->
+  <circle cx="20" cy="20" r="6" fill="none" stroke="#38BDF8" stroke-width="1"/>
+  <!-- Center dot - vibrant light blue (sky blue/light azure) -->
+  <circle cx="20" cy="20" r="2.5" fill="#7DD3FC"/>
+</svg>
+
+
+
+
+
+
+
+
+
+
+
+
+

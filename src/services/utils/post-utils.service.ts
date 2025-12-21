@@ -70,7 +70,9 @@ export class PostUtils {
           postData.post = post;
         }
         setPostData(postData);
-        // Enable form if there's post content, otherwise disable
+        // Enable form if there's post content OR image/gif/video, otherwise disable
+        // Note: This function is called when clearing an image, so we only check text here
+        // The parent component should handle checking for images/gifs/videos
         const hasContent = (post || postData.post || '').trim().length > 0;
         setDisable(!hasContent);
       }
@@ -95,7 +97,11 @@ export class PostUtils {
   ): void {
     setTimeout(() => {
       if (imageInputRef?.current) {
-        imageInputRef.current.textContent = !post ? postData?.post : post;
+        // Only update textContent if the element is not currently focused/being edited
+        const isFocused = document.activeElement === imageInputRef.current;
+        if (!isFocused) {
+          imageInputRef.current.textContent = !post ? postData?.post : post;
+        }
       }
       if (post) {
         postData.post = post;

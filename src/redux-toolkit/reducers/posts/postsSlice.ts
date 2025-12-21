@@ -38,7 +38,10 @@ const postsSlice = createSlice({
         return postObj._id === payload._id;
       });
       if (index > -1) {
-        state.posts[index] = action.payload;
+        // Create a new array to ensure React re-renders
+        const newPosts = [...state.posts];
+        newPosts[index] = action.payload;
+        state.posts = newPosts;
       }
     }
   },
@@ -49,11 +52,13 @@ const postsSlice = createSlice({
     builder.addCase(getPosts.fulfilled, (state, action) => {
       const { posts, totalPosts } = action.payload;
       state.isLoading = false;
-      state.posts = [...posts];
-      state.totalPostsCount = totalPosts;
+      // Always update posts, even if empty array (to ensure state is synced on refresh)
+      state.posts = Array.isArray(posts) ? [...posts] : [];
+      state.totalPostsCount = totalPosts || 0;
     });
     builder.addCase(getPosts.rejected, (state) => {
       state.isLoading = false;
+      // Don't clear posts on error - keep existing posts if any
     });
   }
 });

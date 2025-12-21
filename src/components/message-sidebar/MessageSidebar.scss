@@ -9,6 +9,7 @@
   z-index: 10;
   height: 100%;
   animation: toast-in-right 0.4s;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1), 0 0 10px rgba(102, 176, 240, 0.1), 0 0 20px rgba(102, 176, 240, 0.05);
 
   .message-card {
     background: var(--white-1);

@@ -1,8 +1,8 @@
 .search-result {
   position: absolute;
   top: 100%;
-  left: 0;
-  right: 0;
+  left: 15px;
+  right: 15px;
   background-color: var(--white-1);
   border: 1px solid var(--white-4);
   border-top: none;
@@ -11,6 +11,17 @@
   overflow-y: auto;
   z-index: 1000;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-top: 0;
+
+  @media (max-width: 768px) {
+    left: 12px;
+    right: 12px;
+  }
+
+  @media (max-width: 480px) {
+    left: 10px;
+    right: 10px;
+  }
 
   &-container {
     display: flex;
@@ -43,3 +54,10 @@
   }
 }
 
+
+
+// Auto-added missing styles
+.search-result-container-item .username {
+  margin-left: 6px;
+  font-size: 13px;
+}

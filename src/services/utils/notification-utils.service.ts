@@ -60,15 +60,54 @@ export class NotificationUtils {
       const imgId = notification?.imgId as string | undefined;
       const gifUrl = notification?.gifUrl as string | undefined;
       const imgUrl = notification?.imgUrl as string | undefined;
+      const userFrom = notification?.userFrom as { username?: string; avatarColor?: string; profilePicture?: string; profileImageId?: string; profileImageVersion?: string; avatarImageId?: string; avatarImageVersion?: string; avatarImage?: string } | undefined;
+      
+      // Generate profile picture URL if available - using same logic as notifications page
+      let profilePicUrl = '';
+      if (userFrom) {
+        // Generate URL from image ID/version if available (same as notifications page)
+        if (userFrom.profileImageId && userFrom.profileImageVersion) {
+          profilePicUrl = Utils.getImage(userFrom.profileImageId, userFrom.profileImageVersion);
+          // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+          if (!profilePicUrl && userFrom.profilePicture) {
+            profilePicUrl = userFrom.profilePicture as string;
+          }
+        } else if (userFrom.avatarImageId && userFrom.avatarImageVersion) {
+          profilePicUrl = Utils.getImage(userFrom.avatarImageId, userFrom.avatarImageVersion);
+          // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+          if (!profilePicUrl && userFrom.profilePicture) {
+            profilePicUrl = userFrom.profilePicture as string;
+          } else if (!profilePicUrl && userFrom.avatarImage) {
+            profilePicUrl = userFrom.avatarImage as string;
+          }
+        } else if (userFrom.profilePicture) {
+          profilePicUrl = userFrom.profilePicture as string;
+        } else if (userFrom.avatarImage) {
+          profilePicUrl = userFrom.avatarImage as string;
+        }
+        
+        if (profilePicUrl) {
+          // Fix Cloudinary URL if needed (same as notifications page)
+          profilePicUrl = Utils.fixCloudinaryUrl(profilePicUrl);
+        }
+      }
+      
       const item: NotificationItem = {
         _id: notification?._id,
         description: topText || '',
         topText: topText,
+        message: notification?.message as string | undefined,
         subText: notification?.createdAt as string | undefined,
         createdAt: notification?.createdAt as string | undefined,
-        username: notification?.username as string | undefined,
-        avatarColor: notification?.avatarColor as string | undefined,
-        profilePicture: notification?.profilePicture as string | undefined,
+        username: userFrom?.username || notification?.username as string | undefined,
+        avatarColor: userFrom?.avatarColor || notification?.avatarColor as string | undefined,
+        profilePicture: profilePicUrl || notification?.profilePicture as string | undefined,
+        userFrom: userFrom ? {
+          username: userFrom.username,
+          avatarColor: userFrom.avatarColor,
+          profilePicture: profilePicUrl || (userFrom.profilePicture as string | undefined)
+        } : undefined,
+        senderName: userFrom?.username || notification?.senderName as string | undefined,
         read: notification?.read,
         post: notification?.post as string | undefined,
         imgUrl: imgId && imgVersion
@@ -78,7 +117,6 @@ export class NotificationUtils {
           : imgUrl,
         comment: notification?.comment as string | undefined,
         reaction: notification?.reaction as string | undefined,
-        senderName: notification?.senderName as string | undefined,
         notificationType: notification?.notificationType as string | undefined
       };
       items.push(item);

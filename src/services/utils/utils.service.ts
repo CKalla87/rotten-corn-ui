@@ -5,6 +5,7 @@ import type { AppDispatch } from '@redux/store';
 import { addUser, clearUser } from '@redux/reducers/user/userSlice';
 import { addNotification, clearNotification } from '@redux/reducers/notifications/notificationSlice';
 import type { UserProfile } from '@redux/reducers/user/userSlice';
+import { getCloudName } from '@root/utils/env';
 
 export class Utils {
   static avatarColor(): string {
@@ -50,8 +51,20 @@ export class Utils {
     // Only generate from ID/version if they exist, otherwise preserve existing URL
     if (userProfile.profileImageId && userProfile.profileImageVersion) {
       avatarImageUrl = this.getImage(userProfile.profileImageId as string, userProfile.profileImageVersion as string);
+      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+      if (!avatarImageUrl) {
+        avatarImageUrl = (userProfile.profilePicture as string) ||
+                        (userProfile.avatarImage as string) ||
+                        '';
+      }
     } else if (userProfile.avatarImageId && userProfile.avatarImageVersion) {
       avatarImageUrl = this.getImage(userProfile.avatarImageId as string, userProfile.avatarImageVersion as string);
+      // If getImage returns empty (e.g., cloud name missing), fall back to full URL
+      if (!avatarImageUrl) {
+        avatarImageUrl = (userProfile.profilePicture as string) ||
+                        (userProfile.avatarImage as string) ||
+                        '';
+      }
     } else {
       // Fallback to existing URL fields if they exist
       avatarImageUrl = (userProfile.profilePicture as string) ||
@@ -59,8 +72,9 @@ export class Utils {
                       '';
     }
     
-    // Only update if we have a valid URL
+    // Fix Cloudinary URL if it's a full URL
     if (avatarImageUrl) {
+      avatarImageUrl = this.fixCloudinaryUrl(avatarImageUrl);
       userProfile.avatarImage = avatarImageUrl;
       userProfile.profilePicture = avatarImageUrl;
     }
@@ -125,8 +139,24 @@ export class Utils {
     // Strip quotes if present (fixes issues with stringified values)
     const version = typeof imgVersion === 'string' ? imgVersion.replace(/['"]+/g, '') : imgVersion;
     const id = typeof imgId === 'string' ? imgId.replace(/['"]+/g, '') : imgId;
-    const cloudName = import.meta.env.VITE_CLOUD_NAME;
+    const cloudName = getCloudName();
     if (!cloudName) {
+      // Log warning only once per session to avoid console spam
+      if (!(window as { __cloudNameWarningShown?: boolean }).__cloudNameWarningShown) {
+        console.warn('⚠️ VITE_CLOUD_NAME not set, image URL generation may fail. Using fallback.');
+        console.warn('⚠️ Please ensure VITE_CLOUD_NAME is set in your environment or injected via window.__ENV__.VITE_CLOUD_NAME');
+        // Log diagnostic information
+        if (typeof window !== 'undefined') {
+          console.warn('⚠️ Diagnostic info:', {
+            hasWindowEnv: !!window.__ENV__,
+            envKeys: window.__ENV__ ? Object.keys(window.__ENV__) : [],
+            buildTimeEnv: import.meta.env.VITE_CLOUD_NAME,
+            runtimeEnv: window.__ENV__?.VITE_CLOUD_NAME
+          });
+        }
+        (window as { __cloudNameWarningShown?: boolean }).__cloudNameWarningShown = true;
+      }
+      // Return empty string so calling code can fall back to full URL if available
       return '';
     }
     // Use the standard Cloudinary URL format
@@ -134,8 +164,21 @@ export class Utils {
     return `https://res.cloudinary.com/${cloudName}/image/upload/v${version}/${id}`;
   }
 
-  static getImage(imageId?: string, imageVersion?: string): string {
-    return imageId && imageVersion ? this.appImageUrl(imageVersion, imageId) : '';
+  static getImage(imageId?: string, imageVersion?: string, fallbackUrl?: string): string {
+    if (!imageId || !imageVersion) {
+      // If no ID/version but we have a fallback URL, use it
+      if (fallbackUrl) {
+        return this.fixCloudinaryUrl(fallbackUrl);
+      }
+      return '';
+    }
+    const url = this.appImageUrl(imageVersion, imageId);
+    // If appImageUrl returns empty (e.g., cloud name missing), try fallback URL
+    if (!url && fallbackUrl) {
+      return this.fixCloudinaryUrl(fallbackUrl);
+    }
+    // Callers should have fallback to full URL from backend
+    return url;
   }
 
   static fixCloudinaryUrl(url: string | undefined | null): string {
@@ -157,8 +200,12 @@ export class Utils {
   }
 
   static getVideo(videoId?: string, videoVersion?: string): string {
+    const cloudName = getCloudName();
+    if (!cloudName) {
+      return '';
+    }
     return videoId && videoVersion
-      ? `https://res.cloudinary.com/${import.meta.env.VITE_CLOUD_NAME}/video/upload/v${videoVersion}/${videoId}`
+      ? `https://res.cloudinary.com/${cloudName}/video/upload/v${videoVersion}/${videoId}`
       : '';
   }
 

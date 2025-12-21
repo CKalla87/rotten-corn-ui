@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import './ForgotPassword.sass';
-import backgroundImage from '@assets/images/background.jpg';
 import { FaArrowLeft } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import Input from '@components/input/Input';
@@ -33,10 +32,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div 
-      className="container-wrapper" 
-      style={{ backgroundImage: `url(${backgroundImage})` }}
-    >
+    <div className="container-wrapper">
       <div className="container-wrapper-auth">
         <div 
           className="tabs forgot-password-tabs"
@@ -72,6 +68,7 @@ const ForgotPassword = () => {
                     label={loading ? 'FORGOT PASSWORD IN PROGRESS...' : 'FORGOT PASSWORD'}
                     className="auth-button button" 
                     disabled={!email}
+                    type="submit"
                   />
                   <Link to={'/'}>
                     <span className="login">

@@ -45,3 +45,20 @@
   }
 }
 
+
+
+// Auto-added missing styles
+.giphy-search-container {
+    background: var(--white-1);
+    border: 1px solid var(--white-4);
+    z-index: 1000;
+    border-radius: 10px;
+    width: 352px;
+    max-height: 447px;
+    padding: 10px;
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: 0;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px #0000004d;
+}

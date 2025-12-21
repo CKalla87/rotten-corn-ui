@@ -1,8 +1,9 @@
 import Avatar from '@components/avatar/Avatar';
 import Button from '@components/button/Button';
-import { FaCircle, FaRegCircle, FaTrashAlt, FaUserAlt } from 'react-icons/fa';
-import './Dropdown.scss';
+import { FaCircle, FaTrashAlt, FaUserAlt } from 'react-icons/fa';
+import { timeAgo } from '@services/utils/timeago.utils';
 import { Utils } from '@services/utils/utils.service';
+import './Dropdown.scss';
 
 interface DropdownItem {
   _id?: string;
@@ -45,6 +46,44 @@ const Dropdown = ({
   onLogout,
   onNavigate
 }: DropdownProps) => {
+  // Format notification message with more context - same logic as notifications page
+  const formatNotificationMessage = (item: DropdownItem): string => {
+    const userFrom = item?.userFrom as { username?: string; avatarColor?: string; profilePicture?: string } | undefined;
+    const username = userFrom?.username || item?.username || item?.senderName || 'Someone';
+    const notificationType = item?.notificationType;
+    const message = item?.message || item?.description || item?.topText;
+    
+    // If we have a custom message, use it (same as notifications page)
+    if (message) {
+      return message as string;
+    }
+    
+    // Otherwise format based on notification type (same as notifications page)
+    switch (notificationType) {
+      case 'follows':
+        return `${username} is now following you.`;
+      case 'comments': {
+        const comment = item?.comment as string | undefined;
+        return comment ? `${username} commented: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"` : `${username} commented on your post`;
+      }
+      case 'reactions': {
+        const reaction = item?.reaction as string | undefined;
+        const reactionEmoji: Record<string, string> = {
+          love: '❤️',
+          like: '👍',
+          haha: '😄',
+          angry: '😠',
+          sad: '😢',
+          wow: '😲'
+        };
+        const reactionText = reaction ? (reactionEmoji[reaction] || reaction) : 'reacted';
+        return `${username} ${reactionText} your post`;
+      }
+      default:
+        return `${username} interacted with you`;
+    }
+  };
+
   return (
     <div className="social-dropdown" style={style} data-testid="dropdown">
       <div className="social-card">
@@ -53,7 +92,7 @@ const Dropdown = ({
             <h5>
               {title}
               {title === 'Notifications' && notificationCount > 0 && (
-                <small className="social-count">{notificationCount}</small>
+                <span className="social-count">{notificationCount}</span>
               )}
             </h5>
           </div>
@@ -64,16 +103,23 @@ const Dropdown = ({
               className="social-card-body-info-container"
               style={{ maxHeight: `${height}px` }}
             >
-              {data.map((item) => (
+              {data.map((item) => {
+                const userFrom = item?.userFrom as { username?: string; avatarColor?: string; profilePicture?: string } | undefined;
+                // Use same logic as notifications page: userFrom first, then fallbacks
+                const username = userFrom?.username || item?.username || item?.senderName;
+                const avatarColor = userFrom?.avatarColor || item?.avatarColor;
+                const profilePicture = userFrom?.profilePicture || item?.profilePicture;
+                
+                return (
                 <div className="social-sub-card" key={Utils.generateString(10)}>
                   <div className="content-avatar">
                     {title === 'Notifications' ? (
                       <Avatar
-                        name={item?.username}
-                        bgColor={item?.avatarColor}
+                          name={username}
+                          bgColor={avatarColor}
                         textColor="#ffffff"
                         size={40}
-                        avatarSrc={item?.profilePicture}
+                          avatarSrc={profilePicture ? Utils.fixCloudinaryUrl(profilePicture as string) : undefined}
                       />
                     ) : (
                       <FaUserAlt className="userIcon" />
@@ -89,17 +135,24 @@ const Dropdown = ({
                       }
                     }}
                   >
-                    <h6 className="title">{item?.topText}</h6>
-                    <p className="subtext">{item?.subText}</p>
+                    <h6 className="title">{title === 'Notifications' ? formatNotificationMessage(item) : item?.topText}</h6>
+                      <div className="subtitle-body">
+                        {title === 'Notifications' && !item?.read && <FaCircle className="icon unread-indicator" />}
+                    <p className="subtext">{item?.createdAt && title === 'Notifications' ? timeAgo.transform(item.createdAt) : item?.subText}</p>
+                      </div>
                   </div>
                   {title === 'Notifications' && (
                     <div className="content-icons">
-                      <FaTrashAlt className="trash" onClick={() => onDeleteNotification?.(item?._id || '')} />
-                      {item?.read ? <FaRegCircle className="circle" /> : <FaCircle className="circle" />}
+                      <FaTrashAlt 
+                        className="trash" 
+                        onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(item?._id || ''); }} 
+                      />
+                        {!item?.read && <FaCircle className="icon unread-indicator-right" />}
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {title === 'Settings' && (

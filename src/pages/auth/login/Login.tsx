@@ -33,19 +33,44 @@ const Login = () => {
     setLoading(true);
     event.preventDefault();
     try {
-      console.log('Login attempt:', { username, passwordLength: password.length });
-      const result = await authService.signIn({ username, password });
+      // Trim username to prevent validation errors
+      const trimmedUsername = username.trim();
+      if (!trimmedUsername) {
+        setHasError(true);
+        setAlertType('alert-error');
+        setErrorMessage('Username is required');
+        setLoading(false);
+        return;
+      }
+      console.log('Login attempt:', { 
+        username: trimmedUsername, 
+        usernameLength: trimmedUsername.length,
+        passwordLength: password.length,
+        requestBody: { username: trimmedUsername, password: '***' }
+      });
+      const result = await authService.signIn({ username: trimmedUsername, password });
       console.log('Login success:', result.data);
       setUser(result.data.user);
       setLoggedIn(keepLoggedIn);
-      setStoredUsername(username);
+      setStoredUsername(trimmedUsername);
       setHasError(false);
       setAlertType('alert-success');
       Utils.dispatchUser(result, pageReload, dispatch, setUser);
       setLoading(false);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
-      console.error('Login error:', axiosError?.response?.data || error);
+      console.error('❌ Login error:', {
+        message: axiosError?.message,
+        status: axiosError?.response?.status,
+        statusText: axiosError?.response?.statusText,
+        data: axiosError?.response?.data,
+        config: {
+          url: axiosError?.config?.url,
+          method: axiosError?.config?.method,
+          baseURL: axiosError?.config?.baseURL,
+          data: axiosError?.config?.data
+        }
+      });
       setLoading(false);
       setHasError(true);
       setAlertType('alert-error');
@@ -70,7 +95,13 @@ const Login = () => {
           setErrorMessage('Unable to connect to the server. Please ensure the backend server is running on http://localhost:5000');
         }
       } else {
-        setErrorMessage(axiosError?.response?.data?.message || 'An error occurred during login');
+        // Handle validation errors from backend
+        const errorMessage = axiosError?.response?.data?.message || 'An error occurred during login';
+        if (errorMessage.toLowerCase().includes('invalid username')) {
+          setErrorMessage('Invalid username. Please check your username and try again.');
+        } else {
+          setErrorMessage(errorMessage);
+        }
       }
     }
   };
@@ -91,8 +122,6 @@ const Login = () => {
       )}
       <div className="oauth-section">
         <OAuthButton provider="google" />
-        <OAuthButton provider="github" />
-        <OAuthButton provider="facebook" />
       </div>
       <div className="divider">
         <span>OR</span>
@@ -134,6 +163,7 @@ const Login = () => {
           label={loading ? 'SIGNIN IN PROGRESS...' : 'SIGNIN'}
           className="auth-button button"
           disabled={!username || !password}
+          type="submit"
         />
         <Link to={'/forgot-password'}>
           <span className="forgot-password">

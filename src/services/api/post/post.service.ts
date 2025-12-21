@@ -22,7 +22,10 @@ class PostService {
   }
 
   async getSinglePostReactionByUsername(postId: string, username: string) {
-    const response = await axios.get(`/post/single/reaction/username/${username}/${postId}`);
+    // Use a longer timeout for reaction checks (they can take time in develop env)
+    const response = await axios.get(`/post/single/reaction/username/${username}/${postId}`, {
+      timeout: 120000 // 2 minutes - same as regular requests
+    });
     return response;
   }
 
@@ -36,37 +39,62 @@ class PostService {
     return response;
   }
 
-  async removeReaction(postId: string, previousReaction: string, postReactions: unknown) {
+  async removeReaction(postId: string, previousReaction: string, postReactions: unknown, commentId?: string) {
+    // If commentId is provided, include it in the request body for comment reactions
+    if (commentId) {
+      const response = await axios.delete(`/post/reaction/${postId}/${previousReaction}/${JSON.stringify(postReactions)}`, {
+        data: { commentId }
+      });
+      return response;
+    }
     const response = await axios.delete(`/post/reaction/${postId}/${previousReaction}/${JSON.stringify(postReactions)}`);
     return response;
   }
 
   async addComment(body: unknown) {
-    const response = await axios.post('/post/comment', body);
+    // Use longer timeout for comment creation (can take time in develop env)
+    const response = await axios.post('/post/comment', body, {
+      timeout: 120000 // 2 minutes
+    });
     return response;
   }
 
   async getPostCommentsNames(postId: string) {
-    const response = await axios.get(`/post/commentsnames/${postId}`);
+    // Use longer timeout for comment names (can take time in develop env)
+    const response = await axios.get(`/post/commentsnames/${postId}`, {
+      timeout: 120000 // 2 minutes
+    });
     return response;
   }
 
   async getPostComments(postId: string) {
-    const response = await axios.get(`/post/comments/${postId}`);
+    // Use longer timeout for getting comments (can take time in develop env)
+    const response = await axios.get(`/post/comments/${postId}`, {
+      timeout: 120000 // 2 minutes
+    });
     return response;
   }
 
   async updatePost(postId: string, body: unknown) {
+    if (!postId || postId.trim() === '') {
+      throw new Error('Post ID is required for updating a post');
+    }
     const response = await axios.put(`/post/${postId}`, body);
     return response;
   }
 
   async updatePostWithImage(postId: string, body: unknown) {
+    if (!postId || postId.trim() === '') {
+      throw new Error('Post ID is required for updating a post with image');
+    }
     const response = await axios.put(`/post/image/${postId}`, body);
     return response;
   }
 
   async updatePostWithVideo(postId: string, body: unknown) {
+    if (!postId || postId.trim() === '') {
+      throw new Error('Post ID is required for updating a post with video');
+    }
     const response = await axios.put(`/post/video/${postId}`, body);
     return response;
   }

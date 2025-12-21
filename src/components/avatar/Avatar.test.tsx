@@ -38,7 +38,8 @@ describe('Avatar', () => {
       render(<Avatar {...props} />);
       const avatarNameElement = screen.getByTestId('avatar-name');
       const avatarNameElementStyles = window.getComputedStyle(avatarNameElement);
-      expect(avatarNameElement.textContent).toBe('M');
+      // Avatar component now uses first two characters for single-word names
+      expect(avatarNameElement.textContent).toBe('MA');
       expect(avatarNameElementStyles.textTransform).toBe('uppercase');
     });
   });

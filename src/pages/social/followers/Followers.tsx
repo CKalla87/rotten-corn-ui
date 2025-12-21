@@ -32,6 +32,7 @@ const Followers = () => {
   const [followers, setFollowers] = useState<UserData[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
 
   const getUserFollowers = useCallback(async () => {
@@ -90,6 +91,15 @@ const Followers = () => {
     };
   }, [profile, token, dispatch]);
 
+  // Handle window resize for responsive avatar size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="card-container">
       <div className="followers">Followers</div>
@@ -99,16 +109,27 @@ const Followers = () => {
             <div className="card-element-item" key={index} data-testid="card-element-item">
               <div className="card-element-header">
                 <div className="card-element-header-bg"></div>
-                <Avatar
-                  name={data?.username}
-                  bgColor={data?.avatarColor}
-                  textColor="#ffffff"
-                  size={120}
-                  avatarSrc={data?.profilePicture}
-                />
+                <div 
+                  onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Avatar
+                    name={data?.username}
+                    bgColor={data?.avatarColor}
+                    textColor="#ffffff"
+                    size={isMobile ? 80 : 120}
+                    avatarSrc={data?.profilePicture}
+                  />
+                </div>
               </div>
               <div className="card-element-body">
-                <span className="card-element-body-name">{data?.username}</span>
+                <span 
+                  className="card-element-body-name"
+                  onClick={() => ProfileUtils.navigateToProfile(data, navigate)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {data?.username}
+                </span>
               </div>
               <CardElementStats
                 followersCount={data?.followersCount}
@@ -122,6 +143,8 @@ const Followers = () => {
                 onClickBtnOne={() => blockUser(data)}
                 onClickBtnTwo={() => unblockUser(data)}
                 onNavigateToProfile={() => ProfileUtils.navigateToProfile(data, navigate)}
+                userId={undefined}
+                username={undefined}
               />
             </div>
           ))}

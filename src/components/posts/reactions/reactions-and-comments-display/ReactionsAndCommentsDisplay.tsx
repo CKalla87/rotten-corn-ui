@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { FaSpinner } from 'react-icons/fa';
 import { postService } from '@services/api/post/post.service';
-import { reactionsMap } from '@services/utils/static.data';
 import { Utils } from '@services/utils/utils.service';
 import { toggleReactionsModal, toggleCommentsModal } from '@redux/reducers/modal/modalSlice';
 import { updatePostItem } from '@redux/reducers/post/postSlice';
@@ -53,7 +52,34 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
   const getPostReactions = useCallback(async () => {
     try {
       const response = await postService.getPostReactions(post?._id || '');
-      setPostReactions(response.data.reactions);
+      const reactionsArray = response.data?.reactions || [];
+      setPostReactions(reactionsArray);
+      
+      // Convert reactions array to count object and update reactions state
+      // This ensures reactions are displayed even if post.reactions is not updated
+      if (reactionsArray.length > 0) {
+        const reactionsCount: PostReactionsCount = {};
+        reactionsArray.forEach((reaction: PostReaction) => {
+          if (reaction.type) {
+            const reactionType = reaction.type.toLowerCase();
+            reactionsCount[reactionType] = (reactionsCount[reactionType] || 0) + 1;
+          }
+        });
+        
+        // Update reactions state with the calculated counts
+        const normalizedReactions: Record<string, number> = {};
+        Object.keys(reactionsCount).forEach((key) => {
+          const value = reactionsCount[key];
+          if (typeof value === 'number') {
+            normalizedReactions[key] = value;
+          }
+        });
+        const formattedReactions = Utils.formattedReactions(normalizedReactions);
+        // Use setTimeout to avoid synchronous setState
+        setTimeout(() => {
+          setReactions(formattedReactions);
+        }, 0);
+      }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
@@ -98,15 +124,26 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
       : post.reactions 
         ? Object.entries(post.reactions as PostReactionsCount).map(([type, count]) => ({ type, value: count || 0 }))
         : [];
-    dispatch(updatePostItem({
+    
+    const postId = post._id || (post as { id?: string })?.id;
+    
+    // Ensure all post data is included, especially _id
+    const postData = {
       ...post,
+      _id: postId,
+      id: postId,
       commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined,
       reactions: reactionsArray as Array<Record<string, unknown>>
-    }));
-    dispatch(toggleCommentsModal(true));
+    };
+    
+    // CRITICAL: Don't dispatch updatePostItem - it causes unnecessary Redux updates and re-renders
+    // The modal already receives the post data directly, so Redux update is not needed
+    // Only dispatch toggleCommentsModal with the post data
+    dispatch(toggleCommentsModal({ isOpen: true, postId: postId as string, post: postData }));
   };
 
   useEffect(() => {
+    // First try to use post.reactions if it's in count format
     const reactionsCount = post?.reactions as PostReactionsCount || {};
     const normalizedReactions: Record<string, number> = {};
     Object.keys(reactionsCount).forEach((key) => {
@@ -115,57 +152,32 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
         normalizedReactions[key] = value;
       }
     });
+    
+    // Only set reactions from post.reactions if we have valid counts
+    // Otherwise, getPostReactions will fetch and set them
+    if (Object.keys(normalizedReactions).length > 0) {
     const formattedReactions = Utils.formattedReactions(normalizedReactions);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setReactions(formattedReactions);
+      }, 0);
+    }
+    
+    // Always fetch latest reactions from API to ensure accuracy
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
-      setReactions(formattedReactions);
       void getPostReactions();
     }, 0);
   }, [post, getPostReactions]);
 
   const reactionsCount = sumAllReactions(reactions);
+  const reactionsCountNum = typeof reactionsCount === 'number' ? reactionsCount : Number(reactionsCount) || 0;
 
   return (
     <div className="reactions-display">
       <div className="reaction">
         <div className="likes-block">
-          <div className="likes-block-icons reactions-icon-display">
-            {reactions.length > 0 &&
-              reactions.map((reaction) => (
-                <div className="tooltip-container" key={Utils.generateString(10)}>
-                  <img
-                    data-testid="reaction-img"
-                    className="reaction-img"
-                    src={reactionsMap[reaction?.type]}
-                    alt=""
-                    onMouseEnter={getPostReactions}
-                  />
-                  <div className="tooltip-container-text tooltip-container-bottom" data-testid="reaction-tooltip">
-                    <p className="title">
-                      <img className="title-img" src={reactionsMap[reaction?.type]} alt="" />
-                      {reaction?.type.toUpperCase()}
-                    </p>
-                    <div className="likes-block-icons-list">
-                      {postReactions.length === 0 && <FaSpinner className="circle-notch" />}
-                      {postReactions.length > 0 && (
-                        <>
-                          {postReactions.map((postReaction) => (
-                            <div key={Utils.generateString(10)}>
-                              {postReaction?.type === reaction?.type && (
-                                <span key={postReaction?._id}>{postReaction?.username}</span>
-                              )}
-                            </div>
-                          ))}
-                          {postReactions.length > 20 && (
-                            <span>and {postReactions.length - 20} others...</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
+          {reactionsCountNum > 0 && (
           <span
             data-testid="reactions-count"
             className="tooltip-container reactions-count"
@@ -190,6 +202,7 @@ const ReactionsAndCommentsDisplay = ({ post }: ReactionsAndCommentsDisplayProps)
               </div>
             </div>
           </span>
+          )}
         </div>
       </div>
       <div className="comment tooltip-container" data-testid="comment-container">
