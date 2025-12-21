@@ -47,11 +47,13 @@ const Streams = () => {
           // Also update Redux state
           dispatch(addToPosts(response.data.posts));
         } else {
-          // Subsequent pages - append posts
-          appPosts.current = [...posts, ...response.data.posts];
+          // Subsequent pages - append posts to accumulated posts
+          // Use appPosts.current instead of posts state to ensure we have all previously loaded posts
+          const currentAccumulatedPosts = appPosts.current || [];
+          appPosts.current = [...currentAccumulatedPosts, ...response.data.posts];
           const allPosts = uniqBy(appPosts.current, '_id');
           setPosts(allPosts);
-          // Also update Redux state
+          // Also update Redux state with all accumulated posts
           dispatch(addToPosts(allPosts));
         }
         // Update total count if provided
@@ -164,11 +166,35 @@ const Streams = () => {
           initialLoadCompleteRef.current = true;
         }
       } 
-      // After initial load, only update if Redux has posts (don't clear on temporary empty state)
+      // After initial load, preserve accumulated posts from infinite scroll
+      // Only merge Redux posts if they contain new posts (e.g., from socket events)
       else if (derivedPosts.length > 0) {
-        // Redux has posts - always sync (e.g., new post added via socket)
-        setPosts(derivedPosts);
-        appPosts.current = derivedPosts;
+        const currentPostsLength = appPosts.current?.length || 0;
+        const currentPostIds = new Set((appPosts.current || []).map((p: unknown) => (p as { _id?: string })?._id));
+        
+        // Check if Redux has new posts that we don't have (e.g., socket event)
+        const hasNewPosts = derivedPosts.some((p: unknown) => {
+          const postId = (p as { _id?: string })?._id;
+          return postId && !currentPostIds.has(postId);
+        });
+        
+        // Only update if Redux has new posts OR if we have fewer posts than Redux
+        // This prevents Redux from overwriting accumulated posts from infinite scroll
+        if (hasNewPosts) {
+          // Merge new posts from Redux with accumulated posts
+          const merged = uniqBy([...derivedPosts, ...(appPosts.current || [])], '_id');
+          setPosts(merged);
+          appPosts.current = merged;
+          // Update Redux with merged posts to keep it in sync
+          dispatch(addToPosts(merged));
+        } else if (derivedPosts.length > currentPostsLength) {
+          // Redux has more posts, merge them
+          const merged = uniqBy([...derivedPosts, ...(appPosts.current || [])], '_id');
+          setPosts(merged);
+          appPosts.current = merged;
+          dispatch(addToPosts(merged));
+        }
+        // Otherwise, preserve accumulated posts - don't overwrite with Redux
       }
       // If Redux is empty after initial load but we have posts, preserve existing posts
       // This prevents clearing posts when modal opens or other operations
@@ -178,7 +204,7 @@ const Streams = () => {
         setTotalPostsCount(derivedTotalPostsCount);
       }
     }, 0);
-  }, [derivedLoading, derivedPosts, derivedTotalPostsCount, posts.length]);
+  }, [derivedLoading, derivedPosts, derivedTotalPostsCount, posts.length, dispatch]);
 
   // Use ref to store latest posts for socket handlers
   const allPostsRef = useRef(allPosts);
