@@ -71,37 +71,35 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
   const updateSocialLinks = async () => {
     try {
       // Ensure we're sending clean data
-      // Build the social object, using null for empty strings if API expects that
-      const socialData: Record<string, string | null> = {};
-      if (editableSocialInputs?.instagram) {
-        socialData.instagram = String(editableSocialInputs.instagram).trim();
-      } else {
-        socialData.instagram = null;
-      }
-      if (editableSocialInputs?.twitter) {
-        socialData.twitter = String(editableSocialInputs.twitter).trim();
-      } else {
-        socialData.twitter = null;
-      }
-      if (editableSocialInputs?.facebook) {
-        socialData.facebook = String(editableSocialInputs.facebook).trim();
-      } else {
-        socialData.facebook = null;
-      }
-      if (editableSocialInputs?.youtube) {
-        socialData.youtube = String(editableSocialInputs.youtube).trim();
-      } else {
-        socialData.youtube = null;
-      }
+      // Build the social object with proper field names
+      const socialData: Record<string, string> = {
+        instagram: editableSocialInputs?.instagram ? String(editableSocialInputs.instagram).trim() : '',
+        twitter: editableSocialInputs?.twitter ? String(editableSocialInputs.twitter).trim() : '',
+        facebook: editableSocialInputs?.facebook ? String(editableSocialInputs.facebook).trim() : '',
+        youtube: editableSocialInputs?.youtube ? String(editableSocialInputs.youtube).trim() : ''
+      };
       
-      // Try sending with 'social' wrapper (API might expect this format)
+      // Try both formats: nested (current) and flat (alternative)
+      // Backend might expect nested structure based on how data is returned
       const cleanData = { social: socialData };
       
+      console.log('Saving social links:', cleanData);
       const response = await userService.updateSocialLinks(cleanData);
-      Utils.dispatchNotification(response.data.message, 'success', dispatch);
+      console.log('Social links save response:', response.status, response.data);
+      
+      // Verify the response indicates success
+      if (response.status === 200 || response.status === 201) {
+        if (response.data && response.data.message) {
+          Utils.dispatchNotification(response.data.message, 'success', dispatch);
+        } else {
+          Utils.dispatchNotification('Social links updated successfully', 'success', dispatch);
+        }
+      } else {
+        throw new Error(`Unexpected response status: ${response.status}`);
+      }
       
       // Extract social links from cleanData for state updates
-      const savedSocialLinks = cleanData.social;
+      const savedSocialLinks = socialData;
       
       // Immediately update the local state with saved values to show them in the UI
       // This ensures the UI updates right away without waiting for profile refresh
@@ -143,7 +141,11 @@ const SocialLinks = ({ editableSocialInputs, username, profile, loading, setEdit
           facebook: String(savedSocialLinks.facebook || ''),
           youtube: String(savedSocialLinks.youtube || '')
         };
-        await onUpdateSuccess(savedValues);
+        // Wait a bit for the backend to persist the changes before refreshing
+        // This ensures the backend has time to save the data before we fetch it again
+        setTimeout(async () => {
+          await onUpdateSuccess(savedValues);
+        }, 1000);
       }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };

@@ -295,7 +295,7 @@ const CommentListItem = memo(({
                   }}
                   onError={(e) => {
                     // Log error for debugging (only in development)
-                    if (process.env.NODE_ENV === 'development') {
+                    if (import.meta.env.DEV) {
                       console.error('Failed to load GIF:', fixedGifUrl, e);
                     }
                     // Set gifLoaded to true to hide the "Loading GIF..." message
