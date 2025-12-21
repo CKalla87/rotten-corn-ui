@@ -4,6 +4,7 @@ import { RightMessageDisplay } from './right-message-display';
 import { LeftMessageDisplay } from './left-message-display';
 import ImageModal from '@components/image-modal/ImageModal';
 import Dialog from '@components/dialog/Dialog';
+import TypingIndicator from '@components/chat/typing-indicator/TypingIndicator';
 import useDetectOutsideClick from '@hooks/useDetectOutsideClick';
 import useChatScrollToBottom from '@hooks/useChatScrollToBottom';
 import { timeAgo } from '@services/utils/timeago.utils';
@@ -25,9 +26,14 @@ interface MessageDisplayProps {
   };
   updateMessageReaction?: (body: unknown) => void;
   deleteChatMessage?: (senderId: string, receiverId: string, messageId: string, type: string) => void;
+  typingUsers?: string[];
+  receiver?: {
+    username?: string;
+    [key: string]: unknown;
+  };
 }
 
-const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, deleteChatMessage }: MessageDisplayProps) => {
+const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, deleteChatMessage, typingUsers = [] }: MessageDisplayProps) => {
   const [imageUrl, setImageUrl] = useState('');
   const [showReactionIcon, setShowReactionIcon] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -43,6 +49,10 @@ const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, del
   const scrollRef = useChatScrollToBottom(chatMessages);
 
   const showReactionIconOnHover = (show: boolean, index: number) => {
+    // Close reaction picker if hovering over a different message
+    if (show && activeElementIndex !== null && activeElementIndex !== index) {
+      setToggleReaction(false);
+    }
     if (index === activeElementIndex || !activeElementIndex) {
       setShowReactionIcon(show);
     }
@@ -154,6 +164,13 @@ const MessageDisplay = ({ chatMessages = [], profile, updateMessageReaction, del
             )}
           </div>
         ))}
+        {typingUsers.length > 0 && (
+          <div className="message-chat" data-testid="typing-indicator-container">
+            {typingUsers.map((username) => (
+              <TypingIndicator key={`typing-${username}`} username={username} />
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
@@ -163,7 +180,9 @@ MessageDisplay.propTypes = {
   chatMessages: PropTypes.array,
   profile: PropTypes.object,
   updateMessageReaction: PropTypes.func,
-  deleteChatMessage: PropTypes.func
+  deleteChatMessage: PropTypes.func,
+  typingUsers: PropTypes.array,
+  receiver: PropTypes.object
 };
 
 export default MessageDisplay;

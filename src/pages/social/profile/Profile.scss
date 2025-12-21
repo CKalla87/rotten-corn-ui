@@ -8,8 +8,24 @@
     margin: 0 auto;
     padding: 20px;
 
+    @media (max-width: 768px) {
+      padding: 10px;
+    }
+
+    @media (max-width: 480px) {
+      padding: 8px;
+    }
+
     .profile-header {
       margin-bottom: 20px;
+
+      @media (max-width: 768px) {
+        margin-bottom: 12px;
+      }
+
+      @media (max-width: 480px) {
+        margin-bottom: 10px;
+      }
     }
 
     .profile-content {
@@ -19,6 +35,36 @@
       border-radius: 16px;
       padding: 20px;
       overflow: visible;
+      box-sizing: border-box;
+
+      @media (max-width: 768px) {
+        border-radius: 12px;
+        padding: 12px;
+        min-height: 300px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+
+      @media (max-width: 480px) {
+        border-radius: 10px;
+        padding: 10px;
+        min-height: 250px;
+      }
+
+      // Ensure followers content fits properly
+      > div {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+
+        @media (max-width: 768px) {
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+      }
     }
   }
 }
@@ -42,4 +88,14 @@
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
   }
+}
+
+
+// Auto-added missing styles
+
+
+.profile-wrapper {
+    background-color: var(--white-10);
+    width: 100%;
+    min-height: 100%;
 }

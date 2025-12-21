@@ -29,6 +29,7 @@ const Streams = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPostsCount, setTotalPostsCount] = useState(0);
   const appPosts = useRef<unknown[]>([]);
+  const initialLoadCompleteRef = useRef(false);
   const PAGE_SIZE = 10;
 
   const storedUsername = useLocalStorage('username', 'get');
@@ -37,15 +38,52 @@ const Streams = () => {
   const getAllPosts = async (page: number = currentPage) => {
     try {
       const response = await postService.getAllPosts(page);
-      if (response.data.posts.length > 0) {
-        appPosts.current = [...posts, ...response.data.posts];
-        const allPosts = uniqBy(appPosts.current, '_id');
-        setPosts(allPosts);
+      if (response.data.posts && response.data.posts.length >= 0) {
+        // Always update posts, even if empty array (to clear state properly)
+        if (page === 1) {
+          // First page - replace posts
+          appPosts.current = response.data.posts;
+          setPosts(response.data.posts);
+          // Also update Redux state
+          dispatch(addToPosts(response.data.posts));
+        } else {
+          // Subsequent pages - append posts
+          appPosts.current = [...posts, ...response.data.posts];
+          const allPosts = uniqBy(appPosts.current, '_id');
+          setPosts(allPosts);
+          // Also update Redux state
+          dispatch(addToPosts(allPosts));
+        }
+        // Update total count if provided
+        if (response.data.totalPosts !== undefined) {
+          setTotalPostsCount(response.data.totalPosts);
+        }
       }
       setLoading(false);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError.response?.data?.message || 'An error occurred', 'error', dispatch);
+      setLoading(false);
+      const axiosError = error as { 
+        response?: { 
+          status?: number;
+          data?: { message?: string } 
+        };
+        message?: string;
+      };
+      
+      // Provide more specific error messages
+      let errorMessage = 'An error occurred while loading posts';
+      
+      if (axiosError.response?.status === 403) {
+        errorMessage = 'Access forbidden. Please check your authentication or try logging in again.';
+      } else if (axiosError.response?.status === 401) {
+        errorMessage = 'Authentication required. Please log in again.';
+      } else if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      } else if (axiosError.message) {
+        errorMessage = axiosError.message;
+      }
+      
+      Utils.dispatchNotification(errorMessage, 'error', dispatch);
     }
   };
 
@@ -56,8 +94,12 @@ const Streams = () => {
         dispatch(addReactions(response.data.reactions));
       }
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      // Silently fail for reactions - not critical for page functionality
+      const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
+        // Only log auth errors, don't show notification for reactions
+        console.warn('Failed to load reactions:', axiosError.response?.data?.message || 'Authentication issue');
+      }
     }
   };
 
@@ -66,8 +108,12 @@ const Streams = () => {
       const response = await followerService.getUserFollowing();
       setFollowing(response.data.following);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
+      // Silently fail for following list - not critical for page functionality
+      const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
+        // Only log auth errors, don't show notification for following list
+        console.warn('Failed to load following list:', axiosError.response?.data?.message || 'Authentication issue');
+      }
     }
   };
 
@@ -83,9 +129,16 @@ const Streams = () => {
   useInfiniteScroll(bodyRef as React.RefObject<HTMLElement>, bottomLineRef as React.RefObject<HTMLElement>, fetchPostData);
 
   useEffectOnce(() => {
+    // Reset initial load flag on mount (page refresh)
+    initialLoadCompleteRef.current = false;
+    
     getReactionsByUsername();
     deleteSelectedPostId();
-    dispatch(getPosts(1));
+    // Fetch posts via Redux and also directly as fallback
+    dispatch(getPosts(1)).catch(() => {
+      // If Redux fetch fails, try direct API call
+      getAllPosts(1);
+    });
     dispatch(getUserSuggestions());
     getUserFollowing();
   });
@@ -94,16 +147,38 @@ const Streams = () => {
   const derivedPosts = useMemo(() => allPosts?.posts || [], [allPosts?.posts]);
   const derivedTotalPostsCount = useMemo(() => allPosts?.totalPostsCount || 0, [allPosts?.totalPostsCount]);
 
+  // Sync local posts state with Redux state when Redux updates
   useEffect(() => {
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
       setLoading(derivedLoading);
-      setPosts(derivedPosts);
-      setTotalPostsCount(derivedTotalPostsCount);
-      // Update appPosts ref when Redux posts change
-      appPosts.current = derivedPosts;
+      
+      // On initial load (refresh), always sync from Redux when loading completes
+      // This ensures posts are loaded on page refresh
+      if (!initialLoadCompleteRef.current) {
+        if (!derivedLoading) {
+          // Initial load complete - sync posts from Redux (even if empty)
+          // This is critical for page refresh - we need to load posts from Redux
+          setPosts(derivedPosts);
+          appPosts.current = derivedPosts;
+          initialLoadCompleteRef.current = true;
+        }
+      } 
+      // After initial load, only update if Redux has posts (don't clear on temporary empty state)
+      else if (derivedPosts.length > 0) {
+        // Redux has posts - always sync (e.g., new post added via socket)
+        setPosts(derivedPosts);
+        appPosts.current = derivedPosts;
+      }
+      // If Redux is empty after initial load but we have posts, preserve existing posts
+      // This prevents clearing posts when modal opens or other operations
+      
+      // Always update total count if provided
+      if (derivedTotalPostsCount !== undefined) {
+        setTotalPostsCount(derivedTotalPostsCount);
+      }
     }, 0);
-  }, [derivedLoading, derivedPosts, derivedTotalPostsCount]);
+  }, [derivedLoading, derivedPosts, derivedTotalPostsCount, posts.length]);
 
   // Use ref to store latest posts for socket handlers
   const allPostsRef = useRef(allPosts);
@@ -118,7 +193,37 @@ const Streams = () => {
 
       const handleAddPost = (post: unknown) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        dispatch(addToPosts([post, ...currentPosts]));
+        const postData = post as { _id?: string; createdAt?: string };
+        
+        // Check if this post already exists (might be from optimistic update or duplicate socket event)
+        const existingPostIndex = currentPosts.findIndex((p: unknown) => {
+          const pData = p as { _id?: string };
+          return pData._id === postData._id;
+        });
+        
+        // Check for optimistic post (temp ID) that should be replaced
+        const optimisticPostIndex = currentPosts.findIndex((p: unknown) => {
+          const pData = p as { _id?: string; createdAt?: string };
+          // Match by createdAt if temp post exists (within 5 seconds)
+          if (pData._id?.startsWith('temp-') && postData.createdAt && pData.createdAt) {
+            const timeDiff = Math.abs(new Date(postData.createdAt).getTime() - new Date(pData.createdAt).getTime());
+            return timeDiff < 5000; // Within 5 seconds
+          }
+          return false;
+        });
+        
+        if (optimisticPostIndex > -1) {
+          // Replace optimistic post with real post
+          const newPosts = [...currentPosts];
+          newPosts[optimisticPostIndex] = post;
+          dispatch(addToPosts(newPosts));
+        } else if (existingPostIndex === -1) {
+          // New post that doesn't exist - add to beginning
+          dispatch(addToPosts([post, ...currentPosts]));
+        } else {
+          // Post exists - update it (might have new data from backend)
+          dispatch(updatePostInList(post));
+        }
       };
 
       const handleUpdatePost = (post: unknown) => {
@@ -149,11 +254,15 @@ const Streams = () => {
         postReactions?: unknown;
       }
 
-      const handleUpdateComment = (reactionData: CommentData) => {
+      const handleUpdateComment = (commentData: CommentData) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === reactionData?.postId);
-        if (post && reactionData.postReactions) {
-          const updatedPost = { ...post, reactions: reactionData.postReactions };
+        const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === commentData?.postId);
+        if (post) {
+          const updatedPost = { 
+            ...post, 
+            commentsCount: commentData.commentsCount !== undefined ? String(commentData.commentsCount) : post.commentsCount,
+            reactions: commentData.postReactions || post.reactions
+          };
           dispatch(updatePostInList(updatedPost));
         }
       };
@@ -184,18 +293,41 @@ const Streams = () => {
   }, [dispatch]);
 
   return (
-    <div className="streams" data-testid="streams">
-      <div className="streams-content">
-        <div className="streams-post" ref={bodyRef} style={{ backgroundColor: 'white' }}>
-          <PostForm />
-          <Posts allPosts={posts} postsLoading={loading} userFollowing={following} />
-          <div ref={bottomLineRef} style={{ marginBottom: '50px', height: '50px' }}></div>
-        </div>
-        <div className="streams-suggestions">
-          <Suggestions />
+    <>
+      {/* Inline style tag for mobile overrides - ensures production compatibility */}
+      {/* This style tag loads with the component and overrides cached CSS */}
+      <style>{`
+        @media screen and (max-width: 768px) {
+          html, body { overflow-x: hidden !important; position: relative !important; width: 100% !important; max-width: 100% !important; min-width: 100% !important; }
+          .dashboard { overflow: visible !important; overflow-x: visible !important; overflow-y: visible !important; height: auto !important; }
+          .dashboard-content { overflow: visible !important; overflow-x: visible !important; overflow-y: visible !important; height: auto !important; }
+          .streams { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+          .streams-content { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+          .streams-post { overflow: visible !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
+          .posts-container { overflow: visible !important; width: 100% !important; max-width: 100% !important; }
+          .modal-wrapper { padding: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; min-width: 100vw !important; overflow-x: hidden !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; justify-content: flex-start !important; align-items: flex-start !important; margin: 0 !important; transform: none !important; inset: 0 !important; }
+          .modal-wrapper .modal-box { width: 100vw !important; max-width: 100vw !important; min-width: 100vw !important; max-height: 100vh !important; margin: 0 !important; margin-left: 0 !important; margin-right: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; padding: 10px !important; border-radius: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; height: auto !important; min-height: auto !important; box-sizing: border-box !important; flex: none !important; flex-shrink: 0 !important; flex-grow: 0 !important; transform: none !important; left: 0 !important; right: 0 !important; top: 0 !important; position: relative !important; align-self: flex-start !important; }
+          .modal-box { width: 100vw !important; max-width: 100vw !important; min-width: 100vw !important; max-height: 100vh !important; margin: 0 !important; margin-left: 0 !important; margin-right: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; padding: 10px !important; border-radius: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; height: auto !important; min-height: auto !important; box-sizing: border-box !important; flex: none !important; flex-shrink: 0 !important; flex-grow: 0 !important; transform: none !important; left: 0 !important; right: 0 !important; top: 0 !important; position: relative !important; align-self: flex-start !important; }
+          .modal-box-content { width: 100% !important; max-width: 100% !important; min-width: 100% !important; box-sizing: border-box !important; }
+          .modal-box-header { height: auto !important; min-height: 40px !important; padding: 12px 10px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+          .modal-box-header h2 { font-size: 1rem !important; white-space: nowrap !important; }
+          .modal-box-header-cancel { height: auto !important; min-height: 40px !important; font-size: 1.25rem !important; }
+          .modal-box-button { margin-top: 10px !important; padding: 10px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+        }
+      `}</style>
+      <div className="streams" data-testid="streams">
+        <div className="streams-content">
+          <div className="streams-post" ref={bodyRef}>
+            <PostForm />
+            <Posts allPosts={posts} postsLoading={loading} userFollowing={following} />
+            <div ref={bottomLineRef} className="streams-bottom-line"></div>
+          </div>
+          <div className="streams-suggestions">
+            <Suggestions />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

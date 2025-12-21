@@ -12,6 +12,31 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // Log proxied requests in development
+            console.log('🟢 Proxy Request to backend:', {
+              method: req.method,
+              originalUrl: req.url,
+              targetUrl: `${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`,
+              headers: {
+                'content-type': proxyReq.getHeader('content-type'),
+                'authorization': proxyReq.getHeader('authorization') ? 'Bearer ***' : 'none'
+              }
+            });
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            // Log backend responses
+            console.log('🟡 Proxy Response from backend:', {
+              statusCode: proxyRes.statusCode,
+              statusMessage: proxyRes.statusMessage,
+              url: req.url
+            });
+          });
+          proxy.on('error', (err) => {
+            console.error('❌ Proxy Error:', err);
+          });
+        },
       },
       '/socket.io': {
         target: 'http://localhost:5000',

@@ -203,14 +203,27 @@ jobs:
           if aws s3 sync s3://chattapplication1-env-files/$ENV_PATH .; then
             echo "Environment files synced successfully"
             
-            # Verify .env file exists
-            if [ ! -f ".env" ]; then
-              echo "Warning: .env file not found after sync"
-              echo "Listing files in current directory:"
-              ls -la
+            # Rename .env to environment-specific name based on branch
+            BRANCH_NAME="${{ github.ref_name }}"
+            if [ -f ".env" ]; then
+              if [ "$BRANCH_NAME" = "develop" ]; then
+                mv .env .env.develop
+                echo "✓ Renamed .env to .env.develop for develop environment"
+              elif [ "$BRANCH_NAME" = "staging" ]; then
+                mv .env .env.staging
+                echo "✓ Renamed .env to .env.staging for staging environment"
+              elif [ "$BRANCH_NAME" = "main" ]; then
+                mv .env .env.production
+                echo "✓ Renamed .env to .env.production for production environment"
+              else
+                echo "⚠️ Unknown branch, keeping .env as-is"
+              fi
+            elif [ -f ".env.$BRANCH_NAME" ]; then
+              echo "✓ .env.$BRANCH_NAME file found"
             else
-              echo ".env file found"
-              # Don't print contents (contains secrets), just verify it exists
+              echo "Warning: No .env or .env.$BRANCH_NAME file found after sync"
+              echo "Listing files in current directory:"
+              ls -la | grep -E "\.env"
             fi
           else
             echo "Error: Failed to sync environment files from S3"
@@ -388,14 +401,27 @@ jobs:
           if aws s3 sync s3://chattapplication1-env-files/$ENV_PATH .; then
             echo "Environment files synced successfully"
             
-            # Verify .env file exists
-            if [ ! -f ".env" ]; then
-              echo "Warning: .env file not found after sync"
-              echo "Listing files in current directory:"
-              ls -la
+            # Rename .env to environment-specific name based on branch
+            BRANCH_NAME="${{ github.ref_name }}"
+            if [ -f ".env" ]; then
+              if [ "$BRANCH_NAME" = "develop" ]; then
+                mv .env .env.develop
+                echo "✓ Renamed .env to .env.develop for develop environment"
+              elif [ "$BRANCH_NAME" = "staging" ]; then
+                mv .env .env.staging
+                echo "✓ Renamed .env to .env.staging for staging environment"
+              elif [ "$BRANCH_NAME" = "main" ]; then
+                mv .env .env.production
+                echo "✓ Renamed .env to .env.production for production environment"
+              else
+                echo "⚠️ Unknown branch, keeping .env as-is"
+              fi
+            elif [ -f ".env.$BRANCH_NAME" ]; then
+              echo "✓ .env.$BRANCH_NAME file found"
             else
-              echo ".env file found"
-              # Don't print contents (contains secrets), just verify it exists
+              echo "Warning: No .env or .env.$BRANCH_NAME file found after sync"
+              echo "Listing files in current directory:"
+              ls -la | grep -E "\.env"
             fi
           else
             echo "Error: Failed to sync environment files from S3"

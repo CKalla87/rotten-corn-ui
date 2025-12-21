@@ -60,12 +60,20 @@ const Photos = () => {
   };
 
   const postImageUrl = (post: PostData) => {
-    const imgUrl = Utils.getImage(post?.imgId || '', post?.imgVersion || '');
+    // Use improved getImage with automatic fallback to post.image
+    const imgUrl = Utils.getImage(
+      post?.imgId || '', 
+      post?.imgVersion || '', 
+      post?.image as string
+    );
     return post?.gifUrl ? post?.gifUrl : imgUrl;
   };
 
   const displayImage = (post: PostData) => {
-    const imgUrl = post?.gifUrl ? post?.gifUrl : Utils.getImage(post?.imgId, post?.imgVersion);
+    // Use improved getImage with automatic fallback to post.image
+    const imgUrl = post?.gifUrl 
+      ? post?.gifUrl 
+      : Utils.getImage(post?.imgId, post?.imgVersion, post?.image as string);
     setImageUrl(imgUrl);
   };
 

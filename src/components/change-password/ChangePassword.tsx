@@ -34,6 +34,7 @@ const ChangePassword = () => {
 
   const changePassword = async (event: React.FormEvent) => {
     event.preventDefault();
+    
     try {
       const response = await userService.changePassword({
         currentPassword,

@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useLocation, useNavigate, createSearchParams } from 'react-router-dom';
 import Avatar from '@components/avatar/Avatar';
+import { Utils } from '@services/utils/utils.service';
 import './SearchList.scss';
 
 interface UserData {
@@ -35,6 +36,15 @@ const SearchList = ({
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Debug logging
+  console.log('🔍 SearchList Props:', {
+    resultLength: result.length,
+    result: result,
+    isSearching,
+    searchTerm,
+    shouldShowResults: !isSearching && result.length > 0
+  });
+
   const addUsernameToUrlQuery = (user: UserData) => {
     if (setComponentType) {
       setComponentType('searchList');
@@ -62,7 +72,7 @@ const SearchList = ({
           <>
             {result.map((user) => (
               <div
-                key={user._id}
+                key={user._id || Utils.generateString(10)}
                 data-testid="search-result-item"
                 className="search-result-container-item"
                 onClick={() => addUsernameToUrlQuery(user)}

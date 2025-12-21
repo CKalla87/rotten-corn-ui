@@ -1,24 +1,85 @@
 .modal-box-selection {
+  z-index: 2;
+  box-sizing: border-box;
+  width: 100%;
   padding: 10px 15px;
+  position: relative;
+  overflow: visible;
+
+  @media (max-width: 768px) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 10px;
+    padding: 10px 8px;
+    overflow: visible;
+  }
 
   .post-form-list {
-    padding: 0;
-    margin: 0;
+    box-sizing: border-box;
+    flex-wrap: wrap;
     align-items: center;
-    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     list-style: none;
+    display: flex;
+    overflow: visible;
+
+    @media (max-width: 768px) {
+      box-sizing: border-box;
+      justify-content: flex-start;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+      gap: 0 !important;
+    }
 
     .post-form-list-item {
-      display: flex;
       color: var(--primary-1);
       background: var(--white-7);
-      border-radius: 5px;
-      padding: 0.5rem;
-      margin-right: 1rem;
       cursor: pointer;
+      white-space: nowrap;
+      border-radius: 5px;
+      flex-shrink: 0;
+      align-items: center;
+      margin-right: 0;
+      padding: 0.5rem;
+      display: flex;
+      overflow: visible;
+
+      @media (max-width: 768px) {
+        box-sizing: border-box;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        flex: 0 0 calc(25% - 2px);
+        min-width: 0;
+        max-width: calc(25% - 2px);
+        margin: 0 2px 0 0;
+        padding: 0.35rem 0.5rem;
+        font-size: 12px;
+        overflow: hidden;
+        gap: 0 !important;
+      }
 
       img {
         padding-right: 5px;
+
+        @media (max-width: 768px) {
+          flex-shrink: 0;
+          width: 14px;
+          height: 14px;
+          padding-right: 3px;
+        }
+      }
+
+      svg {
+        vertical-align: middle;
+        align-items: center;
+        display: inline-flex;
       }
     }
 

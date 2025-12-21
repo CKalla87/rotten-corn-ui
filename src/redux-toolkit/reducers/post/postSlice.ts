@@ -7,10 +7,9 @@ const postSlice = createSlice({
   name: 'post',
   initialState,
   reducers: {
-    updatePostItem: (state, action: PayloadAction<Partial<EmptyPostData>>) => {
-      for (const [key, value] of Object.entries(action.payload)) {
-        (state as Record<string, unknown>)[key] = value;
-      }
+    updatePostItem: (_state, action: PayloadAction<Partial<EmptyPostData>>) => {
+      // Replace the entire state with the new post data
+      return { ...emptyPostData, ...action.payload };
     },
     clearPost: () => {
       return emptyPostData;

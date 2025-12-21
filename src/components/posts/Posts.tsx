@@ -4,6 +4,7 @@ import { Utils } from '@services/utils/utils.service';
 import { PostUtils } from '@services/utils/post-utils.service';
 import Post from '@components/posts/post/Post';
 import PostSkeleton from '@components/posts/post/PostSkeleton';
+import CommentsModal from '@components/posts/comments/comments-modal/CommentsModal';
 import type { RootState } from '@redux/store';
 import './Posts.scss';
 
@@ -15,6 +16,7 @@ interface PostsProps {
 
 const Posts = ({ allPosts, userFollowing, postsLoading }: PostsProps) => {
   const { profile } = useSelector((state: RootState) => state.user);
+  const { commentsModalIsOpen } = useSelector((state: RootState) => state.modal);
   const [posts, setPosts] = useState<unknown[]>([]);
   const [following, setFollowing] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,25 +31,30 @@ const Posts = ({ allPosts, userFollowing, postsLoading }: PostsProps) => {
   }, [allPosts, userFollowing, postsLoading]);
 
   return (
-    <div className="posts-container" data-testid="posts">
-      {!loading && posts.length > 0 && (posts as Record<string, unknown>[]).map((post: Record<string, unknown>, index: number) => (
-        <div key={(post?._id as string) || index} data-testid="posts-item">
-          {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId as string) ||
-            post?.userId === profile?._id) && (
-            <>
-              {profile && PostUtils.checkPrivacy(post, profile, following) && (
-                <Post post={post} showIcons={false} />
-              )}
-            </>
-          )}
-        </div>
-      ))}
-      {loading && !posts.length && [1, 2, 3, 4, 5, 6].map((index) => (
-        <div key={index}>
-          <PostSkeleton />
-        </div>
-      ))}
-    </div>
+    <>
+      {/* Render CommentsModal once at the Posts level, not inside each Post */}
+      {/* This prevents re-renders when individual Post components re-render */}
+      {commentsModalIsOpen && <CommentsModal />}
+      <div className="posts-container" data-testid="posts">
+        {!loading && posts.length > 0 && (posts as Record<string, unknown>[]).map((post: Record<string, unknown>, index: number) => (
+          <div key={(post?._id as string) || index} data-testid="posts-item">
+            {(!Utils.checkIfUserIsBlocked((profile?.blockedBy as string[]) || [], post?.userId as string) ||
+              post?.userId === profile?._id) && (
+              <>
+                {profile && PostUtils.checkPrivacy(post, profile, following) && (
+                  <Post post={post} showIcons={false} />
+                )}
+              </>
+            )}
+          </div>
+        ))}
+        {loading && !posts.length && [1, 2, 3, 4, 5, 6].map((index) => (
+          <div key={index}>
+            <PostSkeleton />
+          </div>
+        ))}
+      </div>
+    </>
   );
 };
 

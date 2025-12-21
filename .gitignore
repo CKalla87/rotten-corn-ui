@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Test coverage
+coverage/
+*.lcov
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -45,3 +49,7 @@ terraform.rc
 .env.production
 .env.local
 .env.staging
+
+# Redis database dump files
+dump.rdb
+*.rdb

@@ -5,17 +5,12 @@
   margin-bottom: 10px;
   position: relative;
 
-  .message-reactions-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-  }
-
   .left-message-bubble-container {
     display: flex;
     align-items: flex-start;
     gap: 10px;
     max-width: 70%;
+    position: relative;
 
     .message-img {
       flex-shrink: 0;
@@ -25,6 +20,22 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
+      position: relative;
+
+      .message-reactions-container {
+        position: absolute;
+        left: 0;
+        bottom: 100%;
+        margin-bottom: 10px;
+        z-index: 1000;
+        pointer-events: none;
+        
+        > div {
+          position: relative;
+          z-index: 1000;
+          pointer-events: auto;
+        }
+      }
 
       .message-content-container-wrapper {
         position: relative;

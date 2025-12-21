@@ -20,7 +20,7 @@ const Avatar = ({
   round = true
 }: AvatarProps) => {
   const [imageError, setImageError] = useState(false);
-  const textSizeRatio = 1.7;
+  const textSizeRatio = 2.2;
   const fontSize = Math.floor(size / textSizeRatio);
   const defaultBgColor = bgColor || '#50b5ff';
 
@@ -36,9 +36,12 @@ const Avatar = ({
     if (words.length === 0) return '';
     
     if (words.length === 1) {
-      // Single word (first name only): use just the first letter
+      // Single word: use first two characters to match chat list logic (e.g., "ckalla19" -> "CK")
       const word = words[0];
-      return word.charAt(0).toUpperCase();
+      if (word.length === 1) {
+        return word.charAt(0).toUpperCase();
+      }
+      return word.substring(0, 2).toUpperCase();
     }
     
     // Multiple words: use first letter of first word and first letter of last word
@@ -46,7 +49,7 @@ const Avatar = ({
   };
 
   const initials = getInitials(name);
-  const showInitials = !avatarSrc || imageError;
+  const showInitials = !avatarSrc || imageError || avatarSrc === '';
 
   const handleImageError = () => {
     setImageError(true);

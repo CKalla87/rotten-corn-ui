@@ -1,2 +1,420 @@
-// Followers styles will be added here
+// Followers Card Styles
+.follower-card-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
 
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 12px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 480px) {
+    gap: 12px;
+    padding: 8px;
+  }
+}
+
+.follower-card-container-elements {
+  background-color: var(--white-1);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: rgb(145 158 171 / 20%) 0 0 2px 0, rgb(145 158 171 / 12%) 0 12px 24px -4px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: rgb(145 158 171 / 25%) 0 0 4px 0, rgb(145 158 171 / 15%) 0 16px 32px -4px;
+
+    @media (max-width: 768px) {
+      transform: none;
+    }
+  }
+}
+
+.follower-card-container-elements-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  @media (max-width: 480px) {
+    gap: 10px;
+  }
+}
+
+.card-avatar {
+  flex-shrink: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  
+  &:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.card-user {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: 100%;
+    align-items: flex-start;
+  }
+
+  .name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--black-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s ease;
+    max-width: 100%;
+    word-break: break-word;
+    
+    @media (max-width: 768px) {
+      font-size: 15px;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    &:hover {
+      color: var(--primary-1);
+    }
+  }
+
+  .count {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--gray-11);
+    margin: 0;
+
+    .heart {
+      color: var(--primary-1);
+      font-size: 14px;
+    }
+
+    span {
+      color: var(--gray-11);
+    }
+  }
+}
+
+.card-following-button {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .following-button {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    min-width: 90px;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    background-color: var(--primary-1);
+    color: var(--white-1);
+    box-shadow: 0 2px 8px rgba(80, 181, 255, 0.2);
+    letter-spacing: 0.3px;
+
+    @media (max-width: 768px) {
+      width: 100%;
+      min-width: auto;
+    }
+
+    &:hover:not(:disabled) {
+      background-color: var(--primary-2);
+      box-shadow: 0 4px 12px rgba(80, 181, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(80, 181, 255, 0.25);
+    }
+
+    &.message-button {
+      background-color: var(--primary-1);
+      color: var(--white-1);
+    }
+
+    &.isUserFollowed {
+      background-color: var(--gray-11);
+      color: var(--white-1);
+      box-shadow: 0 2px 8px rgba(176, 179, 184, 0.2);
+
+      &:hover:not(:disabled) {
+        background-color: var(--gray-10);
+        box-shadow: 0 4px 12px rgba(176, 179, 184, 0.3);
+        transform: translateY(-2px);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(176, 179, 184, 0.25);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+  }
+}
+
+// Empty state
+.empty-page {
+  max-width: 1152px;
+  background-color: var(--white-1);
+  padding: 40px 24px;
+  border-radius: 16px;
+  margin: 20px auto;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--gray-11);
+  box-shadow: rgb(145 158 171 / 20%) 0 0 2px 0, rgb(145 158 171 / 12%) 0 12px 24px -4px;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    margin: 12px 0;
+    padding: 32px 20px;
+    font-size: 14px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 12px;
+  }
+
+  @media (max-width: 480px) {
+    margin: 10px 0;
+    padding: 24px 16px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+}
+
+// Clickable avatar and username styles
+.card-container {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.card-element {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 12px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 480px) {
+    gap: 12px;
+    padding: 8px;
+  }
+}
+
+.card-element-item {
+  background-color: var(--white-1);
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: rgb(145 158 171 / 20%) 0 0 2px 0, rgb(145 158 171 / 12%) 0 12px 24px -4px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    border-radius: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 480px) {
+    border-radius: 10px;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: rgb(145 158 171 / 25%) 0 0 4px 0, rgb(145 158 171 / 15%) 0 16px 32px -4px;
+
+    @media (max-width: 768px) {
+      transform: none;
+    }
+  }
+}
+
+.card-element-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 15px 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px 0;
+  }
+
+  .card-element-header-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background-color: #1A1A1A;
+    border-radius: 16px 16px 0 0;
+
+    @media (max-width: 768px) {
+      height: 60px;
+      border-radius: 12px 12px 0 0;
+    }
+  }
+
+  div[style*="cursor: pointer"] {
+    position: relative;
+    z-index: 1;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    
+    &:hover {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 768px) {
+      &:active {
+        opacity: 0.7;
+        transform: scale(1.02);
+      }
+    }
+  }
+}
+
+.card-element-body {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  text-align: center;
+  padding: 0 16px;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    margin-top: 8px;
+    padding: 0 12px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0 10px;
+  }
+}
+
+.card-element-body-name {
+  transition: color 0.2s ease;
+  font-size: 16px;
+  font-weight: 600;
+  display: block;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+  
+  &:hover {
+    color: var(--primary-1);
+  }
+}

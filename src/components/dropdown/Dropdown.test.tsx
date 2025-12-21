@@ -1,10 +1,22 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import '@testing-library/jest-dom';
 import Dropdown from '@components/dropdown/Dropdown';
 import { render, screen } from '@root/test.utils';
 import userEvent from '@testing-library/user-event';
 
+// Mock Utils methods
+jest.mock('@services/utils/utils.service', () => ({
+  Utils: {
+    fixCloudinaryUrl: jest.fn((url: string) => url),
+    generateString: jest.fn((length: number) => 'mock-string-' + length)
+  }
+}));
+
 describe('Dropdown', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should display notification content', async () => {
     const user = userEvent.setup();
     const onMarkAsRead = jest.fn();

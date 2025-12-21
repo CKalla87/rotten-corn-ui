@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { find } from 'lodash';
 import { FaPencilAlt, FaRegTrashAlt } from 'react-icons/fa';
 import Avatar from '@components/avatar/Avatar';
 import ImageModal from '@components/image-modal/ImageModal';
 import Dialog from '@components/dialog/Dialog';
 import PostCommentSection from '@components/posts/post-comment-section/PostCommentSection';
+import CommentArea from '@components/posts/comment-area/CommentArea';
 import ReactionsModal from '@components/posts/reactions/reactions-modal/ReactionsModal';
-import CommentsModal from '@components/posts/comments/comments-modal/CommentsModal';
 import CommentInputBox from '@components/posts/comments/comment-input/CommentInputBox';
 import { postService } from '@services/api/post/post.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
 import { Utils } from '@services/utils/utils.service';
+import { ProfileUtils } from '@services/utils/profile-utils.service';
 import { timeAgo } from '@services/utils/timeago.utils';
 import { feelingsList, privacyList } from '@services/utils/static.data';
 import { openModal, toggleDeleteDialog } from '@redux/reducers/modal/modalSlice';
@@ -24,6 +26,9 @@ import './Post.scss';
 
 interface PostData {
   username?: string;
+  userId?: string;
+  uId?: string;
+  _id?: string;
   avatarColor?: string;
   profilePicture?: string;
   feelings?: string;
@@ -49,7 +54,8 @@ interface PostProps {
 
 const Post = ({ post, showIcons = false }: PostProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { reactionModalIsOpen, commentsModalIsOpen, deleteDialogIsOpen } = useSelector((state: RootState) => state.modal);
+  const navigate = useNavigate();
+  const { reactionModalIsOpen, deleteDialogIsOpen } = useSelector((state: RootState) => state.modal);
   const { post: postFromRedux } = useSelector((state: RootState) => state.post);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
@@ -87,7 +93,15 @@ const Post = ({ post, showIcons = false }: PostProps) => {
   const getBackgroundImageColor = useCallback(async (post: PostData) => {
     let imageUrl = '';
     if (post.imgId && !post.gifUrl) {
-      imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
+      // Use improved getImage with automatic fallback to post.image
+      imageUrl = Utils.getImage(
+        post.imgId as string, 
+        post.imgVersion as string, 
+        post.image as string
+      );
+      if (imageUrl) {
+        imageUrl = Utils.fixCloudinaryUrl(imageUrl);
+      }
     } else if (post.gifUrl) {
       imageUrl = post.gifUrl;
     }
@@ -126,7 +140,6 @@ const Post = ({ post, showIcons = false }: PostProps) => {
   return (
     <>
       {reactionModalIsOpen && <ReactionsModal />}
-      {commentsModalIsOpen && <CommentsModal />}
       {showImageModal && (
         <ImageModal
           image={imageUrl}
@@ -149,7 +162,19 @@ const Post = ({ post, showIcons = false }: PostProps) => {
       <div className="post-body" data-testid="post">
       <div className="user-post-data">
         <div className="user-post-data-wrap">
-          <div className="user-post-image">
+          <div 
+            className="user-post-image"
+            onClick={() => {
+              if (post?.username) {
+                ProfileUtils.navigateToProfile({ 
+                  username: post.username, 
+                  _id: post.userId as string,
+                  uId: post.uId as string
+                }, navigate);
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
             <Avatar
               name={post?.username}
               bgColor={post?.avatarColor}
@@ -160,7 +185,21 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           </div>
           <div className="user-post-info">
             <div className="inline-title-display">
-              <h5 data-testid="username">{post?.username}</h5>
+              <h5 
+                data-testid="username"
+                onClick={() => {
+                  if (post?.username) {
+                    ProfileUtils.navigateToProfile({ 
+                      username: post.username, 
+                      _id: post.userId as string,
+                      uId: post.uId as string
+                    }, navigate);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                {post?.username}
+              </h5>
               {post?.feelings && (
                 <div className="inline-display" data-testid="inline-display">
                   is feeling <img className="feeling-icon" src={`${getFeeling(post?.feelings)}`} alt="" />{' '}
@@ -182,12 +221,12 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           </div>
         </div>
       </div>
-      <hr />
-      <div className="user-post" style={{ marginTop: '1rem', borderBottom: '' }}>
+      <hr className="post-divider" />
+      <div className="user-post">
         {post?.post && post?.bgColor === '#ffffff' && <p>{post.post}</p>}
         {post?.post && post?.bgColor !== '#ffffff' && (
           <div className="user-post-with-bg" style={{ backgroundColor: `${post?.bgColor}` }}>
-            {post.post}
+            <span className="user-post-text">{post.post}</span>
           </div>
         )}
         {post?.gifUrl && (
@@ -200,20 +239,53 @@ const Post = ({ post, showIcons = false }: PostProps) => {
             className="image-display-flex"
             data-testid="post-image"
             onClick={() => {
-              const imageUrl = Utils.getImage(post.imgId as string, post.imgVersion as string);
+              // Use improved getImage with automatic fallback to post.image
+              let imageUrl = Utils.getImage(
+                post.imgId as string, 
+                post.imgVersion as string, 
+                post.image as string
+              );
+              if (imageUrl) {
+                imageUrl = Utils.fixCloudinaryUrl(imageUrl);
+              }
               setImageUrl(imageUrl);
               setShowImageModal(!showImageModal);
             }}
           >
             <img 
               className="post-image" 
-              src={Utils.getImage(post.imgId as string, post.imgVersion as string)} 
+              src={(() => {
+                // Use improved getImage with automatic fallback to post.image
+                let imgSrc = Utils.getImage(
+                  post.imgId as string, 
+                  post.imgVersion as string, 
+                  post.image as string
+                );
+                if (imgSrc) {
+                  imgSrc = Utils.fixCloudinaryUrl(imgSrc);
+                }
+                return imgSrc;
+              })()} 
               alt="" 
               style={{ objectFit: 'contain' }}
-              onError={() => {
-                // 401 errors indicate images are not set to public in Cloudinary
-                // Backend needs to upload with access_mode: 'public'
-                console.error('Image failed to load. If you see 401, backend needs to set access_mode: "public" when uploading to Cloudinary.');
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                console.error('🖼️ Image failed to load:', {
+                  src: target.src,
+                  imgId: post.imgId,
+                  imgVersion: post.imgVersion,
+                  fallbackImage: post.image,
+                  possibleCauses: [
+                    'Cloud name not configured (VITE_CLOUD_NAME missing)',
+                    'Image not set to public in Cloudinary (401 error)',
+                    'Invalid image ID or version',
+                    'Network/CORS issue'
+                  ]
+                });
+                // Try to use fallback image if available
+                if (post.image && target.src !== post.image) {
+                  target.src = Utils.fixCloudinaryUrl(post.image as string);
+                }
               }}
             />
           </div>
@@ -248,12 +320,12 @@ const Post = ({ post, showIcons = false }: PostProps) => {
           </div>
         )}
       </div>
+      <hr />
       {(post?.reactions && post.reactions.length > 0) || (post?.commentsCount && Number(post.commentsCount) > 0) ? (
-        <>
-          <hr />
-          <PostCommentSection post={post} />
-        </>
-      ) : null}
+        <PostCommentSection post={post} />
+      ) : (
+        <CommentArea post={post} />
+      )}
       {selectedPostId === (post._id as string) && <CommentInputBox post={post as Record<string, unknown>} />}
       </div>
     </>

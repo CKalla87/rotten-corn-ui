@@ -12,6 +12,8 @@ import { PostUtils } from '@services/utils/post-utils.service';
 import { ImageUtils } from '@services/utils/image-utils.service';
 import { postService } from '@services/api/post/post.service';
 import { toggleGifModal, closeModal } from '@redux/reducers/modal/modalSlice';
+import { addToPosts, removePost, updatePostInList } from '@redux/reducers/posts/postsSlice';
+import { store } from '@redux/store';
 import Spinner from '@components/spinner/Spinner';
 import type { RootState, AppDispatch } from '@redux/store';
 import './AddPost.scss';
@@ -22,7 +24,7 @@ interface AddPostProps {
 }
 
 const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
-  const { gifModalIsOpen, feeling } = useSelector((state: RootState) => state.modal);
+  const { gifModalIsOpen, feeling, isOpen } = useSelector((state: RootState) => state.modal);
   const { gifUrl, image, privacy, video } = useSelector((state: RootState) => state.post);
   const { profile } = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch<AppDispatch>();
@@ -48,12 +50,18 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
   const counterRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLDivElement>(null);
+  const inputFocusedRef = useRef(false);
+  const imageInputFocusedRef = useRef(false);
+  const modalWasOpenRef = useRef(false);
   const maxNumberOfCharacters = 100;
 
   const selectBackground = (bgColor: string) => {
     console.log(selectedPostItem);
     console.log(selectedImage);
     PostUtils.selectBackground(bgColor, postData, setTextAreaBackground, setPostData, setDisable);
+    // Allow posting if there's text OR an image/gif/video (background color selection enables posting)
+    const hasContent = (postData.post || '').length > 0 || postImage || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
+    setDisable(!hasContent);
   };
 
   const postInputEditable = (event: React.FormEvent<HTMLDivElement>, textContent: string) => {
@@ -68,9 +76,16 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
       counterRef.current.textContent = `${counter}/${maxNumberOfCharacters}`;
     }
     setAllowedNumberOfCharacters(`${counter}/${maxNumberOfCharacters}`);
-    setDisable(currentTextLength <= 0 && !postImage);
-    PostUtils.postInputEditable(textContent, postData, setPostData, setDisable);
-    // Don't touch the cursor here - let the onInput handler manage it
+    // Allow posting if there's text OR an image/gif/video
+    const hasContent = currentTextLength > 0 || postImage || postData.gifUrl || postData.image || postData.video || selectedPostItem || selectedVideo;
+    setDisable(!hasContent);
+    // Update postData without causing re-render during typing - use functional update
+    setPostData((prevData) => {
+      if (prevData.post !== textContent) {
+        return { ...prevData, post: textContent };
+      }
+      return prevData;
+    });
   };
 
 
@@ -103,7 +118,44 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     }
   };
 
+  const resetFormState = () => {
+    // Reset all local state to initial values
+    setPostData({
+      post: '',
+      bgColor: '#ffffff',
+      privacy: '',
+      feelings: '',
+      gifUrl: '',
+      profilePicture: '',
+      image: '',
+      video: ''
+    });
+    setPostImage('');
+    setSelectedPostImage(null);
+    setSelectedVideo(null);
+    setHasVideo(false);
+    setTextAreaBackground('#ffffff');
+    setAllowedNumberOfCharacters('100/100');
+    setDisable(true);
+    setLoading(false);
+    setApiResponse('');
+    
+    // Clear contentEditable divs
+    if (inputRef.current) {
+      inputRef.current.textContent = '';
+    }
+    if (imageInputRef.current) {
+      imageInputRef.current.textContent = '';
+    }
+    
+    // Reset focus refs
+    inputFocusedRef.current = false;
+    imageInputFocusedRef.current = false;
+  };
+
   const closePostModal = () => {
+    // Clear all local state before closing modal
+    resetFormState();
     PostUtils.closePostModal(dispatch);
   };
 
@@ -126,6 +178,7 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     setLoading(!loading);
     setDisable(!disable);
     try {
+      // Always get the latest content from the DOM to ensure we're posting what's actually displayed
       const updatedPostData = { ...postData };
       if (feeling) {
         updatedPostData.feelings = feeling;
@@ -133,10 +186,14 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
       updatedPostData.privacy = privacy || 'Public';
       updatedPostData.gifUrl = gifUrl || '';
       updatedPostData.profilePicture = profile?.profilePicture || '';
-      if (postImage) {
-        updatedPostData.post = imageInputRef.current?.textContent || updatedPostData.post || '';
+      
+      // Get the actual text content from the visible input (always use the current DOM content)
+      if (postImage || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo) {
+        // If there's an image/video, use the image input ref
+        updatedPostData.post = imageInputRef.current?.textContent?.trim() || '';
       } else {
-        updatedPostData.post = inputRef.current?.textContent || updatedPostData.post || '';
+        // Otherwise use the regular input ref
+        updatedPostData.post = inputRef.current?.textContent?.trim() || '';
       }
       if (selectedPostItem || selectedImage || selectedVideo || selectedPostVideo) {
         let result = '';
@@ -160,24 +217,79 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
           updatedPostData.image = '';
           updatedPostData.video = result;
         }
-        const response = await PostUtils.sendPostWithFileRequest(
-          type,
-          updatedPostData,
-          imageInputRef,
-          setApiResponse,
-          setLoading,
-          setDisable,
-          dispatch
-        );
-        if (response && response?.data?.message) {
-          PostUtils.closePostModal(dispatch);
+        // Optimistically add post to Redux state immediately
+        const optimisticPost = {
+          ...updatedPostData,
+          _id: `temp-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          commentsCount: '0',
+          reactions: { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 }
+        };
+        
+        // Get current posts from Redux and add optimistic post
+        const currentPosts = (store.getState().allPosts.posts as unknown[]) || [];
+        dispatch(addToPosts([optimisticPost, ...currentPosts]));
+        
+        try {
+          const response = await PostUtils.sendPostWithFileRequest(
+            type,
+            updatedPostData,
+            imageInputRef,
+            setApiResponse,
+            setLoading,
+            setDisable,
+            dispatch
+          );
+          if (response && response?.data?.message) {
+            // Replace optimistic post with real post from API if available
+            const realPost = response.data.post || response.data.data || response.data;
+            if (realPost && realPost._id) {
+              dispatch(updatePostInList(realPost));
+            } else {
+              // If no post in response, socket event will handle it, but remove temp post
+              dispatch(removePost(optimisticPost._id));
+            }
+            // Clear form state before closing modal
+            resetFormState();
+            PostUtils.closePostModal(dispatch);
+          }
+        } catch (error) {
+          // On error, remove optimistic post
+          dispatch(removePost(optimisticPost._id));
+          throw error; // Re-throw to be caught by outer catch
         }
       } else {
-        const response = await postService.createPost(updatedPostData);
-        if (response) {
-          setApiResponse('success');
-          setLoading(false);
-          PostUtils.closePostModal(dispatch);
+        // Optimistically add post to Redux state immediately
+        const optimisticPost = {
+          ...updatedPostData,
+          _id: `temp-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          commentsCount: '0',
+          reactions: { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 }
+        };
+        
+        // Get current posts from Redux and add optimistic post
+        const currentPosts = (store.getState().allPosts.posts as unknown[]) || [];
+        dispatch(addToPosts([optimisticPost, ...currentPosts]));
+        
+        try {
+          const response = await postService.createPost(updatedPostData);
+          if (response && response.data) {
+            // Replace optimistic post with real post from API
+            const realPost = response.data.post || response.data.data || response.data;
+            if (realPost && realPost._id) {
+              dispatch(updatePostInList(realPost));
+            }
+            setApiResponse('success');
+            setLoading(false);
+            // Clear form state before closing modal
+            resetFormState();
+            PostUtils.closePostModal(dispatch);
+          }
+        } catch (error) {
+          // On error, remove optimistic post
+          dispatch(removePost(optimisticPost._id));
+          throw error; // Re-throw to be caught by outer catch
         }
       }
     } catch (error: unknown) {
@@ -193,10 +305,22 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     }
   };
 
+  // Reset form state when modal opens (only when transitioning from closed to open)
+  useEffect(() => {
+    if (isOpen && !modalWasOpenRef.current) {
+      // Reset form state when modal opens to ensure clean state
+      resetFormState();
+      modalWasOpenRef.current = true;
+    } else if (!isOpen) {
+      // Track when modal closes
+      modalWasOpenRef.current = false;
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     PostUtils.positionCursor('editable');
     
-    // Watch for direction changes and force LTR
+    // Watch for direction changes and force LTR (only watch attributes, not content changes)
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'dir') {
@@ -204,25 +328,16 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
           if (target.getAttribute('dir') !== 'ltr') {
             target.setAttribute('dir', 'ltr');
           }
-        } else if (mutation.type === 'childList' || mutation.type === 'characterData') {
-          // Check all contentEditable elements
-          [inputRef.current, imageInputRef.current].forEach((el) => {
-            if (el && el.getAttribute('dir') !== 'ltr') {
-              el.setAttribute('dir', 'ltr');
-            }
-          });
         }
       });
     });
     
-    // Observe both input elements
+    // Observe both input elements (only attributes, not content changes to avoid cursor issues)
     [inputRef.current, imageInputRef.current].forEach((el) => {
       if (el) {
         observer.observe(el, {
           attributes: true,
-          attributeFilter: ['dir', 'style'],
-          childList: true,
-          characterData: true,
+          attributeFilter: ['dir'],
           subtree: true
         });
       }
@@ -237,11 +352,7 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
     if (!loading && apiResponse === 'success') {
       dispatch(closeModal());
     }
-    // Use setTimeout to avoid synchronous setState in effect
-    setTimeout(() => {
-      setDisable(postData.post.length <= 0 && !postImage);
-    }, 0);
-  }, [loading, dispatch, apiResponse, postData, postImage]);
+  }, [loading, dispatch, apiResponse]);
 
   useEffect(() => {
     if (gifUrl) {
@@ -250,6 +361,9 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
         setPostImage(gifUrl);
         setHasVideo(false);
         PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+        // Allow posting if there's text OR an image/gif/video
+        const hasContent = (postData.post || '').length > 0 || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
+        setDisable(!hasContent);
       }, 0);
     } else if (image) {
       // Use setTimeout to avoid synchronous setState in effect
@@ -257,6 +371,9 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
         setPostImage(image);
         setHasVideo(false);
         PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+        // Allow posting if there's text OR an image/gif/video
+        const hasContent = (postData.post || '').length > 0 || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
+        setDisable(!hasContent);
       }, 0);
     } else if (video) {
       // Use setTimeout to avoid synchronous setState in effect
@@ -264,9 +381,19 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
         setHasVideo(true);
         setPostImage(video);
         PostUtils.postInputData(imageInputRef, postData, '', setPostData);
+        // Allow posting if there's text OR an image/gif/video
+        const hasContent = (postData.post || '').length > 0 || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
+        setDisable(!hasContent);
       }, 0);
     }
-  }, [gifUrl, image, video, postData]);
+    // Also check when selectedPostItem, selectedVideo, selectedImage, or selectedPostVideo changes
+    // Allow posting if there's text OR an image/gif/video
+    // Use setTimeout to avoid calling setState synchronously in effect
+    setTimeout(() => {
+      const hasContent = (postData.post || '').length > 0 || postImage || gifUrl || image || video || selectedPostItem || selectedVideo || selectedImage || selectedPostVideo;
+      setDisable(!hasContent);
+    }, 0);
+  }, [gifUrl, image, video, postData, postImage, selectedPostItem, selectedVideo, selectedImage, selectedPostVideo]);
 
   return (
     <>
@@ -310,7 +437,13 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                           inputRef.current = el;
                           if (el) {
                             el.setAttribute('dir', 'ltr');
-                            inputRef?.current?.focus();
+                            // Only focus on initial mount, not on every re-render
+                            if (!inputFocusedRef.current) {
+                              inputFocusedRef.current = true;
+                              requestAnimationFrame(() => {
+                                inputRef?.current?.focus();
+                              });
+                            }
                           }
                         }}
                         id="editable"
@@ -324,30 +457,51 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                       // Save cursor position BEFORE any DOM manipulation
                       const selection = window.getSelection();
                       let savedRange: Range | null = null;
+                      let savedOffset = 0;
                       if (selection && selection.rangeCount > 0) {
-                        savedRange = selection.getRangeAt(0).cloneRange();
+                        const range = selection.getRangeAt(0);
+                        savedRange = range.cloneRange();
+                        // Also save the offset in case the range becomes invalid
+                        savedOffset = range.startOffset;
                       }
                       
                       const element = e.currentTarget as HTMLDivElement;
                       // Ensure LTR direction (only set dir attribute, CSS handles styling)
                       element.setAttribute('dir', 'ltr');
                       
-                      postInputEditable(e, element.textContent || '');
+                      const textContent = element.textContent || '';
+                      postInputEditable(e, textContent);
                       
-                      // Restore cursor position immediately after input
-                      if (savedRange && selection) {
-                        try {
-                          selection.removeAllRanges();
-                          selection.addRange(savedRange);
-                        } catch {
-                          // If range is invalid, position at end
-                          const range = document.createRange();
-                          range.selectNodeContents(element);
-                          range.collapse(false);
-                          selection.removeAllRanges();
-                          selection.addRange(range);
+                      // Restore cursor position after state updates complete using requestAnimationFrame
+                      requestAnimationFrame(() => {
+                        if (selection && textContent.length > 0) {
+                          try {
+                            // Try to restore the original range first
+                            if (savedRange && savedRange.startContainer && savedRange.startContainer.parentNode) {
+                              selection.removeAllRanges();
+                              selection.addRange(savedRange);
+                            } else {
+                              // Fallback: restore by offset
+                              const textNode = element.firstChild;
+                              if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                                const range = document.createRange();
+                                const offset = Math.min(savedOffset + 1, textNode.textContent?.length || 0);
+                                range.setStart(textNode, offset);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              }
+                            }
+                          } catch {
+                            // Final fallback: position at end
+                            const range = document.createRange();
+                            range.selectNodeContents(element);
+                            range.collapse(false);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                          }
                         }
-                      }
+                      });
                     }}
                     onKeyDown={onKeyDown}
                     onFocus={(e) => {
@@ -387,23 +541,29 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                       if (el) {
                         el.setAttribute('dir', 'ltr');
                         el.setAttribute('contenteditable', 'true');
-                        // Use a small delay to ensure DOM is ready
-                        setTimeout(() => {
-                          el.focus();
-                          // Position cursor at the start (left side)
-                          const selection = window.getSelection();
-                          if (selection) {
-                            const range = document.createRange();
-                            if (el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE) {
-                              range.setStart(el.firstChild, 0);
-                            } else {
-                              range.setStart(el, 0);
+                        // Only focus on initial mount, not on every re-render
+                        if (!imageInputFocusedRef.current) {
+                          imageInputFocusedRef.current = true;
+                          // Use a small delay to ensure DOM is ready
+                          requestAnimationFrame(() => {
+                            if (imageInputRef.current) {
+                              imageInputRef.current.focus();
+                              // Position cursor at the start (left side) only on initial mount
+                              const selection = window.getSelection();
+                              if (selection) {
+                                const range = document.createRange();
+                                if (imageInputRef.current.firstChild && imageInputRef.current.firstChild.nodeType === Node.TEXT_NODE) {
+                                  range.setStart(imageInputRef.current.firstChild, 0);
+                                } else {
+                                  range.setStart(imageInputRef.current, 0);
+                                }
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              }
                             }
-                            range.collapse(true);
-                            selection.removeAllRanges();
-                            selection.addRange(range);
-                          }
-                        }, 10);
+                          });
+                        }
                       }
                     }}
                     data-testid="post-editable"
@@ -416,30 +576,51 @@ const AddPost = ({ selectedImage, selectedPostVideo }: AddPostProps) => {
                       // Save cursor position BEFORE any DOM manipulation
                       const selection = window.getSelection();
                       let savedRange: Range | null = null;
+                      let savedOffset = 0;
                       if (selection && selection.rangeCount > 0) {
-                        savedRange = selection.getRangeAt(0).cloneRange();
+                        const range = selection.getRangeAt(0);
+                        savedRange = range.cloneRange();
+                        // Also save the offset in case the range becomes invalid
+                        savedOffset = range.startOffset;
                       }
                       
                       const element = e.currentTarget as HTMLDivElement;
                       // Ensure LTR direction (only set dir attribute, CSS handles styling)
                       element.setAttribute('dir', 'ltr');
                       
-                      postInputEditable(e, element.textContent || '');
+                      const textContent = element.textContent || '';
+                      postInputEditable(e, textContent);
                       
-                      // Restore cursor position immediately after input
-                      if (savedRange && selection) {
-                        try {
-                          selection.removeAllRanges();
-                          selection.addRange(savedRange);
-                        } catch {
-                          // If range is invalid, position at end
-                          const range = document.createRange();
-                          range.selectNodeContents(element);
-                          range.collapse(false);
-                          selection.removeAllRanges();
-                          selection.addRange(range);
+                      // Restore cursor position after state updates complete using requestAnimationFrame
+                      requestAnimationFrame(() => {
+                        if (selection && textContent.length > 0) {
+                          try {
+                            // Try to restore the original range first
+                            if (savedRange && savedRange.startContainer && savedRange.startContainer.parentNode) {
+                              selection.removeAllRanges();
+                              selection.addRange(savedRange);
+                            } else {
+                              // Fallback: restore by offset
+                              const textNode = element.firstChild;
+                              if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                                const range = document.createRange();
+                                const offset = Math.min(savedOffset + 1, textNode.textContent?.length || 0);
+                                range.setStart(textNode, offset);
+                                range.collapse(true);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              }
+                            }
+                          } catch {
+                            // Final fallback: position at end
+                            const range = document.createRange();
+                            range.selectNodeContents(element);
+                            range.collapse(false);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                          }
                         }
-                      }
+                      });
                     }}
                     onKeyDown={onKeyDown}
                     onFocus={(e) => {

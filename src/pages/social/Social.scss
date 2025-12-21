@@ -1,21 +1,133 @@
-.dashboard {
-  display: flex;
-  height: calc(100vh - 75px);
-  overflow: hidden;
-
-  &-sidebar {
-    flex: 2;
-    max-width: 15%;
-    //background-color: red;
-    overflow-y: auto;
-  }
-
-  &-content {
-    flex: 6;
-    height: 100%;
-    background-color: var(--white-10);
-    overflow-y: auto;
-    overflow-x: hidden;
+.header-hidden-on-chat {
+  @media (max-width: 768px) {
+    display: none !important;
   }
 }
 
+.dashboard {
+  height: calc(100vh - 75px);
+  display: flex;
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    height: auto !important;
+    min-height: calc(100vh - 75px) !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+
+    &.dashboard-no-header-on-chat {
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+
+  &-sidebar {
+    flex-shrink: 0;
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+    transition: transform 0.3s ease-in-out;
+    overflow-y: auto;
+
+    @media (max-width: 768px) {
+      z-index: 1000;
+      width: 280px;
+      min-width: auto;
+      max-width: 80%;
+      height: calc(100vh - 75px);
+      position: fixed;
+      top: 75px;
+      left: 0;
+      transform: translate(-100%);
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      background-color: var(--white-10);
+
+      &.sidebar-open {
+        transform: translate(0);
+      }
+    }
+  }
+
+  &-content {
+    background-color: var(--white-10);
+    flex: 6;
+    height: 100%;
+    transition: margin-left 0.3s ease-in-out;
+    overflow: hidden auto;
+
+    @media (max-width: 768px) {
+      flex: 1;
+      width: 100%;
+      height: auto !important;
+      min-height: calc(100vh - 75px);
+      margin-left: 0;
+      padding-bottom: 20px;
+      overflow: visible !important;
+      overflow-x: visible;
+      overflow-y: visible;
+    }
+  }
+
+  &-overlay {
+    display: none;
+
+    @media (max-width: 768px) {
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      background-color: rgba(0, 0, 0, 0.5);
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+      position: fixed;
+      inset: 75px 0 0;
+
+      &.overlay-open {
+        opacity: 1;
+        visibility: visible;
+        display: block;
+      }
+    }
+  }
+}
+
+// CRITICAL: Root-level mobile overrides MUST be at end of file
+// This ensures they load after all nested styles and override cached CSS
+@media screen and (max-width: 768px) {
+  .dashboard {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  .dashboard-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  .dashboard .dashboard-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  // Ensure header notification icon is behind sidebar when sidebar is open
+  .dashboard-sidebar.sidebar-open ~ * .header-nav-wrapper,
+  .dashboard-sidebar.sidebar-open ~ .dashboard-content .header-nav-wrapper {
+    z-index: 19 !important;
+  }
+
+  .dashboard-sidebar.sidebar-open {
+    z-index: 1000 !important;
+  }
+
+  // Ensure header elements are behind sidebar
+  .dashboard-sidebar.sidebar-open ~ * .header-nav-item,
+  .dashboard-sidebar.sidebar-open ~ .dashboard-content .header-nav-item {
+    z-index: 1 !important;
+  }
+}

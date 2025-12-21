@@ -29,29 +29,34 @@ const cleanHtmlContent = (html: string): string => {
   // First decode HTML entities
   cleaned = decodeHtmlEntities(cleaned);
   
-  // Remove escaped quotes (like \")
-  cleaned = cleaned.replace(/\\"/g, '');
-  cleaned = cleaned.replace(/\\'/g, '');
-  
   // Remove HTML entity quotes
-  cleaned = cleaned.replace(/&quot;/g, '');
-  cleaned = cleaned.replace(/&apos;/g, '');
-  cleaned = cleaned.replace(/&#34;/g, '');
-  cleaned = cleaned.replace(/&#39;/g, '');
-  cleaned = cleaned.replace(/&#x22;/gi, '');
-  cleaned = cleaned.replace(/&#x27;/gi, '');
+  cleaned = cleaned.replace(/&quot;/g, '"');
+  cleaned = cleaned.replace(/&apos;/g, "'");
+  cleaned = cleaned.replace(/&#34;/g, '"');
+  cleaned = cleaned.replace(/&#39;/g, "'");
+  cleaned = cleaned.replace(/&#x22;/gi, '"');
+  cleaned = cleaned.replace(/&#x27;/gi, "'");
   
-  // Remove surrounding quotes if they exist
+  // Handle multiple levels of JSON escaping (\\\" becomes ", \\\\\" becomes ", etc.)
+  // Keep unescaping until no more escaped quotes/backslashes remain
+  let previousCleaned = '';
+  while (cleaned !== previousCleaned) {
+    previousCleaned = cleaned;
+    // Unescape backslashes and quotes
+    cleaned = cleaned.replace(/\\"/g, '"');
+    cleaned = cleaned.replace(/\\'/g, "'");
+    cleaned = cleaned.replace(/\\\\/g, '\\');
+  }
+  
+  // Remove surrounding quotes if the entire string is wrapped in quotes (after unescaping)
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  
+  // Remove any remaining quote pairs at the start/end
   cleaned = cleaned.replace(/^["']+|["']+$/g, '');
   
-  // Remove any remaining quote pairs like ""
-  cleaned = cleaned.replace(/"\s*"/g, ' ');
-  cleaned = cleaned.replace(/''/g, ' ');
-  
-  // Clean up multiple spaces
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  
-  return cleaned;
+  return cleaned.trim();
 };
 
 const ContentEditable = ({
@@ -65,34 +70,218 @@ const ContentEditable = ({
   'data-placeholder': dataPlaceholder
 }: ContentEditableProps) => {
   const ref = useRef<HTMLElement>(null);
+  const isEditingRef = useRef(false);
+  const lastHtmlRef = useRef<string | undefined>(undefined);
+  const isFocusedRef = useRef(false);
 
+  const prevDisabledRef = useRef(disabled);
+  
+  useEffect(() => {
+    // When disabled becomes true (entering view mode), reset editing/focus refs
+    if (disabled && !prevDisabledRef.current) {
+      // Just became disabled - reset everything to allow updates
+      isEditingRef.current = false;
+      isFocusedRef.current = false;
+      lastHtmlRef.current = undefined;
+    }
+    
+    // When disabled becomes false (entering edit mode), reset refs to allow editing
+    if (!disabled && prevDisabledRef.current) {
+      // Just became enabled - allow editing
+      isEditingRef.current = false;
+      isFocusedRef.current = false;
+      // Set lastHtmlRef to current content to prevent immediate overwrite
+      if (ref.current) {
+        const currentContent = ref.current.textContent || '';
+        lastHtmlRef.current = currentContent || html || '';
+        // Only update if we have html prop and current content is empty
+        if (html && !currentContent.trim()) {
+          const cleanedHtml = cleanHtmlContent(html);
+          ref.current.textContent = cleanedHtml;
+          lastHtmlRef.current = cleanedHtml;
+        }
+      }
+    }
+    
+    prevDisabledRef.current = disabled;
+    
+    // Update content when in view mode (disabled) or when html prop changes
+    if (ref.current && html !== undefined) {
+      // In view mode (disabled), always allow updates
+      if (disabled) {
+        const cleanedHtml = cleanHtmlContent(html);
+        const currentText = ref.current.textContent || '';
+        
+        // Update if html prop changed or if content is different
+        if (lastHtmlRef.current !== html || currentText !== cleanedHtml) {
+          ref.current.textContent = cleanedHtml;
+          lastHtmlRef.current = html;
+        }
+      } else {
+        // In edit mode, only update if not currently editing/focused AND html prop actually changed from external source
+        // Don't update if user is actively editing
+        if (!isEditingRef.current && !isFocusedRef.current) {
+          // Only update if html prop changed from an external source (not from user input)
+          if (lastHtmlRef.current !== html && html !== undefined) {
+            const cleanedHtml = cleanHtmlContent(html);
+            // Only update if the cleaned html is different from current content
+            const currentText = ref.current.textContent || '';
+            if (currentText !== cleanedHtml) {
+              ref.current.textContent = cleanedHtml;
+              lastHtmlRef.current = html;
+            }
+          }
+        }
+      }
+    }
+  }, [html, disabled]);
+
+  // Set initial content on mount
   useEffect(() => {
     if (ref.current && html !== undefined) {
       const cleanedHtml = cleanHtmlContent(html);
-      // Always update to ensure cleaned content is displayed
-      if (ref.current.textContent !== cleanedHtml || ref.current.innerHTML.includes('&quot;') || ref.current.innerHTML.includes('\\"')) {
+      if (!ref.current.textContent || ref.current.textContent.trim() === '') {
         ref.current.textContent = cleanedHtml;
       }
+      lastHtmlRef.current = html;
     }
   }, [html]);
 
+  // Ensure contentEditable attribute is properly set when disabled changes
+  useEffect(() => {
+    if (ref.current) {
+      // Force update contentEditable attribute to ensure it's properly set
+      // Use setTimeout to ensure DOM is ready
+      const timeoutId = setTimeout(() => {
+        if (ref.current) {
+          if (disabled) {
+            ref.current.contentEditable = 'false';
+            ref.current.setAttribute('contenteditable', 'false');
+            ref.current.style.pointerEvents = 'none';
+            ref.current.style.userSelect = 'none';
+            ref.current.style.cursor = 'default';
+            ref.current.style.touchAction = 'none';
+          } else {
+            ref.current.contentEditable = 'true';
+            ref.current.setAttribute('contenteditable', 'true');
+            // Ensure the element can receive focus and is editable
+            ref.current.removeAttribute('readonly');
+            ref.current.removeAttribute('disabled');
+            ref.current.style.pointerEvents = 'auto';
+            ref.current.style.userSelect = 'text';
+            ref.current.style.cursor = 'text';
+            // Enable touch interactions on mobile
+            ref.current.style.touchAction = 'manipulation';
+            // Ensure the element can receive focus on mobile
+            ref.current.setAttribute('tabindex', '0');
+            // Force a reflow to ensure the attribute is applied
+            void ref.current.offsetHeight;
+          }
+        }
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [disabled]);
+
   const handleInput = (e: React.FormEvent<HTMLElement>) => {
+    // Check both disabled prop and actual contentEditable attribute
+    if (disabled || (ref.current && ref.current.contentEditable === 'false')) {
+      return; // Don't handle input if disabled
+    }
+    isEditingRef.current = true;
     const value = (e.currentTarget as HTMLElement).textContent || '';
+    // Update the lastHtmlRef to prevent useEffect from overwriting user input
+    lastHtmlRef.current = value;
     onChange?.({ target: { value } });
+  };
+
+  const handleFocus = () => {
+    if (disabled) return; // Don't handle focus if disabled
+    isEditingRef.current = true;
+    isFocusedRef.current = true;
+    // On mobile, ensure the element is properly focused and keyboard appears
+    if (ref.current) {
+      // Force focus on mobile devices
+      ref.current.focus();
+    }
+  };
+
+  // Handle touch events on mobile to ensure proper focus
+  const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    if (disabled) return;
+    // On mobile, prevent default scrolling but allow focus
+    e.stopPropagation();
+    if (ref.current && !isFocusedRef.current) {
+      // Small delay to ensure the element is ready
+      setTimeout(() => {
+        if (ref.current) {
+          ref.current.focus();
+          // On mobile, we might need to explicitly set selection
+          const range = document.createRange();
+          const sel = window.getSelection();
+          if (sel && ref.current) {
+            range.selectNodeContents(ref.current);
+            range.collapse(false); // Move to end
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      }, 10);
+    }
+  };
+
+  // Also handle click for better compatibility
+  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+    if (disabled) return;
+    e.stopPropagation();
+    if (ref.current && !isFocusedRef.current) {
+      ref.current.focus();
+    }
+  };
+
+  const handleBlur = () => {
+    isEditingRef.current = false;
+    isFocusedRef.current = false;
+    // Update lastHtmlRef with current content after blur
+    if (ref.current) {
+      lastHtmlRef.current = ref.current.textContent || '';
+    }
   };
 
   const Tag = tagName as 'div' | 'span' | 'p';
 
+  // Use a ref to track if we need to force update contentEditable
+  const contentEditableValue = !disabled;
+
   return (
     <Tag
       ref={ref as React.RefObject<HTMLDivElement>}
-      contentEditable={!disabled}
+      contentEditable={contentEditableValue}
       onInput={handleInput as React.FormEventHandler<HTMLElement>}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick}
       className={className}
-      style={style}
+      style={{ 
+        color: 'var(--black-1)', 
+        ...style,
+        ...(disabled ? {} : {
+          cursor: 'text',
+          pointerEvents: 'auto',
+          userSelect: 'text',
+          touchAction: 'manipulation', // Enable touch interactions on mobile
+          WebkitUserSelect: 'text', // Safari support
+          WebkitTouchCallout: 'default', // Enable text selection on iOS
+          // Ensure it's interactive on mobile
+          WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)' // Show tap feedback on iOS
+        })
+      }}
       data-testid={dataTestId}
       data-placeholder={dataPlaceholder}
       suppressContentEditableWarning
+      tabIndex={!disabled ? 0 : -1}
     />
   );
 };

@@ -32,21 +32,58 @@ const Register = () => {
     setLoading(true);
     event.preventDefault();
     try {
+      // Trim username and email to prevent validation errors
+      const trimmedUsername = username.trim();
+      const trimmedEmail = email.trim();
+      if (!trimmedUsername) {
+        setHasError(true);
+        setAlertType('alert-error');
+        setErrorMessage('Username is required');
+        setLoading(false);
+        return;
+      }
+      if (!trimmedEmail) {
+        setHasError(true);
+        setAlertType('alert-error');
+        setErrorMessage('Email is required');
+        setLoading(false);
+        return;
+      }
+      console.log('Register attempt:', { 
+        username: trimmedUsername, 
+        usernameLength: trimmedUsername.length,
+        email: trimmedEmail,
+        passwordLength: password.length
+      });
       const avatarColor = Utils.avatarColor();
-      const avatarImage = Utils.generateAvatar(username.charAt(0).toUpperCase(), avatarColor);
-      const result = await authService.signUp({ username, email, password, avatarColor, avatarImage });
+      const avatarImage = Utils.generateAvatar(trimmedUsername.charAt(0).toUpperCase(), avatarColor);
+      const result = await authService.signUp({ username: trimmedUsername, email: trimmedEmail, password, avatarColor, avatarImage });
       setUser(result.data.user);
       setLoggedIn(true);
-      setStoredUsername(username);
+      setStoredUsername(trimmedUsername);
       setAlertType('alert-success');
       Utils.dispatchUser(result, pageReload, dispatch, setUser);
       setLoading(false);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
+      console.error('❌ Register error:', {
+        message: axiosError?.message,
+        status: axiosError?.response?.status,
+        statusText: axiosError?.response?.statusText,
+        data: axiosError?.response?.data,
+        config: {
+          url: axiosError?.config?.url,
+          method: axiosError?.config?.method,
+          baseURL: axiosError?.config?.baseURL,
+          data: axiosError?.config?.data
+        }
+      });
       setLoading(false);
       setHasError(true);
       setAlertType('alert-error');
-      setErrorMessage(axiosError?.response?.data?.message || 'An error occurred during registration');
+      // Handle validation errors from backend
+      const errorMessage = axiosError?.response?.data?.message || 'An error occurred during registration';
+      setErrorMessage(errorMessage);
     }
   };
 
@@ -66,8 +103,6 @@ const Register = () => {
       )}
       <div className="oauth-section">
         <OAuthButton provider="google" />
-        <OAuthButton provider="github" />
-        <OAuthButton provider="facebook" />
       </div>
       <div className="divider">
         <span>OR</span>
@@ -109,6 +144,7 @@ const Register = () => {
           label={loading ? 'SIGNUP IN PROGRESS...' : 'SIGNUP'}
           className="auth-button button"
           disabled={!username || !email || !password}
+          type="submit"
         />
       </form>
     </div>

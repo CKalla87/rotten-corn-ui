@@ -21,3 +21,17 @@
   }
 }
 
+.message-gif {
+  margin-top: 5px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  max-width: 300px;
+
+  img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+

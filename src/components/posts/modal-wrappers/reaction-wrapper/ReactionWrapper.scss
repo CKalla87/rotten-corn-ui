@@ -5,7 +5,6 @@
   bottom: 0;
   z-index: 1050;
   display: grid;
-  grid-template-columns: 1;
   grid-auto-rows: 1fr;
   grid-template-areas: 'modal';
 }
@@ -18,11 +17,38 @@
   background: var(--white-1);
   border-radius: 8px;
   z-index: 1051;
-  max-width: 500px;
+  max-width: 700px; // Increased from 500px for more space
   width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
+  max-height: 90vh !important; // Increased from 85vh for more vertical space
+  min-height: 500px; // Ensure minimum height
+  height: auto; // Allow height to adjust to content
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; // Keep hidden to contain content, inner elements will scroll
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+
+  // Mobile responsive styles
+  @media (max-width: 768px) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    min-height: 100vh !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (max-width: 480px) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    min-height: 100vh !important;
+  }
 }
 
 .modal-wrapper-container-header {
@@ -45,7 +71,21 @@
 }
 
 .modal-wrapper-container-body {
-  padding: 20px;
+  padding: 0;
+  flex: 1 1 auto; // Allow flex to shrink and grow
+  min-height: 0; // Critical for flex scrolling
+  display: flex;
+  flex-direction: column;
+  overflow: visible; // Changed from hidden to allow scrolling
+  position: relative; // Ensure proper positioning context
+  height: 100%; // Take full available height
+
+  // Mobile responsive styles
+  @media (max-width: 768px) {
+    overflow: visible;
+    height: 100%;
+    max-height: 100vh;
+  }
 }
 
 .modal-bg {
