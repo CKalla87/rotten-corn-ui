@@ -221,14 +221,18 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
           
           // If backend returns all empty but we have saved values, use saved values instead
           // This prevents overwriting saved social links when backend hasn't persisted them yet
-          if (allEmpty && savedSocialInputsRef.current) {
+          // BUT only do this if we're viewing our own profile
+          const isViewingOwnProfile = username === profile?.username;
+          if (allEmpty && savedSocialInputsRef.current && isViewingOwnProfile) {
             finalInstagram = savedSocialInputsRef.current.instagram;
             finalTwitter = savedSocialInputsRef.current.twitter;
             finalFacebook = savedSocialInputsRef.current.facebook;
             finalYoutube = savedSocialInputsRef.current.youtube;
           }
           // Also check if we have values in Redux profile that aren't empty
-          else if (allEmpty && profile?.social) {
+          // BUT only use Redux profile social links when viewing our own profile
+          // This prevents showing your social links on someone else's profile
+          else if (allEmpty && profile?.social && isViewingOwnProfile) {
             const profileSocial = profile.social as Record<string, unknown>;
             if (profileSocial.instagram && String(profileSocial.instagram).trim()) {
               finalInstagram = String(profileSocial.instagram).trim();
@@ -265,7 +269,7 @@ const Timeline = ({ userProfileData, loading, onIntroUpdateSuccess }: TimelinePr
         hasInitializedRef.current = true;
       }, 0);
     }
-  }, [userProfileData, profile?.social]);
+  }, [userProfileData, profile?.social, profile?.username, username]);
 
   const postsRef = useRef(posts);
   const hasSetupSocketRef = useRef(false);

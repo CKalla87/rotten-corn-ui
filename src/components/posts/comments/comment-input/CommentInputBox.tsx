@@ -65,6 +65,11 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
       return;
     }
 
+    // Store values before clearing for potential error recovery
+    const savedComment = comment;
+    const savedGifUrl = gifUrl;
+    const savedShowGifPreview = showGifPreview;
+
     try {
       const updatedPost = cloneDeep(post);
       const newCommentsCount = (Number(updatedPost.commentsCount) || 0) + 1;
@@ -84,13 +89,21 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
         profilePicture: profile?.profilePicture
       };
       
+      // Clear form immediately for better UX (optimistic UI update)
+      
+      setComment('');
+      setGifUrl('');
+      setShowGifPreview(false);
+      setShowEmojiContainer(false);
+      setShowGifContainer(false);
+      
       // Optimistically update the post in Redux state
       dispatch(updatePostInList({
         ...updatedPost,
         commentsCount: String(newCommentsCount)
       }));
       
-      // Send to API first with timeout handling
+      // Send to API with timeout handling
       let response;
       try {
         response = await Promise.race([
@@ -124,8 +137,8 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
         avatarColor: profile?.avatarColor || '',
         profilePicture: profile?.profilePicture || '',
         comment: commentText,
-        // Preserve gifUrl from our state if we have one, otherwise use from API response
-        gifUrl: showGifPreview && gifUrl ? gifUrl : (newComment?.gifUrl || undefined),
+        // Preserve gifUrl from saved state if we have one, otherwise use from API response
+        gifUrl: savedShowGifPreview && savedGifUrl ? savedGifUrl : (newComment?.gifUrl || undefined),
         createdAt: newComment?.createdAt || new Date().toISOString(), // Use API createdAt if available, otherwise current time
         reactions: newComment?.reactions || {
           like: 0,
@@ -147,12 +160,7 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
       // Note: Backend will emit 'comment' socket event which the modal listens to
       // We don't need to emit here to avoid duplicates
       
-      // Clear form
-      setComment('');
-      setGifUrl('');
-      setShowGifPreview(false);
-      setShowEmojiContainer(false);
-      setShowGifContainer(false);
+      // Form was already cleared above for immediate UX feedback
     } catch (error: unknown) {
       const axiosError = error as { 
         response?: { 
@@ -179,8 +187,16 @@ const CommentInputBox = ({ post, onCommentAdded }: CommentInputBoxProps) => {
       
       Utils.dispatchNotification(errorMessage, 'error', dispatch);
       
-      // Only revert optimistic update if it's not a timeout or 503 (might have been saved)
+      // Restore form values on error (except for timeout/503 where comment might have been saved)
       if (!isTimeout && !is503) {
+        // Restore the comment input if there was an error
+        setComment(savedComment);
+        if (savedShowGifPreview && savedGifUrl) {
+          setGifUrl(savedGifUrl);
+          setShowGifPreview(true);
+        }
+        
+        // Revert optimistic update
         dispatch(updatePostInList({
           ...post,
           commentsCount: post.commentsCount !== undefined ? String(post.commentsCount) : undefined

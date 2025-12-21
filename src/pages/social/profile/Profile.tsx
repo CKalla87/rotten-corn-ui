@@ -68,6 +68,8 @@ const Profile = () => {
         );
         
         const userData = response.data.user;
+        
+        
         setUser(userData);
         setUserProfileData(response.data);
         // Generate background image URL with fallback

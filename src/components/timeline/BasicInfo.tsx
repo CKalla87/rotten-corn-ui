@@ -73,8 +73,42 @@ const BasicInfo = ({
 
   const updateBasicInfo = async () => {
     try {
+      // Only allow updates if viewing own profile
+      const isCurrentUser = username === profile?.username;
+      if (!isCurrentUser) {
+        Utils.dispatchNotification('You can only update your own profile', 'error', dispatch);
+        return;
+      }
+      
+      // Get the authenticated user's ID directly from the backend to ensure accuracy
+      // This prevents any issues with stale Redux state
+      let currentUserId: string;
+      let currentUsername: string;
+      
+      try {
+        const currentUserResponse = await userService.checkCurrentUser();
+        if (!currentUserResponse?.data?.user?._id) {
+          Utils.dispatchNotification('Unable to verify your identity. Please log in again.', 'error', dispatch);
+          return;
+        }
+        currentUserId = String(currentUserResponse.data.user._id);
+        currentUsername = String(currentUserResponse.data.user.username || '');
+        
+        // Verify the username matches what we expect
+        if (currentUsername && username && currentUsername.toLowerCase() !== username.toLowerCase()) {
+          Utils.dispatchNotification('User mismatch detected. Please refresh the page.', 'error', dispatch);
+          return;
+        }
+      } catch {
+        Utils.dispatchNotification('Unable to verify your identity. Please log in again.', 'error', dispatch);
+        return;
+      }
+      
       // Ensure we're sending clean data (the editableInputs should already be clean from user input)
+      // Use the authenticated user's ID from the backend, not from Redux
       const cleanData = {
+        userId: currentUserId,
+        username: currentUsername,
         quote: editableInputs?.quote || '',
         work: editableInputs?.work || '',
         school: editableInputs?.school || '',
@@ -82,6 +116,7 @@ const BasicInfo = ({
       };
       
       const response = await userService.updateBasicInfo(cleanData);
+      
       Utils.dispatchNotification(response.data.message, 'success', dispatch);
       
       // Update the local state with saved values after a brief delay
@@ -100,8 +135,9 @@ const BasicInfo = ({
         });
       }
       
-      // Update Redux store with the saved data
-      if (profile) {
+      // Update Redux store with the saved data only if this is the current user's profile
+      // Use the verified currentUserId from the backend
+      if (profile && isCurrentUser && profile._id === currentUserId) {
         const updatedProfile = {
           ...profile,
           quote: cleanData.quote,
@@ -117,7 +153,7 @@ const BasicInfo = ({
         await onUpdateSuccess();
       }
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
+      const axiosError = error as { response?: { data?: { message?: string }; status?: number } };
       Utils.dispatchNotification(axiosError?.response?.data?.message || 'An error occurred', 'error', dispatch);
     }
   };

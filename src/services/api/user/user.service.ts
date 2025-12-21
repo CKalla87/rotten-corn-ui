@@ -53,15 +53,17 @@ class UserService {
 
   async updateSocialLinks(links: unknown) {
     // Extract social links from the nested structure if needed
-    // Backend expects: { instagram: '', twitter: '', facebook: '', youtube: '' }
+    // Backend expects: { userId: '', username: '', instagram: '', twitter: '', facebook: '', youtube: '' }
     // Frontend might send: { social: { instagram: '', ... } }
     let socialLinks = links;
-    if (links && typeof links === 'object' && 'social' in links) {
+    if (links && typeof links === 'object' && 'social' in links && !('userId' in links)) {
+      // Only extract social if userId is not present (old format)
       socialLinks = (links as { social: unknown }).social;
     }
     
     // Use the correct endpoint for social links
     const response = await axios.put('/user/profile/social-links', socialLinks);
+    
     return response;
   }
 }
