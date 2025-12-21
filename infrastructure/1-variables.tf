@@ -59,13 +59,13 @@ variable "custom_error_response" {
     {
       error_caching_min_ttl = 10
       error_code            = 403
-      response_code         = 200  # Return 200 for SPA routing - allows React Router to handle the route
+      response_code         = 200 # Return 200 for SPA routing - allows React Router to handle the route
       response_page_path    = "/index.html"
     },
     {
       error_caching_min_ttl = 10
       error_code            = 404
-      response_code         = 200  # Return 200 for SPA routing - allows React Router to handle the route
+      response_code         = 200 # Return 200 for SPA routing - allows React Router to handle the route
       response_page_path    = "/index.html"
     }
   ]

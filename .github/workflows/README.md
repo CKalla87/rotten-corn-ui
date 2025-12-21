@@ -8,7 +8,7 @@ The following secrets need to be configured in your GitHub repository settings. 
 - **Repository secrets** (Settings → Secrets and variables → Actions → Secrets)
 - **Environment secrets** (Settings → Secrets and variables → Actions → Environments → [environment name] → Secrets)
 
-For environment secrets, you need to create environments named `develop`, `staging`, and `main` and add the secrets to each.
+For environment secrets, you need to create environments named `develop`, `staging`, and `production` (the `main` branch maps to the `production` environment) and add the secrets to each.
 
 Required secrets:
 1. **AWS_ACCESS_KEY_ID**: AWS access key for S3 and CloudFront operations
