@@ -361,7 +361,8 @@ jobs:
       - name: Checkout code (deploying specific commit 54eae71)
         uses: actions/checkout@v4
         with:
-          ref: 54eae71
+          ref: 54eae71b253a8d9fd74260efd54dc2147ca971a4
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
