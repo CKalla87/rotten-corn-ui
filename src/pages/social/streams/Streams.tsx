@@ -196,7 +196,7 @@ const Streams = () => {
         }
       } 
       // After initial load, preserve accumulated posts from infinite scroll
-      // Only merge Redux posts if they contain new posts (e.g., from socket events)
+      // But also sync updates from Redux (e.g., comment count changes, reactions)
       else if (derivedPosts.length > 0) {
         const currentPostsLength = appPosts.current?.length || 0;
         const currentPostIds = new Set((appPosts.current || []).map((p: unknown) => (p as { _id?: string })?._id));
@@ -207,11 +207,50 @@ const Streams = () => {
           return postId && !currentPostIds.has(postId);
         });
         
-        // Only update if Redux has new posts OR if we have fewer posts than Redux
-        // This prevents Redux from overwriting accumulated posts from infinite scroll
-        if (hasNewPosts) {
-          // Merge new posts from Redux with accumulated posts
-          const merged = uniqBy([...derivedPosts, ...(appPosts.current || [])], '_id');
+        // Check if any existing posts have been updated (e.g., comment count, reactions)
+        const hasUpdatedPosts = (appPosts.current || []).some((currentPost: unknown) => {
+          const currentPostObj = currentPost as { _id?: string; commentsCount?: string | number; [key: string]: unknown };
+          const redxPost = derivedPosts.find((p: unknown) => {
+            const pObj = p as { _id?: string };
+            return pObj._id === currentPostObj._id;
+          });
+          if (redxPost) {
+            const redxPostObj = redxPost as { commentsCount?: string | number; [key: string]: unknown };
+            // Check if comment count changed (indicates post was updated)
+            const currentCount = Number(currentPostObj.commentsCount) || 0;
+            const redxCount = Number(redxPostObj.commentsCount) || 0;
+            if (currentCount !== redxCount) {
+              return true;
+            }
+            // Check if reactions changed
+            const currentReactions = currentPostObj.reactions;
+            const redxReactions = redxPostObj.reactions;
+            if (JSON.stringify(currentReactions) !== JSON.stringify(redxReactions)) {
+              return true;
+            }
+          }
+          return false;
+        });
+        
+        // Update if Redux has new posts OR if existing posts were updated
+        if (hasNewPosts || hasUpdatedPosts) {
+          // Merge posts from Redux with accumulated posts, using Redux version for existing posts (to get updates)
+          const mergedMap = new Map<string, unknown>();
+          // First add all accumulated posts
+          (appPosts.current || []).forEach((post: unknown) => {
+            const postObj = post as { _id?: string };
+            if (postObj._id) {
+              mergedMap.set(postObj._id, post);
+            }
+          });
+          // Then update with Redux posts (this will update existing posts and add new ones)
+          derivedPosts.forEach((post: unknown) => {
+            const postObj = post as { _id?: string };
+            if (postObj._id) {
+              mergedMap.set(postObj._id, post);
+            }
+          });
+          const merged = Array.from(mergedMap.values());
           setPosts(merged);
           appPosts.current = merged;
           // Update Redux with merged posts to keep it in sync
@@ -328,17 +367,28 @@ const Streams = () => {
       // Handle 'comment' event (emitted when a new comment is added)
       const handleNewComment = (commentData: CommentData) => {
         const currentPosts = allPostsRef.current?.posts || [];
-        // Extract postId from comment data (could be postId or post_id)
-        const commentPostId = commentData?.postId || commentData?.post_id;
+        // Extract postId from comment data (could be postId, post_id, or nested in comment object)
+        let commentPostId = commentData?.postId || commentData?.post_id;
+        
+        // Also check if commentData itself is a comment object with postId
+        if (!commentPostId && commentData && typeof commentData === 'object' && '_id' in commentData) {
+          const commentObj = commentData as { postId?: string; post_id?: string; [key: string]: unknown };
+          commentPostId = commentObj.postId || commentObj.post_id;
+        }
+        
         if (commentPostId) {
-          const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === commentPostId);
+          const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => {
+            const postId = p._id;
+            return postId === commentPostId || String(postId) === String(commentPostId);
+          });
           if (post) {
             // Use the count from socket event if provided (authoritative from backend)
-            // Otherwise, keep current count since optimistic update already happened
+            // Otherwise, increment current count since a comment was just added
             const currentCount = Number(post.commentsCount) || 0;
+            // Always ensure count is at least 1 if a comment was added (handles first comment case)
             const newCount = commentData.commentsCount !== undefined 
               ? commentData.commentsCount 
-              : currentCount; // Keep current count if socket event doesn't provide one (optimistic update already happened)
+              : Math.max(1, currentCount + 1); // Ensure at least 1 for first comment, increment otherwise
             const updatedPost = { 
               ...post, 
               commentsCount: String(newCount),
