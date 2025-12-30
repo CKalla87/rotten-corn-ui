@@ -263,9 +263,12 @@ const ChatList = () => {
             setSearchResult([]);
           }}>
             <div className="conversation">
-              {chatMessageList.map((data) => (
+              {chatMessageList.map((data) => {
+                // Use conversationId if available, otherwise use a combination of sender and receiver IDs
+                const conversationKey = data.conversationId || `${data.senderId || ''}-${data.receiverId || ''}`;
+                return (
                 <div
-                  key={Utils.generateString(10)}
+                  key={conversationKey}
                   data-testid="conversation-item"
                   className={`conversation-item ${
                     searchParams.get('username') === data?.receiverUsername?.toLowerCase() ||
@@ -324,7 +327,8 @@ const ChatList = () => {
                     <ChatListBody data={data} profile={profile || undefined} />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

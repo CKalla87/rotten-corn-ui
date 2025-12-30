@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { uniqBy } from 'lodash';
 import Suggestions from '@components/suggestions/Suggestions';
@@ -30,6 +30,7 @@ const Streams = () => {
   const [totalPostsCount, setTotalPostsCount] = useState(0);
   const appPosts = useRef<unknown[]>([]);
   const initialLoadCompleteRef = useRef(false);
+  const reactionsLoadedRef = useRef(false);
   const PAGE_SIZE = 10;
 
   const storedUsername = useLocalStorage('username', 'get');
@@ -89,21 +90,42 @@ const Streams = () => {
     }
   };
 
-  const getReactionsByUsername = async () => {
+  const getReactionsByUsernameRef = useRef<((retryCount?: number) => Promise<void>) | null>(null);
+  
+  const getReactionsByUsername = useCallback(async (retryCount = 0): Promise<void> => {
     try {
       if (storedUsername && typeof storedUsername === 'string') {
         const response = await postService.getReactionsByUsername(storedUsername);
         dispatch(addReactions(response.data.reactions));
+        reactionsLoadedRef.current = true;
       }
     } catch (error: unknown) {
-      // Silently fail for reactions - not critical for page functionality
+      // Retry up to 2 times if it's not an auth error
       const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
-      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
+      const isAuthError = axiosError.response?.status === 403 || axiosError.response?.status === 401;
+      
+      if (isAuthError) {
         // Only log auth errors, don't show notification for reactions
         console.warn('Failed to load reactions:', axiosError.response?.data?.message || 'Authentication issue');
+      } else if (retryCount < 2) {
+        // Retry after a short delay (exponential backoff)
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 3000);
+        setTimeout(() => {
+          if (getReactionsByUsernameRef.current) {
+            void getReactionsByUsernameRef.current(retryCount + 1);
+          }
+        }, delay);
+      } else {
+        // Final retry failed, log but don't show notification
+        console.warn('Failed to load reactions after retries:', axiosError.response?.data?.message || 'Unknown error');
       }
     }
-  };
+  }, [storedUsername, dispatch]);
+  
+  // Store the function in ref for recursive calls (update in effect to avoid render-time ref update)
+  useEffect(() => {
+    getReactionsByUsernameRef.current = getReactionsByUsername;
+  }, [getReactionsByUsername]);
 
   const getUserFollowing = async () => {
     try {
@@ -133,6 +155,7 @@ const Streams = () => {
   useEffectOnce(() => {
     // Reset initial load flag on mount (page refresh)
     initialLoadCompleteRef.current = false;
+    reactionsLoadedRef.current = false;
     
     getReactionsByUsername();
     deleteSelectedPostId();
@@ -164,6 +187,12 @@ const Streams = () => {
           setPosts(derivedPosts);
           appPosts.current = derivedPosts;
           initialLoadCompleteRef.current = true;
+          
+          // Reload reactions when posts are successfully loaded if reactions haven't loaded yet
+          // This ensures reactions are loaded even if initial call failed or was slow
+          if (derivedPosts.length > 0 && !reactionsLoadedRef.current && storedUsername && typeof storedUsername === 'string') {
+            void getReactionsByUsername();
+          }
         }
       } 
       // After initial load, preserve accumulated posts from infinite scroll
@@ -204,7 +233,7 @@ const Streams = () => {
         setTotalPostsCount(derivedTotalPostsCount);
       }
     }, 0);
-  }, [derivedLoading, derivedPosts, derivedTotalPostsCount, posts.length, dispatch]);
+  }, [derivedLoading, derivedPosts, derivedTotalPostsCount, posts.length, dispatch, storedUsername, getReactionsByUsername]);
 
   // Use ref to store latest posts for socket handlers
   const allPostsRef = useRef(allPosts);
@@ -276,8 +305,11 @@ const Streams = () => {
 
       interface CommentData {
         postId?: string;
+        post_id?: string;
         commentsCount?: number;
         postReactions?: unknown;
+        _id?: string;
+        [key: string]: unknown;
       }
 
       const handleUpdateComment = (commentData: CommentData) => {
@@ -293,12 +325,37 @@ const Streams = () => {
         }
       };
 
+      // Handle 'comment' event (emitted when a new comment is added)
+      const handleNewComment = (commentData: CommentData) => {
+        const currentPosts = allPostsRef.current?.posts || [];
+        // Extract postId from comment data (could be postId or post_id)
+        const commentPostId = commentData?.postId || commentData?.post_id;
+        if (commentPostId) {
+          const post = (currentPosts as Array<{ _id?: string; [key: string]: unknown }>).find((p) => p._id === commentPostId);
+          if (post) {
+            // Use the count from socket event if provided (authoritative from backend)
+            // Otherwise, keep current count since optimistic update already happened
+            const currentCount = Number(post.commentsCount) || 0;
+            const newCount = commentData.commentsCount !== undefined 
+              ? commentData.commentsCount 
+              : currentCount; // Keep current count if socket event doesn't provide one (optimistic update already happened)
+            const updatedPost = { 
+              ...post, 
+              commentsCount: String(newCount),
+              reactions: commentData.postReactions || post.reactions
+            };
+            dispatch(updatePostInList(updatedPost));
+          }
+        }
+      };
+
       // Remove existing listeners to avoid duplicates
       socket.off('add post');
       socket.off('update post');
       socket.off('delete post');
       socket.off('update like');
       socket.off('update comment');
+      socket.off('comment');
 
       // Add new listeners
       socket.on('add post', handleAddPost);
@@ -306,6 +363,7 @@ const Streams = () => {
       socket.on('delete post', handleDeletePost);
       socket.on('update like', handleUpdateLike);
       socket.on('update comment', handleUpdateComment);
+      socket.on('comment', handleNewComment);
 
       // Cleanup on unmount
       return () => {
@@ -314,6 +372,7 @@ const Streams = () => {
         socket.off('delete post', handleDeletePost);
         socket.off('update like', handleUpdateLike);
         socket.off('update comment', handleUpdateComment);
+        socket.off('comment', handleNewComment);
       };
     }
   }, [dispatch]);

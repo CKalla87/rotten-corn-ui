@@ -202,15 +202,30 @@ export class ChatUtils {
     chatMessageList: ChatUser[],
     setChatMessageList: (list: ChatUser[]) => void
   ): void {
+    // Remove existing listener to prevent duplicates
+    socketService?.socket?.off('chat list');
     socketService?.socket?.on('chat list', (data: ChatUser) => {
       if (data.senderUsername === profile?.username || data.receiverUsername === profile?.username) {
         const messageIndex = findIndex(chatMessageList, ['conversationId', data.conversationId]);
         let updatedChatMessageList = cloneDeep(chatMessageList);
         if (messageIndex > -1) {
+          // Conversation exists with same conversationId, remove and update
           remove(updatedChatMessageList, (chat) => chat.conversationId === data.conversationId);
           updatedChatMessageList = [data, ...updatedChatMessageList];
         } else {
-          remove(updatedChatMessageList, (chat) => chat.receiverUsername === data.receiverUsername);
+          // Conversation doesn't exist by conversationId, find by the other user's username
+          // Determine the other user (the one who is not the current profile user)
+          const otherUsername = data.senderUsername === profile?.username 
+            ? data.receiverUsername 
+            : data.senderUsername;
+          
+          // Remove any existing conversation with this user (check both sender and receiver)
+          remove(updatedChatMessageList, (chat) => {
+            const chatOtherUser = chat.senderUsername === profile?.username 
+              ? chat.receiverUsername 
+              : chat.senderUsername;
+            return chatOtherUser === otherUsername;
+          });
           updatedChatMessageList = [data, ...updatedChatMessageList];
         }
         setChatMessageList(updatedChatMessageList);
