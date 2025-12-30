@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSearchParams, useLocation, useNavigate, createSearchParams } from 'react-router-dom';
 import { FaSearch, FaTimes, FaArrowLeft } from 'react-icons/fa';
-import { find } from 'lodash';
+import { find, uniqBy } from 'lodash';
 import Avatar from '@components/avatar/Avatar';
 import Input from '@components/input/Input';
 import SearchList from '@components/chat/list/search-list/SearchList';
@@ -56,7 +56,13 @@ const ChatList = () => {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [componentType, setComponentType] = useState('chatList');
   const [chatMessageList, setChatMessageList] = useState<ChatUser[]>([]);
+  const chatMessageListRef = useRef<ChatUser[]>([]);
   const debouncedValue = useDebounce(search, 1000);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    chatMessageListRef.current = chatMessageList;
+  }, [chatMessageList]);
 
   const searchUsers = useCallback(
     async (query: string) => {
@@ -99,10 +105,30 @@ const ChatList = () => {
       };
       ChatUtils.joinRoomEvent(newUser, profile || {});
       ChatUtils.clearPrivateChatMessages();
-      const findUser = find(chatMessageList, (chat) => chat.receiverId === searchParams.get('id') || chat.senderId === searchParams.get('id'));
+      
+      // Check if user already exists by username (not just ID, to catch all cases)
+      const currentList = chatMessageListRef.current;
+      const otherUsername = newUser.receiverUsername !== profile?.username 
+        ? newUser.receiverUsername 
+        : newUser.senderUsername;
+      
+      const findUser = find(currentList, (chat) => {
+        const chatOtherUser = chat.senderUsername === profile?.username 
+          ? chat.receiverUsername 
+          : chat.senderUsername;
+        return chatOtherUser === otherUsername;
+      });
+      
       if (!findUser) {
-        const newChatList = [newUser, ...chatMessageList];
-        setChatMessageList(newChatList);
+        const newChatList = [newUser, ...currentList];
+        // Deduplicate by username before setting
+        const deduplicated = uniqBy(newChatList, (chat) => {
+          const chatOtherUser = chat.senderUsername === profile?.username 
+            ? chat.receiverUsername 
+            : chat.senderUsername;
+          return chatOtherUser || chat.conversationId || chat._id;
+        });
+        setChatMessageList(deduplicated);
         if (!chatList.length) {
           dispatch(setSelectedChatUser({ isLoading: false, user: newUser as unknown as UserData }));
           const userTwoName = newUser?.receiverUsername !== profile?.username ? newUser?.receiverUsername : newUser?.senderUsername;
@@ -110,7 +136,7 @@ const ChatList = () => {
         }
       }
     },
-    [chatList, chatMessageList, dispatch, profile, searchParams]
+    [chatList, dispatch, profile]
   );
 
   useEffect(() => {
@@ -145,13 +171,30 @@ const ChatList = () => {
   useEffect(() => {
     // Use setTimeout to avoid synchronous setState in effect
     setTimeout(() => {
-      setChatMessageList(chatList as ChatUser[]);
+      const newChatList = chatList as ChatUser[];
+      // Deduplicate by username when setting from Redux
+      if (profile?.username && newChatList.length > 0) {
+        const deduplicated = uniqBy(newChatList, (chat) => {
+          const chatOtherUser = chat.senderUsername === profile.username 
+            ? chat.receiverUsername 
+            : chat.senderUsername;
+          return chatOtherUser || chat.conversationId || chat._id;
+        });
+        setChatMessageList(deduplicated);
+      } else {
+        setChatMessageList(newChatList);
+      }
     }, 0);
-  }, [chatList]);
+  }, [chatList, profile?.username]);
 
   useEffect(() => {
-    ChatUtils.socketIOChatList(profile || {}, chatMessageList, setChatMessageList);
-  }, [chatMessageList, profile]);
+    // Use ref-based setter to always get latest state
+    const setChatMessageListWithRef = (newList: ChatUser[]) => {
+      setChatMessageList(newList);
+      chatMessageListRef.current = newList;
+    };
+    ChatUtils.socketIOChatList(profile || {}, chatMessageListRef, setChatMessageListWithRef);
+  }, [profile]);
 
   const addUsernameToSearchReducer = (user: UserData) => {
     dispatch(setSelectedChatUser({ isLoading: false, user }));
@@ -172,6 +215,19 @@ const ChatList = () => {
   };
 
   // this is for when a user already exist in the chat list
+  // Deduplicate chat list before rendering (final safety check)
+  const deduplicatedChatList = useMemo(() => {
+    if (!profile?.username || !chatMessageList.length) {
+      return chatMessageList;
+    }
+    return uniqBy(chatMessageList, (chat) => {
+      const chatOtherUser = chat.senderUsername === profile.username 
+        ? chat.receiverUsername 
+        : chat.senderUsername;
+      return chatOtherUser || chat.conversationId || chat._id;
+    });
+  }, [chatMessageList, profile]);
+
   const addUsernameToUrlQuery = async (user: UserData) => {
     try {
       const sender = find(
@@ -263,7 +319,7 @@ const ChatList = () => {
             setSearchResult([]);
           }}>
             <div className="conversation">
-              {chatMessageList.map((data) => {
+              {deduplicatedChatList.map((data) => {
                 // Use conversationId if available, otherwise use a combination of sender and receiver IDs
                 const conversationKey = data.conversationId || `${data.senderId || ''}-${data.receiverId || ''}`;
                 return (

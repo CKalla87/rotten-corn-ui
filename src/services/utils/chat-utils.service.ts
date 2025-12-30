@@ -1,4 +1,4 @@
-import { find, findIndex, cloneDeep, remove } from 'lodash';
+import { find, findIndex, cloneDeep, remove, uniqBy } from 'lodash';
 import { createSearchParams } from 'react-router-dom';
 import { socketService } from '@services/socket/socket.service';
 import React from 'react';
@@ -199,15 +199,18 @@ export class ChatUtils {
 
   static socketIOChatList(
     profile: UserData,
-    chatMessageList: ChatUser[],
+    chatMessageListRef: React.MutableRefObject<ChatUser[]>,
     setChatMessageList: (list: ChatUser[]) => void
   ): void {
     // Remove existing listener to prevent duplicates
     socketService?.socket?.off('chat list');
     socketService?.socket?.on('chat list', (data: ChatUser) => {
       if (data.senderUsername === profile?.username || data.receiverUsername === profile?.username) {
-        const messageIndex = findIndex(chatMessageList, ['conversationId', data.conversationId]);
-        let updatedChatMessageList = cloneDeep(chatMessageList);
+        // Always get the latest list from ref to avoid stale closures
+        const currentChatMessageList = chatMessageListRef.current || [];
+        const messageIndex = findIndex(currentChatMessageList, ['conversationId', data.conversationId]);
+        let updatedChatMessageList = cloneDeep(currentChatMessageList);
+        
         if (messageIndex > -1) {
           // Conversation exists with same conversationId, remove and update
           remove(updatedChatMessageList, (chat) => chat.conversationId === data.conversationId);
@@ -228,7 +231,16 @@ export class ChatUtils {
           });
           updatedChatMessageList = [data, ...updatedChatMessageList];
         }
-        setChatMessageList(updatedChatMessageList);
+        
+        // Deduplicate one more time before setting (safety check)
+        const deduplicated = uniqBy(updatedChatMessageList, (chat) => {
+          const chatOtherUser = chat.senderUsername === profile?.username 
+            ? chat.receiverUsername 
+            : chat.senderUsername;
+          return chatOtherUser || chat.conversationId || chat._id;
+        });
+        
+        setChatMessageList(deduplicated);
       }
     });
   }
