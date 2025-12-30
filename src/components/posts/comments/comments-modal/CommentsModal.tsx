@@ -1503,6 +1503,7 @@ const CommentsModal = () => {
     }
     
     // Skip if modal is not open or no postId
+    // When modal opens, always fetch fresh comments to ensure we have the latest
     if (!commentsModalIsOpen || !postId) {
       if (commentsModalIsOpen === false || !postId) {
       setPostComments([]);
@@ -1521,8 +1522,12 @@ const CommentsModal = () => {
       return;
     }
     
-    if (lastLoadedPostIdRef.current === postId && !isLoadingCommentsRef.current) {
-      // Already loaded this postId and not loading, skip
+    // When modal opens, always fetch fresh comments (even if we loaded this postId before)
+    // This ensures we get the latest comments including any added when modal was closed
+    const shouldForceRefresh = commentsModalIsOpen && lastLoadedPostIdRef.current === postId && !isLoadingCommentsRef.current;
+    
+    if (lastLoadedPostIdRef.current === postId && !isLoadingCommentsRef.current && !shouldForceRefresh) {
+      // Already loaded this postId and not loading, skip (unless forcing refresh)
       return;
     }
     
@@ -1591,13 +1596,25 @@ const CommentsModal = () => {
   // Use refs to access latest values in socket handler without causing re-renders
   const postIdRef = useRef<string | undefined>(postId);
   const commentsModalIsOpenRef = useRef<boolean>(commentsModalIsOpen);
+  const wasModalOpenRef = useRef<boolean>(commentsModalIsOpen);
   
   // Keep refs in sync - use useLayoutEffect for synchronous updates
   // Refs don't cause re-renders, so this is safe during scroll
   // This effect is safe to run during scroll since it only updates refs
   useLayoutEffect(() => {
+    const wasOpen = wasModalOpenRef.current;
+    const isNowOpen = commentsModalIsOpen;
+    
     postIdRef.current = postId;
     commentsModalIsOpenRef.current = commentsModalIsOpen;
+    
+    // Track when modal transitions from closed to open
+    // If modal just opened (was closed, now open), reset lastLoadedPostId to force fresh fetch
+    if (!wasOpen && isNowOpen && postId) {
+      lastLoadedPostIdRef.current = undefined;
+    }
+    
+    wasModalOpenRef.current = commentsModalIsOpen;
   }, [postId, commentsModalIsOpen]);
   
   // Also listen for socket updates to refresh comments
@@ -1605,7 +1622,9 @@ const CommentsModal = () => {
   const handleCommentUpdateRef = useRef<((commentData: unknown) => void) | null>(null);
   
   useEffect(() => {
-    if (!commentsModalIsOpen || !postId) return;
+    // Always listen to socket events, even when modal is closed
+    // This ensures comments added when modal is closed are handled when modal opens
+    if (!postId) return;
     
     const socket = socketService?.socket;
     if (!socket) return;
@@ -1697,7 +1716,10 @@ const CommentsModal = () => {
       // If we have a comment but postId doesn't match, log it for debugging
       // Removed logging to prevent re-renders during scroll
       
-      if (postIdsMatch && actualComment && actualComment._id) {
+      // Only update state if modal is open and postIds match
+      const shouldUpdate = commentsModalIsOpenRef.current && postIdsMatch && actualComment && actualComment._id;
+      
+      if (shouldUpdate && actualComment) {
         // Don't update state if user is currently scrolling (defer until scroll ends)
         // Use longer delay on mobile for touch inertia
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
@@ -1708,7 +1730,7 @@ const CommentsModal = () => {
           // Queue the update for after scrolling ends
           // Use a more reliable check that waits for scroll to fully stop
           const checkAndApply = () => {
-            if (!isScrollingRef.current) {
+            if (!isScrollingRef.current && actualComment) {
               // Scroll has ended, apply the update
               const currentComments = postCommentsRef.current;
               // Process comment to ensure userReaction is set
@@ -1770,6 +1792,9 @@ const CommentsModal = () => {
         }
         
         // Process comment to ensure userReaction is set if reaction array exists
+        // actualComment is guaranteed to be defined here due to shouldUpdate check above
+        if (!actualComment) return;
+        
         const processedSocketComment: CommentData = { ...actualComment };
         
         // Ensure reaction is an array
