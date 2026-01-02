@@ -14,10 +14,25 @@ function getAppEnvironment(): string {
 // Cache for base URL to avoid repeated lookups and logging during scrolling
 let cachedBaseUrl: string | null = null;
 let baseUrlLogged = false;
+let cachedHostname: string | null = null; // Track hostname to detect changes
 
 // Function to get BASE_URL dynamically (allows runtime environment detection)
 // Cached to prevent repeated lookups and console spam during scrolling
 function getBaseUrl(): string {
+  // Check if hostname changed - if so, clear cache to recalculate
+  if (typeof window !== 'undefined') {
+    const currentHostname = window.location.hostname;
+    if (cachedHostname !== null && cachedHostname !== currentHostname) {
+      // Hostname changed, clear cache to force recalculation
+      cachedBaseUrl = null;
+      baseUrlLogged = false;
+      if (!baseUrlLogged) {
+        console.log('🌐 Hostname changed, recalculating base URL:', cachedHostname, '->', currentHostname);
+      }
+    }
+    cachedHostname = currentHostname;
+  }
+  
   // Return cached value if already computed
   if (cachedBaseUrl !== null) {
     return cachedBaseUrl;
@@ -25,34 +40,66 @@ function getBaseUrl(): string {
   
   // Re-check environment at runtime
   let currentEnv = getAppEnvironment();
+  let hostnameDetected = false; // Track if we detected environment from hostname
   
-  // Runtime hostname detection as fallback (for when env vars aren't set at build time)
-  // Run hostname detection in production builds (when not in dev mode) to ensure correct environment detection
-  // This is especially important when environment variables aren't injected from S3
-  if (typeof window !== 'undefined' && !import.meta.env.DEV) {
-    // Use hostname detection if environment wasn't explicitly set via window.__ENV__
-    // This ensures correct environment detection even when env vars aren't injected at build/runtime
-    const envExplicitlySet = window.__ENV__?.VITE_APP_ENVIRONMENT;
-    if (!envExplicitlySet) {
-      const hostname = window.location.hostname;
+  // Runtime hostname detection - ALWAYS override environment variables based on hostname
+  // This ensures correct API endpoint even if wrong env vars are injected
+  // This MUST run regardless of DEV mode to fix production issues
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // Check for localhost first (always use local/proxy for localhost)
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.')) {
+      currentEnv = 'local';
+      hostnameDetected = true;
+      if (!baseUrlLogged) {
+        console.log('🌐 Detected localhost - using local development mode:', hostname);
+        baseUrlLogged = true;
+      }
+    } else {
+      // Hostname-based detection ALWAYS takes precedence over environment variables for remote hosts
+      // This fixes issues where wrong env vars cause incorrect API endpoints
+      // Run this regardless of DEV mode to ensure production works correctly
       if (hostname.includes('dev.chatappserver.space') || hostname.includes('.dev.')) {
         currentEnv = 'development';
+        hostnameDetected = true;
         if (!baseUrlLogged) {
           console.log('🌐 Detected develop environment from hostname:', hostname);
           baseUrlLogged = true;
         }
       } else if (hostname.includes('staging.chatappserver.space') || hostname.includes('.staging.')) {
         currentEnv = 'staging';
+        hostnameDetected = true;
         if (!baseUrlLogged) {
           console.log('🌐 Detected staging environment from hostname:', hostname);
           baseUrlLogged = true;
         }
       } else if (hostname.includes('chatappserver.space') && !hostname.includes('dev.') && !hostname.includes('staging.')) {
+        // Production domain - ALWAYS use production API (not dev)
+        // This is critical: chatappserver.space should NEVER use api.dev.chatappserver.space
         currentEnv = 'production';
+        hostnameDetected = true;
         if (!baseUrlLogged) {
           console.log('🌐 Detected production environment from hostname:', hostname);
+          console.log('🌐 Overriding any environment variables to use production API');
           baseUrlLogged = true;
         }
+      }
+    }
+    
+    // Check for localhost override (for forcing localhost:5000 even on remote hosts)
+    // Note: This may cause CORS issues if backend doesn't allow the origin
+    const useLocalhost = window.__ENV__?.VITE_USE_LOCALHOST === 'true' || 
+                        import.meta.env.VITE_USE_LOCALHOST === 'true' ||
+                        new URLSearchParams(window.location.search).get('useLocalhost') === 'true';
+    
+    if (useLocalhost && currentEnv !== 'local') {
+      currentEnv = 'local';
+      hostnameDetected = true;
+      if (!baseUrlLogged) {
+        console.log('🌐 Using localhost:5000 (forced via VITE_USE_LOCALHOST or ?useLocalhost=true)');
+        console.warn('⚠️ Note: Direct localhost:5000 may cause CORS issues if backend doesn\'t allow this origin');
+        baseUrlLogged = true;
       }
     }
   }
@@ -60,9 +107,24 @@ function getBaseUrl(): string {
   // Determine endpoint based on current environment
   let endpoint = '';
   if (currentEnv === 'local' || import.meta.env.DEV) {
-    // Use relative URL to leverage Vite's proxy configured in vite.config.ts
-    // This avoids CORS issues since the proxy makes requests from the same origin
-    endpoint = '';
+    // Check if we should use direct localhost:5000 (for production builds testing locally)
+    const useDirectLocalhost = typeof window !== 'undefined' && 
+                              (window.__ENV__?.VITE_USE_LOCALHOST === 'true' || 
+                               import.meta.env.VITE_USE_LOCALHOST === 'true' ||
+                               new URLSearchParams(window.location.search).get('useLocalhost') === 'true');
+    
+    if (useDirectLocalhost && !import.meta.env.DEV) {
+      // Use direct localhost:5000 for production builds (bypasses Vite proxy)
+      endpoint = 'http://localhost:5000';
+      if (!baseUrlLogged) {
+        console.log('🌐 Using direct localhost:5000 endpoint (bypassing proxy)');
+        baseUrlLogged = true;
+      }
+    } else {
+      // Use relative URL to leverage Vite's proxy configured in vite.config.ts
+      // This avoids CORS issues since the proxy makes requests from the same origin
+      endpoint = '';
+    }
   } else if (currentEnv === 'development') {
     endpoint = 'https://api.dev.chatappserver.space';
   } else if (currentEnv === 'staging') {
@@ -72,7 +134,11 @@ function getBaseUrl(): string {
   }
   
   // Override with runtime VITE_BASE_ENDPOINT if available (from window.__ENV__)
-  if (typeof window !== 'undefined' && window.__ENV__?.VITE_BASE_ENDPOINT && currentEnv !== 'local' && !import.meta.env.DEV) {
+  // BUT: Only if hostname detection didn't override it (hostname takes precedence!)
+  // This prevents wrong env vars from causing incorrect API endpoints
+  if (typeof window !== 'undefined' && window.__ENV__?.VITE_BASE_ENDPOINT && 
+      currentEnv !== 'local' && !import.meta.env.DEV && 
+      !endpoint.includes('localhost:5000') && !hostnameDetected) {
     endpoint = window.__ENV__.VITE_BASE_ENDPOINT;
     // Only log once to avoid console spam during scrolling
     if (!baseUrlLogged) {
@@ -82,11 +148,22 @@ function getBaseUrl(): string {
   }
   
   // Override with build-time VITE_BASE_ENDPOINT if explicitly set (but not in local dev to use proxy)
-  if (import.meta.env.VITE_BASE_ENDPOINT && currentEnv !== 'local' && !import.meta.env.DEV) {
+  // BUT: Only if hostname detection didn't override it (hostname takes precedence!)
+  if (import.meta.env.VITE_BASE_ENDPOINT && currentEnv !== 'local' && !import.meta.env.DEV && 
+      !endpoint.includes('localhost:5000') && !hostnameDetected) {
     endpoint = import.meta.env.VITE_BASE_ENDPOINT;
   }
   
   const baseUrl = endpoint ? `${endpoint}/api/v1` : '/api/v1';
+  
+  // Log the final base URL for debugging (only once)
+  if (!baseUrlLogged && typeof window !== 'undefined') {
+    console.log('🌐 Final API Base URL:', baseUrl);
+    console.log('🌐 Environment:', currentEnv);
+    console.log('🌐 Hostname detected:', hostnameDetected);
+    console.log('🌐 Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
+  }
+  
   cachedBaseUrl = baseUrl;
   return baseUrl;
 }
