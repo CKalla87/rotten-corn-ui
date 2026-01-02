@@ -357,7 +357,8 @@ const Streams = () => {
         if (post) {
           const updatedPost = { 
             ...post, 
-            commentsCount: commentData.commentsCount !== undefined ? String(commentData.commentsCount) : post.commentsCount,
+            // Don't update commentsCount here - this event is for comment reactions/updates, not comment count changes
+            // Comment count is only updated when comments are added/deleted (handled by handleNewComment)
             reactions: commentData.postReactions || post.reactions
           };
           dispatch(updatePostInList(updatedPost));
