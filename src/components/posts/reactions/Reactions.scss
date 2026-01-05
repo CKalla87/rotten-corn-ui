@@ -35,4 +35,12 @@
   }
 }
 
+// Ensure reactions are behind sidebar when it's open in mobile mode
+@media screen and (max-width: 768px) {
+  .dashboard-sidebar.sidebar-open ~ .dashboard-content .reactions,
+  .dashboard-sidebar.sidebar-open ~ * .reactions {
+    z-index: 999 !important;
+  }
+}
+
 
