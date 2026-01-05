@@ -558,9 +558,9 @@ hr {
     margin-right: 0;
     margin-bottom: 0;
     position: absolute;
-    bottom: 90px;
-    right: auto;
-    left: 15px;
+    bottom: 130px;
+    right: 15px;
+    left: auto;
     background-color: var(--white-1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 4px 8px;
@@ -570,7 +570,7 @@ hr {
 
     // Additional spacing for smaller screens
     @media (max-width: 480px) {
-      bottom: 100px;
+      bottom: 140px;
     }
   }
 
@@ -578,15 +578,15 @@ hr {
   @media (max-width: 768px) {
     body:has(.streams:not([style*="display: none"])) & {
       position: absolute;
-      bottom: 90px;
-      right: auto;
-      left: 15px;
+      bottom: 130px;
+      right: 15px;
+      left: auto;
       z-index: 20;
       white-space: nowrap;
       pointer-events: none;
 
       @media (max-width: 480px) {
-        bottom: 100px;
+        bottom: 140px;
       }
     }
   }
