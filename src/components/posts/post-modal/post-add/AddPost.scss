@@ -551,7 +551,7 @@ hr {
     margin-right: 0;
     margin-bottom: 0;
     position: absolute;
-    bottom: 70px;
+    bottom: 90px;
     right: 15px;
     left: auto;
     background-color: var(--white-1);
@@ -560,18 +560,27 @@ hr {
     border-radius: 4px;
     white-space: nowrap;
     pointer-events: none;
+
+    // Additional spacing for smaller screens
+    @media (max-width: 480px) {
+      bottom: 100px;
+    }
   }
 
   // Ensure character count is visible on streams page mobile
   @media (max-width: 768px) {
     body:has(.streams:not([style*="display: none"])) & {
       position: absolute;
-      bottom: 70px;
+      bottom: 90px;
       right: 15px;
       left: auto;
       z-index: 20;
       white-space: nowrap;
       pointer-events: none;
+
+      @media (max-width: 480px) {
+        bottom: 100px;
+      }
     }
   }
 }
