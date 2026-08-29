@@ -1,3 +1,7 @@
+# rotten-corn-ui
+
+The frontend experience for Rotten Corn, a modern social media platform. Provides the user interface for profiles, feeds, posts, comments, likes, follows, messaging, notifications, search, media sharing, and account settings. Designed to deliver a fast, responsive, and intuitive social experience across the Rotten Corn platform.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
